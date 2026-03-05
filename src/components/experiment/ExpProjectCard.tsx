@@ -4,9 +4,10 @@ interface ExpProjectCardProps {
   title: string;
   lastUpdate: string;
   obstacle: string;
+  onOpen?: () => void; // Tambahan: Fungsi untuk menghandle klik buka
 }
 
-export function ExpProjectCard({ title, lastUpdate, obstacle }: ExpProjectCardProps) {
+export function ExpProjectCard({ title, lastUpdate, obstacle, onOpen }: ExpProjectCardProps) {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-center mb-4">
       <div className="flex gap-4">
@@ -29,7 +30,10 @@ export function ExpProjectCard({ title, lastUpdate, obstacle }: ExpProjectCardPr
       </div>
 
       {/* Tombol Aksi */}
-      <button className="bg-[#1E4E8C] text-white px-10 py-2 rounded-xl font-black text-sm shadow-lg hover:bg-blue-800 transition-colors">
+      <button 
+        onClick={onOpen} // Trigger fungsi onOpen
+        className="bg-[#1E4E8C] text-white px-10 py-2 rounded-xl font-black text-sm shadow-lg hover:bg-blue-800 transition-colors"
+      >
         Buka
       </button>
     </div>

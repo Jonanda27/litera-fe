@@ -5,19 +5,41 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Daftar motivasi tentang buku/menulis
+const motivations = [
+  "Buku adalah jendela dunia, mulailah menulis duniamu.",
+  "Penulis yang baik adalah pembaca yang rajin.",
+  "Setiap kata yang kau tulis adalah jejak keabadian.",
+  "Jangan menunggu inspirasi, ciptakanlah dengan menulis.",
+  "Satu buku bisa mengubah ribuan pemikiran.",
+  "Tuliskan apa yang layak dibaca, atau lakukan apa yang layak ditulis.",
+  "Menulislah agar duniamu tahu bahwa kau pernah ada.", 
+  "Buku yang belum ditulis adalah cerita yang terperangkap dalam jiwamu.", 
+  "Karya hebat tidak lahir dari keberuntungan, tapi dari ketekunan menyusun kata.", 
+  "Pena lebih tajam dari pedang, dan buku adalah perisai peradaban."
+];
+
 export default function Navbar() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [quoteIndex, setQuoteIndex] = useState(0); // State untuk index quote
   
   const [userData, setUserData] = useState<{ name: string; role: string }>({
-    name: "Loading...",
+    name: "User",
     role: "User"
   });
 
   useEffect(() => {
     setMounted(true);
     fetchUser();
+
+    // Logic untuk mengganti motivasi setiap 5 detik
+    const quoteInterval = setInterval(() => {
+      setQuoteIndex((prev) => (prev + 1) % motivations.length);
+    }, 5000);
+
+    return () => clearInterval(quoteInterval); // Cleanup saat component unmount
   }, []);
 
   const fetchUser = async () => {
@@ -72,10 +94,7 @@ export default function Navbar() {
     }
   };
 
-  // Ambil huruf pertama (inisial) dari nama user
   const initial = userData.name.charAt(0).toUpperCase();
-  // Memecah nama menjadi array untuk animasi bounce
-  const nameArray = userData.name.split("");
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 h-24 overflow-hidden shadow-sm">
@@ -95,36 +114,28 @@ export default function Navbar() {
         
         {/* Left Section: Logo */}
         <div className="flex-1 flex items-center">
-          {/* <Link href="/" className="flex items-center gap-2 group">
+           <Link href="/" className="flex items-center gap-2 group">
              <div className="w-10 h-10 bg-[#c31a26] rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:rotate-6 transition-transform">
                L
              </div>
              <span className="text-xl font-black text-slate-800 tracking-tighter">LITERA</span>
-          </Link> */}
+          </Link>
         </div>
 
-        {/* Center Section: Greeting Animation */}
-        <div className="flex-[2] hidden md:flex flex-col items-center">
-          <div className={`transition-all duration-1000 ease-out transform ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-            <h1 className="text-3xl lg:text-4xl font-black text-[#c31a26] tracking-tight flex items-center">
-              <span className="mr-3 drop-shadow-[0_2px_4px_rgba(255,255,255,0.8)]">Selamat datang,</span>
-              <span className="flex text-slate-900">
-                {nameArray.map((char, index) => (
-                  <span
-                    key={index}
-                    className="inline-block animate-bounce"
-                    style={{ 
-                      animationDelay: `${index * 0.1}s`,
-                      animationDuration: '1s' 
-                    }}
-                  >
-                    {char === " " ? "\u00A0" : char}
-                  </span>
-                ))}
-              </span>
-            </h1>
-            <div className={`h-1 bg-[#c31a26] rounded-full mt-1 mx-auto transition-all duration-1000 delay-700 ${mounted ? 'w-32 opacity-40' : 'w-0'}`} />
+        {/* Center Section: Motivation Quote (GANTI DI SINI) */}
+        <div className="flex-[3] hidden md:flex flex-col items-center px-4">
+          <div className="relative h-12 flex items-center justify-center w-full text-center">
+            {motivations.map((text, index) => (
+              <p
+                key={index}
+                className={`absolute transition-all duration-1000 ease-in-out text-base lg:text-lg font-medium italic text-slate-700 leading-tight
+                  ${index === quoteIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+              >
+                "{text}"
+              </p>
+            ))}
           </div>
+          <div className="w-24 h-1 bg-[#c31a26]/30 rounded-full mt-1" />
         </div>
 
         {/* Right Section: Profile & Actions */}
@@ -134,12 +145,11 @@ export default function Navbar() {
               <p className="text-base font-black text-slate-900 group-hover:text-[#c31a26] transition-colors">
                 {userData.name}
               </p>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+              <p className="text-[10px] font-bold text-slate-100 uppercase tracking-[0.2em]">
                 {userData.role} 
               </p>
             </div>
             
-            {/* --- AVATAR MANUAL (Hanya Huruf Depan + Background Merah) --- */}
             <div className="relative w-14 h-14 rounded-2xl border-2 border-white shadow-xl overflow-hidden group-hover:scale-105 transition-transform duration-300 bg-[#c31a26] flex items-center justify-center">
               <span className="text-white text-2xl font-black select-none">
                 {initial}
