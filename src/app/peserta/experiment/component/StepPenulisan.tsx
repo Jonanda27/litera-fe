@@ -16,15 +16,15 @@ export default function StepPenulisan({
   formData,
   handleInputChange,
 }: StepPenulisanProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
+  const editorRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("Safe");
+  const [pageCount, setPageCount] = useState(1);
   const [selectedFontSize, setSelectedFontSize] = useState("12pt");
-  const [pages, setPages] = useState<string[]>([""]);
-
   
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- 1. LOGIKA FETCH DATA ---
+  // --- 1. INITIAL LOAD ---
   useEffect(() => {
     const fetchInitialContent = async () => {
       const token = localStorage.getItem("token");
@@ -45,16 +45,26 @@ export default function StepPenulisan({
         const result = await response.json();
 
         if (response.ok && result.data) {
-          if (editorRef.current) {
-            editorRef.current.innerHTML = result.data.content || "";
-            updateWordCount();
-            if (result.data.id && !formData.currentChapterId) {
-              handleInputChange("currentChapterId", result.data.id);
-            }
+          const content = result.data.content || "";
+          // Gunakan pemisah halaman saat split
+          const splitPages = content.split("");
+          setPageCount(splitPages.length || 1);
+          
+          setTimeout(() => {
+            splitPages.forEach((pageText: string, i: number) => {
+              if (editorRefs.current[i]) {
+                editorRefs.current[i]!.innerHTML = pageText;
+              }
+            });
+            updateStats();
+          }, 100);
+
+          if (result.data.id && !formData.currentChapterId) {
+            handleInputChange("currentChapterId", result.data.id);
           }
         }
       } catch (error) {
-        console.error("Gagal memuat konten:", error);
+        console.error("Gagal memuat:", error);
       } finally {
         setIsLoading(false);
       }
@@ -62,49 +72,54 @@ export default function StepPenulisan({
     fetchInitialContent();
   }, [formData.bookId]);
 
-  const updateWordCount = () => {
-    if (editorRef.current) {
-      const text = editorRef.current.innerText || "";
-      const words = text.trim().split(/\s+/).filter((w) => w !== "").length;
-      handleInputChange("currentWordCount", words);
-    }
+  // --- 2. STATS & AUTO-SAVE ---
+  const updateStats = () => {
+    let totalText = "";
+    editorRefs.current.forEach(ref => {
+      if (ref) totalText += ref.innerText + " ";
+    });
+    const words = totalText.trim().split(/\s+/).filter((w) => w !== "").length;
+    handleInputChange("currentWordCount", words);
+    triggerAutoSave();
   };
 
-  // --- 2. LOGIKA AUTO SAVE ---
-  const autoSave = useCallback(async () => {
-    if (!editorRef.current || isLoading) return;
-    const currentBookId = formData.bookId;
-    if (!currentBookId) return;
+  const triggerAutoSave = () => {
+    setSaveStatus("Typing...");
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      performSave();
+    }, 2000);
+  };
 
-    const htmlContent = editorRef.current.innerHTML;
-    if (htmlContent === "" || htmlContent === "<br>") return;
+  const performSave = async () => {
+    if (isLoading || !formData.bookId) return;
 
+    const htmlPages = [];
+    for (let i = 0; i < pageCount; i++) {
+      htmlPages.push(editorRefs.current[i]?.innerHTML || "");
+    }
+    const fullHtml = htmlPages.join("");
+    
     setSaveStatus("Saving...");
     try {
       const token = localStorage.getItem("token");
-      const payload = {
-        bookId: currentBookId,
-        chapterId: formData.currentChapterId || null,
-        title: "Draf Utama",
-        content: htmlContent,
-        wordCount: formData.currentWordCount || 0,
-        dailyTarget: parseInt(formData.targetKata) || 1000,
-      };
-
       const response = await fetch("http://localhost:4000/api/books/save-chapter", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${token}` 
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          bookId: formData.bookId,
+          chapterId: formData.currentChapterId || null,
+          title: "Draf Utama",
+          content: fullHtml,
+          wordCount: formData.currentWordCount || 0,
+          dailyTarget: parseInt(formData.targetKata) || 1000,
+        }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.chapterId && data.chapterId !== formData.currentChapterId) {
-          handleInputChange("currentChapterId", data.chapterId);
-        }
         setSaveStatus("Saved");
         setTimeout(() => setSaveStatus("Safe"), 2000);
       } else {
@@ -113,73 +128,91 @@ export default function StepPenulisan({
     } catch (error) {
       setSaveStatus("Error");
     }
-  }, [formData.bookId, formData.currentChapterId, formData.targetKata, formData.currentWordCount, handleInputChange, isLoading]);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => autoSave(), 2000);
-    return () => clearTimeout(timer);
-  }, [formData.currentWordCount, autoSave]);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, []);
 
   // --- 3. FORMATTING TOOLS ---
-  const applyStyle = (command: string, value: string | undefined = undefined) => {
-    if (editorRef.current) editorRef.current.focus();
+  const applyStyle = (command: string, value: any = undefined) => {
     document.execCommand(command, false, value);
-    updateWordCount();
+    updateStats();
   };
 
   const applyFontSize = (size: string) => {
     setSelectedFontSize(size);
-    if (editorRef.current) editorRef.current.focus();
+    // Menggunakan trik font size execCommand lalu menggantinya dengan span style
     document.execCommand('fontSize', false, "7"); 
-    const fontSpans = editorRef.current?.querySelectorAll('font[size="7"]');
-    fontSpans?.forEach(span => {
-      (span as HTMLElement).removeAttribute('size');
-      (span as HTMLElement).style.fontSize = size;
+    editorRefs.current.forEach(ref => {
+        const fontSpans = ref?.querySelectorAll('font[size="7"]');
+        fontSpans?.forEach(span => {
+            (span as HTMLElement).removeAttribute('size');
+            (span as HTMLElement).style.fontSize = size;
+        });
     });
-    updateWordCount();
+    updateStats();
+  };
+
+  // --- 4. NAVIGATION & OVERFLOW ---
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    
+    requestAnimationFrame(() => {
+      if (el.scrollHeight > el.clientHeight) {
+        if (index === pageCount - 1) {
+          setPageCount(prev => prev + 1);
+          setTimeout(() => editorRefs.current[index + 1]?.focus(), 10);
+        } else {
+          editorRefs.current[index + 1]?.focus();
+        }
+      }
+    });
+
+    if (e.key === "Backspace" && el.innerText.trim() === "" && index > 0) {
+      setPageCount(prev => prev - 1);
+      setTimeout(() => {
+        const prevPage = editorRefs.current[index - 1];
+        if (prevPage) {
+          prevPage.focus();
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(prevPage);
+          range.collapse(false);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }
+      }, 10);
+    }
   };
 
   return (
-    <div className={`space-y-8 transition-all duration-500 overflow-x-hidden ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 md:p-12 overflow-y-auto" : ""}`}>
+    <div className={`space-y-8 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 md:p-12 overflow-y-auto" : ""}`}>
       
-      {/* 1. HEADER */}
-      <div className={`${isZenMode ? "max-w-[1200px] mx-auto" : ""} flex justify-between items-center border-b-2 border-slate-100 pb-4`}>
+      {/* HEADER */}
+      <div className="flex justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto">
         <h4 className="font-black uppercase tracking-tighter text-black italic text-lg">
-          {isZenMode ? "📝 Zen Writing Mode" : "1. Editor Teks Utama"}
+          {isZenMode ? "📝 Mode Fokus" : "1. Editor Naskah Utama"}
         </h4>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setIsZenMode(!isZenMode)}
-            className="text-[10px] font-black bg-black text-white px-6 py-2.5 rounded-full hover:bg-slate-800 transition-all uppercase shadow-xl active:scale-95"
-          >
-            {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
-          </button>
-        </div>
+        <button onClick={() => setIsZenMode(!isZenMode)} className="bg-black text-white px-6 py-2 rounded-full text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 transition-all">
+          {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
+        </button>
       </div>
 
-      <div className={`${isZenMode ? "max-w-[1200px] mx-auto" : "space-y-6"}`}>
-        
-        {/* 2. AREA EDITOR KERTAS */}
-        <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 shadow-inner relative z-10">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-inner">
           
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center backdrop-blur-sm">
-              <div className="w-12 h-12 border-4 border-slate-100 border-t-black rounded-full animate-spin mb-4"></div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Menyiapkan Naskah...</p>
-            </div>
-          )}
-
-          {/* TOOLBAR LENGKAP DENGAN HEADING */}
-          <div className="w-full bg-slate-50 px-6 py-4 border-b-2 border-slate-100 flex flex-wrap items-center gap-4 sticky top-0 z-10 shadow-sm">
-            
+          {/* TOOLBAR LENGKAP */}
+          <div className="w-full bg-slate-50 px-6 py-4 border-b-2 border-slate-100 flex flex-wrap items-center gap-4 sticky top-0 z-50 shadow-sm">
+             
             {/* Bold, Italic, Underline */}
             <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black">
-              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("bold"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white font-serif text-lg border-r-2 border-slate-100 transition-all">B</button>
-              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("italic"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white font-serif italic text-lg border-r-2 border-slate-100 transition-all">I</button>
-              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("underline"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white font-serif underline text-lg transition-all">U</button>
+              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("bold"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-all">B</button>
+              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("italic"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 italic font-serif text-lg">I</button>
+              <button onMouseDown={(e) => { e.preventDefault(); applyStyle("underline"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white underline">U</button>
             </div>
 
-            {/* Font Size Selector */}
+            {/* Font Size */}
             <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3 overflow-hidden">
               <span className="text-[8px] font-black uppercase text-slate-400 mr-2">Size</span>
               <select 
@@ -187,13 +220,13 @@ export default function StepPenulisan({
                 onChange={(e) => applyFontSize(e.target.value)}
                 className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
               >
-                {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36].map((size) => (
+                {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36].map((size) => (
                   <option key={size} value={`${size}pt`}>{size} pt</option>
                 ))}
               </select>
             </div>
 
-            {/* Alignment Tools */}
+            {/* Alignment */}
             <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black">
               <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyLeft"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="18" y2="18" /></svg>
@@ -206,13 +239,13 @@ export default function StepPenulisan({
               </button>
             </div>
 
-            {/* HEADING BUTTONS (KEMBALI DITAMPILKAN) */}
+            {/* Headings */}
             <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-xl border-2 border-slate-200 shadow-sm text-black">
               {["H1", "H2", "H3"].map((h) => (
                 <button 
-                  key={h} 
-                  onMouseDown={(e) => { e.preventDefault(); applyStyle("formatBlock", `<${h}>`); }} 
-                  className="px-3 h-8 flex items-center justify-center hover:bg-black hover:text-white text-[10px] font-black border-r border-slate-100 last:border-0 transition-all rounded-md"
+                    key={h} 
+                    onMouseDown={(e) => { e.preventDefault(); applyStyle("formatBlock", `<${h}>`); }} 
+                    className="px-3 h-8 flex items-center justify-center hover:bg-black hover:text-white text-[10px] font-black border-r border-slate-100 last:border-0 transition-all rounded-md"
                 >
                   {h}
                 </button>
@@ -224,179 +257,90 @@ export default function StepPenulisan({
                 Normal
               </button>
             </div>
+            
+            <div className="flex-1" />
 
-            <div className="flex-1 min-w-[20px]" />
-
-            {/* Save Status Indicator */}
+            {/* Save Status */}
             <div className="flex items-center gap-2 px-4 py-2 bg-black rounded-full shadow-lg">
-              <span className={`w-2 h-2 rounded-full ${saveStatus === "Saving..." ? "bg-yellow-400 animate-spin" : saveStatus === "Error" ? "bg-red-500" : "bg-green-400 animate-pulse"}`} />
-              <span className="text-[9px] font-black text-white uppercase tracking-widest leading-none">{saveStatus}</span>
+              <span className={`w-2 h-2 rounded-full ${
+                saveStatus === "Saving..." ? "bg-yellow-400 animate-spin" : 
+                saveStatus === "Typing..." ? "bg-blue-400 animate-pulse" : 
+                saveStatus === "Error" ? "bg-red-500" : "bg-green-400"
+              }`} />
+              <span className="text-[9px] font-black text-white uppercase tracking-widest">{saveStatus}</span>
             </div>
           </div>
 
-          {/* AREA KERTAS A4 MULTI-HALAMAN */}
-          <div className="w-full overflow-x-hidden overflow-y-auto p-4 md:p-12 custom-scrollbar bg-slate-400" style={{ height: isZenMode ? 'calc(100vh - 180px)' : '750px' }}>
-            <div className="paper-zoom-wrapper">
+          {/* AREA HALAMAN A4 */}
+          <div className="w-full p-4 md:p-12 bg-slate-400 flex flex-col items-center gap-8 min-h-[800px] overflow-y-auto custom-scrollbar" style={{ height: isZenMode ? 'calc(100vh - 180px)' : '800px' }}>
+            {Array.from({ length: pageCount }).map((_, index) => (
+              <div key={`page-${index}`} className="relative group">
+                <div className="absolute -left-16 top-10 text-slate-100 font-black text-4xl opacity-30 group-hover:opacity-100 transition-all">
+                  {index + 1}
+                </div>
+
                 <div 
-                  id="paper-penulisan"
-                  ref={editorRef}
+                  ref={(el) => { editorRefs.current[index] = el; }}
                   contentEditable={!isLoading}
                   suppressContentEditableWarning={true}
-                  onInput={updateWordCount}
-                  className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.5)] p-[2.54cm] w-[210mm] outline-none text-black font-serif prose prose-slate max-w-none block a4-multi-page-shadow"
+                  onInput={updateStats}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  className="bg-white shadow-2xl outline-none text-black font-serif prose prose-slate a4-page-div"
                   style={{ 
+                      width: '210mm',
+                      height: '297mm', 
+                      padding: '2.54cm', 
                       fontSize: '12pt', 
                       lineHeight: '1.6',
-                      color: 'black', 
-                      wordBreak: 'normal',
-                      whiteSpace: 'pre-wrap',
-                      textAlign: 'left',
-                      minHeight: '297mm',
+                      overflow: 'hidden', 
+                      boxSizing: 'border-box',
                   }}
                 />
-            </div>
+              </div>
+            ))}
+            
+            <button onClick={() => setPageCount(prev => prev + 1)} className="mt-4 mb-20 px-8 py-3 bg-white/20 hover:bg-black text-white rounded-full text-xs font-black uppercase border-2 border-white/30 transition-all">
+              + Tambah Halaman Manual
+            </button>
           </div>
         </div>
 
-        {/* 3. STATISTIK */}
+        {/* STATS FOOTER */}
         {!isZenMode && (
-          <div className="bg-black p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] text-white flex flex-col md:flex-row items-center justify-between shadow-2xl border-t-8 border-slate-800 gap-6 relative z-10">
-            <div className="space-y-1 w-full md:w-auto">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Kata</p>
+          <div className="mt-8 bg-black p-6 rounded-[2.5rem] text-white flex justify-between items-center shadow-2xl border-t-8 border-slate-800">
+            <div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Kata Terhitung</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-black italic">{formData.currentWordCount || 0}</span>
-                <span className="text-sm font-bold text-slate-500 italic">/ {formData.targetKata}</span>
+                <span className="text-sm font-bold text-slate-500">/ {formData.targetKata}</span>
               </div>
             </div>
-
-            <div className="w-full md:w-1/2 space-y-3">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <span>Target Hari Ini</span>
-                <span className="text-white bg-slate-800 px-2 py-0.5 rounded">
-                  {Math.min(Math.round(((formData.currentWordCount || 0) / (parseInt(formData.targetKata) || 1)) * 100), 100)}%
-                </span>
+            <div className="flex flex-col items-end gap-1">
+               <div className="text-[10px] font-black uppercase bg-slate-800 px-4 py-2 rounded-full border border-slate-700">
+                {pageCount} Halaman A4
               </div>
-              <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden p-[1px]">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(((formData.currentWordCount || 0) / (parseInt(formData.targetKata) || 1)) * 100, 100)}%` }}
-                  transition={{ duration: 0.5 }}
-                  className="h-full bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.4)]"
-                />
-              </div>
+              <p className="text-[9px] text-slate-500 font-bold uppercase italic mr-2 tracking-tighter">Debounced Save Active (2s)</p>
             </div>
           </div>
         )}
       </div>
 
       <style jsx global>{`
-        body {
-          overflow-x: hidden;
+        .a4-page-div {
+          background-color: white !important;
+          color: black !important;
         }
-
-        .paper-zoom-wrapper {
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          width: 100%;
-          min-height: 100%;
-          padding-bottom: 50mm;
-        }
-
-        a4-multi-page-shadow {
-  width: 210mm;
-  min-height: 297mm;
-  padding: 2.54cm 2.54cm 5cm 2.54cm; /* Tambah padding bawah (5cm) agar teks tidak mentok */
-  background: white;
-  
-  /* Membuat visualisasi celah antar halaman */
-  background-image: linear-gradient(
-    to bottom,
-    transparent 287mm,      /* Area putih kertas */
-    #94a3b8 287mm,          /* Mulai warna abu-abu (celah) */
-    #94a3b8 307mm,          /* Akhir warna abu-abu */
-    transparent 307mm       /* Mulai halaman berikutnya */
-  );
-  background-size: 100% 307mm;
-  position: relative;
-  
-  /* Menghindari teks terpotong tepat di garis celah */
-  line-height: 1.6; 
-}
-
-/* TRICK UTAMA: 
-   Agar teks otomatis "melompat" melewati celah, 
-   kita beri margin-bottom yang sinkron dengan tinggi celah 
-*/
-.prose p, .prose h1, .prose h2, .prose h3 {
-  position: relative;
-  z-index: 2;
-  /* Memastikan elemen tidak terhenti di tengah-tengah celah */
-  break-inside: avoid; 
-}
-
-/* Menambahkan padding visual buatan di bawah editor */
-.paper-zoom-wrapper {
-  padding-bottom: 100px;
-}
-        .a4-multi-page-shadow::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Biarkan klik tembus ke teks */
-  
-  /* Membuat strip transparan yang memblokir seleksi di area abu-abu */
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 287mm,
-    rgba(148, 163, 184, 0.1) 287mm,
-    rgba(148, 163, 184, 0.1) 307mm
-  );
-  z-index: 5;
-}
-
-        @media (max-width: 1300px) { .a4-multi-page-shadow { transform: scale(0.9); } }
-        @media (max-width: 1100px) { .a4-multi-page-shadow { transform: scale(0.8); } }
-        @media (max-width: 950px) { .a4-multi-page-shadow { transform: scale(0.7); } }
-        @media (max-width: 800px) { .a4-multi-page-shadow { transform: scale(0.6); } }
-        @media (max-width: 650px) { .a4-multi-page-shadow { transform: scale(0.5); } }
-
+        .prose p { margin: 0 !important; padding-bottom: 0.2em; line-height: 1.6; text-align: justify; color: black !important; }
+        .prose h1, .prose h2, .prose h3 { color: black !important; margin: 0.5em 0 !important; font-weight: 900; }
+        
         [contenteditable]:empty:before {
-          content: "Mulailah menulis naskah Anda di sini...";
+          content: "Mulai menulis di sini...";
           color: #cbd5e1;
           font-style: italic;
           display: block;
         }
-
-        .prose p {
-          color: black !important;
-          line-height: 1.6;
-          margin-bottom: 1.5em;
-          font-size: 12pt;
-          text-align: justify;
-        }
-        
-        .prose h1, .prose h2, .prose h3 {
-          color: black !important;
-          font-weight: 900;
-          margin-top: 1em;
-          margin-bottom: 0.5em;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #cbd5e1;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #475569;
-          border-radius: 10px;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
       `}</style>
     </div>
   );
