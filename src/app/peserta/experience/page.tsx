@@ -1,36 +1,40 @@
 "use client";
 
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
-import ChatList from '@/components/experience/ChatList';
-import ChatWindow from '@/components/experience/ChatWindow';
-import RightSidebar from '@/components/experience/RightSidebar';
 import DiscussionCards from '@/components/experience/DiscussionCards';
 
-export default function Experience() {
+export default function ExperienceList() {
+  const [meetings, setMeetings] = useState([]);
+
+  useEffect(() => {
+    // Ambil daftar meeting yang statusnya 'active'
+    fetch('http://localhost:4000/api/meetings/all-meetings')
+      .then(res => res.json())
+      .then(result => setMeetings(result.data))
+      .catch(err => console.error(err));
+  }, []);
+
   return (
     <Sidebar>
       <div className="max-w-[1400px] mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="mb-6">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Experience</h1>
-          <p className="text-slate-800 font-bold text-lg">Ini adalah ruang diskusi kamu dengan sesama pengguna lainnya.</p>
-        </div>
-
-        {/* Main Interface (Mockup Desktop) */}
-        <div className="grid lg:grid-cols-12 gap-6 bg-slate-900/5 p-4 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-          
-          {/* Chat Interface Container (Mirip Gambar) */}
-          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-12 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[600px]">
-            <ChatList />
-            <ChatWindow />
-            <RightSidebar />
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Experience</h1>
+            <p className="text-slate-800 font-bold text-lg">Ruang diskusi komunitas.</p>
           </div>
 
-          {/* Bottom Grid Section */}
-          <div className="lg:col-span-12">
-            <DiscussionCards />
-          </div>
+          {/* TOMBOL UNTUK KE HALAMAN BUAT MEETING */}
+          <Link href="/peserta/experience/create">
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold transition-all shadow-lg shadow-blue-200">
+              + Mulai Diskusi
+            </button>
+          </Link>
         </div>
+
+        {/* Kirim data meetings dari backend ke component DiscussionCards */}
+        <DiscussionCards items={meetings} />
       </div>
     </Sidebar>
   );
