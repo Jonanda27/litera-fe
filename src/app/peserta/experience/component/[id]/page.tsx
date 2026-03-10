@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
-import JitsiMeeting from '@/app/peserta/experience/JitsiMeeting'; // Sesuaikan path ini
+import JitsiMeeting from '@/app/peserta/experience/component/JitsiMeeting'; // Sesuaikan path ini
 
 interface MeetingData {
     id: string;
