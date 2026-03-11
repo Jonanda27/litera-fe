@@ -4,7 +4,6 @@ import Sidebar from '@/components/Sidebar';
 import ChatList from '@/components/experience/ChatList';
 import ChatWindow from '@/components/experience/ChatWindow';
 import RightSidebar from '@/components/experience/RightSidebar';
-import DiscussionCards from '@/components/experience/DiscussionCards';
 
 export default function Experience() {
   return (
@@ -18,7 +17,7 @@ export default function Experience() {
 
         {/* Main Interface (Mockup Desktop) */}
         <div className="grid lg:grid-cols-12 gap-6 bg-slate-900/5 p-4 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
-          
+
           {/* Chat Interface Container (Mirip Gambar) */}
           <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-12 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-[600px]">
             <ChatList />
@@ -28,7 +27,6 @@ export default function Experience() {
 
           {/* Bottom Grid Section */}
           <div className="lg:col-span-12">
-            <DiscussionCards />
           </div>
         </div>
       </div>
