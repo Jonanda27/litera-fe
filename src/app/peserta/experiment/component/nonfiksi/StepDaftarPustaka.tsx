@@ -22,6 +22,7 @@ import {
   ExternalLink,
   RefreshCw
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface SourceItem {
   id: string;
@@ -73,9 +74,9 @@ export default function StepSourceManagement({ formData, onDataChange }: StepSou
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`http://localhost:4000/api/books/sources/${bookId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`${API_BASE_URL}/books/sources/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -128,16 +129,16 @@ export default function StepSourceManagement({ formData, onDataChange }: StepSou
       const payload = { ...newItem, bookId };
 
       if (editingId) {
-        // UPDATE API
-        await axios.patch(`http://localhost:4000/api/books/sources/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        // CREATE API
-        await axios.post(`http://localhost:4000/api/books/sources`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+  // UPDATE API
+  await axios.patch(`${API_BASE_URL}/books/sources/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  // CREATE API
+  await axios.post(`${API_BASE_URL}/books/sources`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       // Reset status fetch agar data ditarik kembali secara sinkron
       hasFetchedRef.current = null;
@@ -146,9 +147,9 @@ export default function StepSourceManagement({ formData, onDataChange }: StepSou
       resetForm();
 
       // Ambil data terbaru
-      const res = await axios.get(`http://localhost:4000/api/books/sources/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+     const res = await axios.get(`${API_BASE_URL}/books/sources/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       setSources(res.data.map((item: any) => ({ ...item, id: item.id.toString() })));
       
     } catch (error) {
@@ -165,9 +166,9 @@ export default function StepSourceManagement({ formData, onDataChange }: StepSou
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/sources/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`${API_BASE_URL}/books/sources/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       setSources(sources.filter(s => s.id !== id));
       if (selectedSource?.id === id) setSelectedSource(null);
     } catch (err) {

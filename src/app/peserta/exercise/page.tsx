@@ -7,6 +7,7 @@ import { ExModuleItem } from '@/components/exercise/ExModuleItem';
 import { ExFooterTools } from '@/components/exercise/ExFooterTools';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation'; // Import router untuk navigasi
+import { API_BASE_URL } from "../../../lib/constans/constans";
 
 export default function ExercisePage() {
   const router = useRouter(); // Inisialisasi router
@@ -23,7 +24,7 @@ export default function ExercisePage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/auth/me', {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -50,31 +51,34 @@ export default function ExercisePage() {
   };
 
   const handleCompleteLesson = async () => {
-    if (!selectedLesson) return;
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:4000/api/auth/update-module-progress', {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          lessonId: selectedLesson.id, 
-          moduleId: activeModule 
-        })
-      });
+  if (!selectedLesson) return;
+  
+  try {
+    const token = localStorage.getItem('token');
+    
+    // Menggunakan variabel API_BASE_URL
+    const response = await fetch(`${API_BASE_URL}/auth/update-module-progress`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        lessonId: selectedLesson.id, 
+        moduleId: activeModule 
+      })
+    });
 
-      const data = await response.json();
-      if (response.ok) {
-        setProgress(data.newProgress); 
-        setSelectedLesson(null);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    } catch (err) {
-      alert("Koneksi gagal ke server.");
+    const data = await response.json();
+    if (response.ok) {
+      setProgress(data.newProgress); 
+      setSelectedLesson(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
+  } catch (err) {
+    alert("Koneksi gagal ke server.");
+  }
+};
 
   const goToModule = (moduleNumber: number) => {
     setActiveModule(moduleNumber);

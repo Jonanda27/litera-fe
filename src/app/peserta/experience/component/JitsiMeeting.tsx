@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useRef } from 'react';
 import Script from 'next/script';
+import { API_BASE_URL } from '@/lib/constans/constans';
 
 declare global {
     interface Window {
@@ -77,20 +78,21 @@ const JitsiMeeting = ({ roomName, userName, isModerator }: JitsiMeetingProps) =>
     };
 
     const handleEndMeeting = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            await fetch(`http://localhost:4000/api/meetings/end-meeting/${roomName}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            // Redirect moderator kembali ke list experience
-            window.location.href = '/peserta/experience';
-        } catch (err) {
-            console.error("Gagal update status meeting di backend:", err);
-        }
-    };
+    try {
+        const token = localStorage.getItem('token');
+        // Menggunakan API_BASE_URL tanpa tambahan /api jika sudah didefinisikan di konstanta
+        await fetch(`${API_BASE_URL}/meetings/end-meeting/${roomName}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        // Redirect moderator kembali ke list experience [cite: 1122]
+        window.location.href = '/peserta/experience';
+    } catch (err) {
+        console.error("Gagal update status meeting di backend:", err);
+    }
+};
 
     useEffect(() => {
         return () => {

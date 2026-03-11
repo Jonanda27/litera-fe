@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Hash // FIX: Tambahkan Hash di sini
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface CaseStudyItem {
   id: string;
@@ -72,9 +73,9 @@ export default function StepCaseStudy({ formData, onDataChange }: StepCaseStudyP
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`http://localhost:4000/api/books/case-studies/${bookId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+       const res = await axios.get(`${API_BASE_URL}/books/case-studies/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -123,15 +124,17 @@ export default function StepCaseStudy({ formData, onDataChange }: StepCaseStudyP
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-      if (editingId) {
-        await axios.patch(`http://localhost:4000/api/books/case-studies/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/case-studies`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+     if (editingId) {
+  // UPDATE API
+  await axios.patch(`${API_BASE_URL}/books/case-studies/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  // CREATE API
+  await axios.post(`${API_BASE_URL}/books/case-studies`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       hasFetchedRef.current = null;
       setEditingId(null);
@@ -139,9 +142,9 @@ export default function StepCaseStudy({ formData, onDataChange }: StepCaseStudyP
       resetForm();
 
       // Refresh list
-      const res = await axios.get(`http://localhost:4000/api/books/case-studies/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+    const res = await axios.get(`${API_BASE_URL}/books/case-studies/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       setCases(res.data.map((item: any) => ({ ...item, id: item.id.toString() })));
       
     } catch (error) {
@@ -158,9 +161,9 @@ export default function StepCaseStudy({ formData, onDataChange }: StepCaseStudyP
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/case-studies/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+await axios.delete(`${API_BASE_URL}/books/case-studies/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       const updated = cases.filter((i) => i.id !== id);
       setCases(updated);
       if (updated.length === 0) setIsAdding(true);

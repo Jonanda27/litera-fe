@@ -7,6 +7,7 @@ import {
   Edit3, Trash2, X, MapPin, Clock, 
   User, BookOpen, ChevronRight, Info, Plus, Save 
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 // Interface untuk Sub Bab
 interface SubChapter {
@@ -67,9 +68,9 @@ export default function StepOutline({ formData, onDataChange }: any) {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:4000/api/books/outlines/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(`${API_BASE_URL}/books/outlines/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
 
       const mappedData = res.data.map((item: any) => ({
         id: item.id.toString(),
@@ -137,14 +138,14 @@ export default function StepOutline({ formData, onDataChange }: any) {
       const payload = { ...newChapter, bookId: bookId };
 
       if (editingId) {
-        await axios.put(`http://localhost:4000/api/books/outlines/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/outlines`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+  await axios.put(`${API_BASE_URL}/books/outlines/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+} else {
+  await axios.post(`${API_BASE_URL}/books/outlines`, payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
       await fetchOutlines();
       resetForm();
@@ -160,7 +161,7 @@ export default function StepOutline({ formData, onDataChange }: any) {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/outlines/${id}`, {
+     await axios.delete(`${API_BASE_URL}/books/outlines/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchOutlines();

@@ -7,6 +7,7 @@ import {
   Edit3, Trash2, ExternalLink, Quote, 
   BookOpen, Star, Tag, MapPin, X, Info 
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface ResearchItem {
   id: string;
@@ -39,11 +40,11 @@ export default function StepRiset({ formData, onDataChange }: any) {
       setLoading(true);
       const token = localStorage.getItem("token");
       const res = await axios.get(
-        `http://localhost:4000/api/books/research/${bookId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+  `${API_BASE_URL}/books/research/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  },
+);
 
       const mapped = res.data.map((item: any) => {
         const [p, t] = (item.reference_point || "|").split("|");
@@ -140,19 +141,19 @@ export default function StepRiset({ formData, onDataChange }: any) {
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-      if (editingId) {
-        await axios.patch(
-          `http://localhost:4000/api/books/research/${editingId}`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-      } else {
-        await axios.post(`http://localhost:4000/api/books/research`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+     if (editingId) {
+  await axios.patch(
+    `${API_BASE_URL}/books/research/${editingId}`,
+    payload,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+} else {
+  await axios.post(`${API_BASE_URL}/books/research`, payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
       setEditingId(null);
       await fetchResearch();
@@ -168,9 +169,9 @@ export default function StepRiset({ formData, onDataChange }: any) {
     if (!confirm("Hapus riset ini secara permanen?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/research/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+     await axios.delete(`${API_BASE_URL}/books/research/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
       
       fetchResearch();
     } catch (err) {

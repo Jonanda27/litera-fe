@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { CertLevelBar } from '@/components/certificate/CertLevelBar';
 import { CertItemCard } from '@/components/certificate/CertItemCard';
 import axios from 'axios';
+import { API_BASE_URL } from '@/lib/constans/constans';
 
 interface ModuleData {
   id: number;
@@ -30,9 +31,9 @@ export default function SertifikatPage() {
     const fetchCertificates = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:4000/api/auth/my-certificates', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+       const response = await axios.get(`${API_BASE_URL}/auth/my-certificates`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
         setData(response.data);
       } catch (error) {
         console.error("Gagal memuat data sertifikat:", error);

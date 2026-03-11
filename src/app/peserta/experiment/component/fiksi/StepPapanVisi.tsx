@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { Edit2, Trash2, X, Maximize2, ExternalLink, Palette, User, MapPin, Book, Sparkles } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface VisionItem {
   id: string;
@@ -34,12 +35,12 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
     if (!bookId) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        `http://localhost:4000/api/books/vision-board/${bookId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+     const res = await axios.get(
+  `${API_BASE_URL}/books/vision-board/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
 
       const formattedData = res.data.map((item: any) => ({
         id: item.id.toString(),
@@ -123,23 +124,23 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
         dominantColor: newItem.dominantColor,
       };
 
-      if (editingId) {
-        await axios.patch(
-          `http://localhost:4000/api/books/vision-board/${editingId}`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-      } else {
-        await axios.post(
-          `http://localhost:4000/api/books/vision-board`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-      }
+    if (editingId) {
+  await axios.patch(
+    `${API_BASE_URL}/books/vision-board/${editingId}`,
+    payload,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+} else {
+  await axios.post(
+    `${API_BASE_URL}/books/vision-board`,
+    payload,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+}
 
       setIsAdding(false);
       setEditingId(null);
@@ -161,9 +162,9 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
     if (!confirm("Hapus inspirasi ini?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/vision-board/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+await axios.delete(`${API_BASE_URL}/books/vision-board/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
 
       const updatedItems = items.filter((i) => i.id !== id);
       setItems(updatedItems);

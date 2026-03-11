@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import JitsiMeeting from '@/app/peserta/experience/component/JitsiMeeting'; // Sesuaikan path ini
+import { API_BASE_URL } from "../../../../../lib/constans/constans";
 
 interface MeetingData {
     id: string;
@@ -32,8 +33,7 @@ export default function MeetingRoomPage() {
 
         const fetchMeetingDetail = async () => {
             try {
-                // Pastikan port 4000 sesuai dengan backend Anda
-                const response = await fetch(`http://localhost:4000/api/meetings/get-meeting/${meetingId}`);
+               const response = await fetch(`${API_BASE_URL}/meetings/get-meeting/${meetingId}`);
                 const result = await response.json();
 
                 if (response.ok && result.data) {

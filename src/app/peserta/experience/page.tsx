@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import DiscussionCards from "@/components/experience/DiscussionCards";
+import { API_BASE_URL } from "../../../lib/constans/constans";
 
 interface Message {
   id: string;
@@ -37,7 +38,7 @@ interface DiscussionRoom {
   description: string;
 }
 
-const SOCKET_URL = "http://localhost:4000";
+const SOCKET_URL = API_BASE_URL;
 
 export default function Experience() {
   const router = useRouter();
@@ -95,7 +96,7 @@ export default function Experience() {
 
   const fetchMeetings = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/meetings/all-meetings");
+      const res = await fetch(`${API_BASE_URL}/meetings/all-meetings`)
       const result = await res.json();
       if (result.success || result.data) setMeetings(result.data);
     } catch (err) {
@@ -106,7 +107,7 @@ export default function Experience() {
   const fetchAllDiscussions = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${SOCKET_URL}/api/books/discussions/all`, {
+      const res = await fetch(`${SOCKET_URL}/books/discussions/all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await res.json();
@@ -119,7 +120,7 @@ export default function Experience() {
   const fetchMyJoinedDiscussions = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${SOCKET_URL}/api/books/discussions/my-joined`, {
+      const res = await fetch(`${SOCKET_URL}/books/discussions/my-joined`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await res.json();
@@ -136,7 +137,7 @@ export default function Experience() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${SOCKET_URL}/api/books/discussions/members/${roomId}`,
+        `${SOCKET_URL}/books/discussions/members/${roomId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -215,7 +216,7 @@ export default function Experience() {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          `${SOCKET_URL}/api/books/discussion-history/${currentDiscussionId}`,
+          `${SOCKET_URL}/books/discussion-history/${currentDiscussionId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -257,7 +258,7 @@ export default function Experience() {
     if (!pendingRoom) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${SOCKET_URL}/api/books/discussions/join`, {
+      const res = await fetch(`${SOCKET_URL}/books/discussions/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -284,7 +285,7 @@ export default function Experience() {
     if (!newRoomName.trim()) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${SOCKET_URL}/api/books/discussions/create`, {
+      const res = await fetch(`${SOCKET_URL}/books/discussions/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -313,7 +314,7 @@ export default function Experience() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch("http://localhost:4000/api/meetings/create-meeting", {
+      const response = await fetch(`${API_BASE_URL}/meetings/create-meeting`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

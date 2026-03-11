@@ -35,6 +35,7 @@ import StepWorksheet from "./nonfiksi/StepWorksheet";
 import StepKoleksi from "./nonfiksi/StepKoleksi";
 import StepChapterStructure from "./nonfiksi/StepChapterStructure";
 import StepPenulisanNonFiction from "./nonfiksi/StepPenulisanNon";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 // KONFIGURASI LANGKAH (Tetap sama)
 const FICTION_STEPS = [
@@ -99,18 +100,22 @@ const AddProjectModal = ({
 
   useEffect(() => {
     const fetchBookDetail = async () => {
-      // Hanya fetch jika modal terbuka dan ada ID
+      // 1. TAMBAHKAN INI: Selalu reset ke step 1 setiap kali modal dibuka
+      if (isOpen) {
+        setCurrentStep(1);
+      }
+
+      // Hanya fetch jika modal terbuka dan ada ID (Membuka Editor/Proyek Lama)
       if (isOpen && selectedId) {
         setLoadingDetail(true);
         try {
           const token = localStorage.getItem("token");
           const response = await axios.get(
-            `http://localhost:4000/api/books/${selectedId}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            },
-          );
-
+  `${API_BASE_URL}/books/${selectedId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  },
+);
           const bookData = response.data.data;
 
           // Gunakan spread operator yang aman
@@ -129,7 +134,7 @@ const AddProjectModal = ({
       // Jika buka proyek baru (tanpa ID)
       else if (isOpen && !selectedId) {
         setFormData({ title: "", id: null, bookId: null });
-        setCurrentStep(1);
+        // setCurrentStep(1); -> (Bagian ini bisa dihapus karena sudah di-handle di paling atas)
       }
     };
 

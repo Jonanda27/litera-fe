@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Save
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface StepRisetNonFiksiProps {
   formData: any;
@@ -69,9 +70,9 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       try {
         const token = localStorage.getItem("token");
         // Endpoint sesuai rute backend: /api/books/non-fiction/research/:bookId [cite: 1907]
-        const res = await axios.get(`http://localhost:4000/api/books/non-fiction/research/${bookId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+       const res = await axios.get(`${API_BASE_URL}/books/non-fiction/research/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
         if (res.data && res.data.data) {
           const dbData = res.data.data;
@@ -131,10 +132,10 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       const token = localStorage.getItem("token");
       // Endpoint sesuai rute backend: /api/books/non-fiction/research [cite: 1908]
       const res = await axios.post(
-        `http://localhost:4000/api/books/non-fiction/research`,
-        { ...data, bookId: currentBookId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  `${API_BASE_URL}/books/non-fiction/research`,
+  { ...data, bookId: currentBookId },
+  { headers: { Authorization: `Bearer ${token}` } }
+);
 
       if (res.status === 200 || res.status === 201) {
         alert("Strategi buku berhasil disimpan ke database!");
