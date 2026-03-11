@@ -15,6 +15,7 @@ import {
   Hash,
   RefreshCw,
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface GlossaryItem {
   id: string;
@@ -74,12 +75,12 @@ export default function StepGlossary({
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(
-          `http://localhost:4000/api/books/glossary/${bookId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+       const res = await axios.get(
+  `${API_BASE_URL}/books/glossary/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -133,19 +134,19 @@ export default function StepGlossary({
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-      if (editingId) {
-        // UPDATE API
-        await axios.patch(
-          `http://localhost:4000/api/books/glossary/${editingId}`,
-          payload,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } else {
-        // CREATE API
-        await axios.post(`http://localhost:4000/api/books/glossary`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+     if (editingId) {
+  // UPDATE API
+  await axios.patch(
+    `${API_BASE_URL}/books/glossary/${editingId}`,
+    payload,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+} else {
+  // CREATE API
+  await axios.post(`${API_BASE_URL}/books/glossary`, payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
       // Reset status fetch agar data terbaru ditarik kembali
       hasFetchedRef.current = null; 
@@ -154,9 +155,9 @@ export default function StepGlossary({
       resetForm();
       
       const res = await axios.get(
-        `http://localhost:4000/api/books/glossary/${bookId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+  `${API_BASE_URL}/books/glossary/${bookId}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
       setItems(
         res.data.map((item: any) => ({ ...item, id: item.id.toString() })),
       );
@@ -174,9 +175,9 @@ export default function StepGlossary({
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/glossary/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    await axios.delete(`${API_BASE_URL}/books/glossary/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
       
       const updatedItems = items.filter((i) => i.id !== id);
       setItems(updatedItems);

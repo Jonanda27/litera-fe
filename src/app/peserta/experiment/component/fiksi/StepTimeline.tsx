@@ -7,6 +7,7 @@ import {
   Edit3, Trash2, Clock, MapPin, Save, Plus, X, 
   Info, ArrowDown, Users, BookOpen, Layers 
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface TimelineEvent {
   id: string;
@@ -56,9 +57,9 @@ export default function StepTimeline({ formData, onDataChange }: any) {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:4000/api/books/timeline/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+     const res = await axios.get(`${API_BASE_URL}/books/timeline/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
       const mappedData = res.data.data.map((item: any) => ({
         id: item.id.toString(),
@@ -123,14 +124,14 @@ export default function StepTimeline({ formData, onDataChange }: any) {
       };
 
       if (editingId) {
-        await axios.patch(`http://localhost:4000/api/books/timeline/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/timeline`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+  await axios.patch(`${API_BASE_URL}/books/timeline/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  await axios.post(`${API_BASE_URL}/books/timeline`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       setIsAdding(false);
       resetForm();
@@ -146,9 +147,9 @@ export default function StepTimeline({ formData, onDataChange }: any) {
     if (!confirm("Hapus peristiwa ini dari garis waktu?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/timeline/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+     await axios.delete(`${API_BASE_URL}/books/timeline/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       fetchTimeline();
     } catch (err) {
       alert("Gagal menghapus data.");

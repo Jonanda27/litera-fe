@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface IdeaItem {
   id: string;
@@ -40,11 +41,11 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:4000/api/books/quick-ideas/${bookId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        },
-      );
+  `${API_BASE_URL}/books/quick-ideas/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  },
+);
       setIdeas(response.data);
       
       // LOGIKA BARU: Jika data kosong, langsung tampilkan form tambah ide
@@ -146,26 +147,26 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
       };
       if (editingId) {
         // Mode UPDATE
-        await axios.patch(
-          `http://localhost:4000/api/books/quick-ideas/${editingId}`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          },
-        );
+       await axios.patch(
+  `${API_BASE_URL}/books/quick-ideas/${editingId}`,
+  payload,
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  }
+);
       } else {
         // Mode CREATE
         await axios.post(
-          `http://localhost:4000/api/books/quick-ideas`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          },
-        );
+  `${API_BASE_URL}/books/quick-ideas`,
+  payload,
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  },
+);
       }
 
       fetchIdeas(); // Refresh data
@@ -183,7 +184,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
     if (!confirm("Hapus ide ini secara permanen?")) return;
 
     try {
-      await axios.delete(`http://localhost:4000/api/books/quick-ideas/${id}`, {
+     await axios.delete(`${API_BASE_URL}/books/quick-ideas/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const updatedIdeas = ideas.filter((i) => i.id !== id);

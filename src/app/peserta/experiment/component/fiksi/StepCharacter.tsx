@@ -4,6 +4,7 @@ import { useState, useEffect, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { Edit3, Trash2, User, X, Plus, Save, Briefcase, MapPin, Info } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface Relationship {
   name: string;
@@ -66,7 +67,7 @@ export default function StepCharacter({ formData, onDataChange }: any) {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:4000/api/books/characters/${bookId}`, {
+     const res = await axios.get(`${API_BASE_URL}/books/characters/${bookId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -105,15 +106,15 @@ export default function StepCharacter({ formData, onDataChange }: any) {
       const token = localStorage.getItem("token");
       const payload = { ...newChar, bookId };
 
-      if (editingId) {
-        await axios.patch(`http://localhost:4000/api/books/characters/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/characters`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+     if (editingId) {
+  await axios.patch(`${API_BASE_URL}/books/characters/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  await axios.post(`${API_BASE_URL}/books/characters`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       setEditingId(null);
       resetForm();
@@ -129,7 +130,7 @@ export default function StepCharacter({ formData, onDataChange }: any) {
     if (!confirm("Hapus karakter ini secara permanen?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/characters/${id}`, {
+      await axios.delete(`${API_BASE_URL}/books/characters/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchCharacters();

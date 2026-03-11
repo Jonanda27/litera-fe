@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Info
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface SubChapter {
   id: string;
@@ -84,9 +85,9 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`http://localhost:4000/api/books/chapter-structures/${bookId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`${API_BASE_URL}/books/chapter-structures/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -143,15 +144,15 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-      if (editingId) {
-        await axios.patch(`http://localhost:4000/api/books/chapter-structures/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/chapter-structures`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+     if (editingId) {
+  await axios.patch(`${API_BASE_URL}/books/chapter-structures/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  await axios.post(`${API_BASE_URL}/books/chapter-structures`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       hasFetchedRef.current = null;
       setEditingId(null);
@@ -159,9 +160,9 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       resetForm();
 
       // Refresh data
-      const res = await axios.get(`http://localhost:4000/api/books/chapter-structures/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`${API_BASE_URL}/books/chapter-structures/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       setStructures(res.data.map((item: any) => ({ ...item, id: item.id.toString() })));
       
     } catch (error) {
@@ -178,9 +179,9 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/chapter-structures/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`${API_BASE_URL}/books/chapter-structures/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       const updated = structures.filter((s) => s.id !== id);
       setStructures(updated);
       if (updated.length === 0) setIsAdding(true);

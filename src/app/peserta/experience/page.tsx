@@ -21,6 +21,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import DiscussionCards from "@/components/experience/DiscussionCards";
+import { API_BASE_URL } from "../../../lib/constans/constans";
+import { SOCKET_API_BASE_URL } from "../../../lib/constans/constans";
 
 interface Message {
   id: string;
@@ -39,7 +41,7 @@ interface DiscussionRoom {
   meeting_id: string | null;
 }
 
-const SOCKET_URL = "http://localhost:4000";
+const SOCKET_URL = SOCKET_API_BASE_URL;
 
 export default function Experience() {
   const router = useRouter();
@@ -97,7 +99,7 @@ export default function Experience() {
 
   const fetchMeetings = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/meetings/all-meetings");
+      const res = await fetch(`${API_BASE_URL}/meetings/all-meetings`)
       const result = await res.json();
       if (result.success || result.data) setMeetings(result.data);
     } catch (err) {
@@ -315,7 +317,7 @@ export default function Experience() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`http://localhost:4000/api/meetings/create-meeting/${currentDiscussionId}/start-meeting`, {
+      const response = await fetch(`${API_BASE_URL}/meetings/create-meeting/${currentDiscussionId}/start-meeting`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

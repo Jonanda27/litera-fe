@@ -26,6 +26,8 @@ export default function Experience() {
           </div>
 
           {/* Bottom Grid Section */}
+          <div className="lg:col-span-12">
+          </div>
         </div>
       </div>
     </Sidebar>

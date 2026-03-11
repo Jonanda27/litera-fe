@@ -17,6 +17,7 @@ import {
   Zap,
   Settings,
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface SceneCard {
   id: string;
@@ -71,11 +72,11 @@ export default function StepPlotBoard({ formData, onDataChange }: any) {
       setLoading(true);
       const token = localStorage.getItem("token");
       const res = await axios.get(
-        `http://localhost:4000/api/books/plots/${bookId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+  `${API_BASE_URL}/books/plots/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  },
+);
 
       // PERBAIKAN: Mapping dari sceneFunction (DB) kembali ke function (FE)
       const mappedData = res.data.map((item: any) => ({
@@ -114,21 +115,21 @@ export default function StepPlotBoard({ formData, onDataChange }: any) {
         sceneFunction: newScene.function, // Kirim sebagai sceneFunction ke BE
       };
 
-      if (editingId) {
-        // UPDATE
-        await axios.patch(
-          `http://localhost:4000/api/books/plots/${editingId}`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
-      } else {
-        // CREATE
-        await axios.post(`http://localhost:4000/api/books/plots`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+     if (editingId) {
+  // UPDATE
+  await axios.patch(
+    `${API_BASE_URL}/books/plots/${editingId}`,
+    payload,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+} else {
+  // CREATE
+  await axios.post(`${API_BASE_URL}/books/plots`, payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
 
       setIsAdding(false);
       resetForm();
@@ -144,7 +145,7 @@ export default function StepPlotBoard({ formData, onDataChange }: any) {
     if (!confirm("Hapus kartu adegan ini secara permanen?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/plots/${id}`, {
+      await axios.delete(`${API_BASE_URL}/books/plots/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       fetchPlots();
@@ -152,7 +153,7 @@ export default function StepPlotBoard({ formData, onDataChange }: any) {
       alert("Gagal menghapus.");
     }
   };
-
+  
   // 4. HANDLE EDIT CLICK
   const handleEdit = (e: React.MouseEvent, scene: SceneCard) => {
     e.stopPropagation();

@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 // --- SUB-COMPONENT: WeeklyWordCountChart ---
 const WeeklyWordCountChart = ({ bookId }: { bookId: number }) => {
@@ -27,12 +28,12 @@ const WeeklyWordCountChart = ({ bookId }: { bookId: number }) => {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(
-          `http://localhost:4000/api/books/stats/${bookId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+       const res = await fetch(
+  `${API_BASE_URL}/books/stats/${bookId}`,
+  {
+    headers: { Authorization: `Bearer ${token}` },
+  }
+);
         
         const result = await res.json();
         
@@ -181,9 +182,9 @@ export default function ExpProjectCard({
   setIsProcessing(true);
   try {
     const token = localStorage.getItem("token");
-    const response = await axios.get(`http://localhost:4000/api/books/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await axios.get(`${API_BASE_URL}/books/${id}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
 
     // DEBUG: Intip isi response yang sebenarnya di console
     console.log("Raw Response Axios:", response);

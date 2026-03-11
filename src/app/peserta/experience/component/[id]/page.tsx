@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import JitsiMeeting from '@/app/peserta/experience/component/JitsiMeeting'; // Sesuaikan path ini
+import { API_BASE_URL } from "../../../../../lib/constans/constans";
 
 interface MeetingData {
     id: string;
@@ -37,8 +38,7 @@ export default function MeetingRoomPage() {
 
         const fetchMeetingDetail = async () => {
             try {
-                // Pastikan port 4000 sesuai dengan backend Anda
-                const response = await fetch(`http://localhost:4000/api/meetings/get-meeting/${meetingId}`);
+                const response = await fetch(`${API_BASE_URL}/meetings/get-meeting/${meetingId}`);
                 const result = await response.json();
 
                 if (response.ok && result.data) {
@@ -67,30 +67,41 @@ export default function MeetingRoomPage() {
     );
 
     const handleExit = async () => {
-        // Jika dia adalah moderator/owner
         if (isModerator) {
-            const confirmEnd = window.confirm("Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang. Lanjutkan?");
+            const confirmEnd = window.confirm(
+                "Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang agar tidak bisa diakses lagi. Lanjutkan?"
+            );
 
             if (confirmEnd) {
                 try {
                     const token = localStorage.getItem('token');
-                    // Panggil API End Meeting (Pastikan rute backend sesuai)
-                    // Gunakan ID Discussion yang kita dapat dari data meeting
-                    await fetch(`http://localhost:4000/api/discussions/${meeting.discussion.id}/end-meeting`, {
+                    // Panggil API End Meeting menggunakan ID Discussion
+                    const res = await fetch(`${API_BASE_URL}/discussions/${meeting?.discussion.id}/end-meeting`, {
                         method: 'PATCH',
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
                     });
+
+                    if (res.ok) {
+                        router.push('/peserta/experience');
+                        return;
+                    }
                 } catch (err) {
                     console.error("Gagal mengakhiri meeting", err);
                 }
             } else {
-                return; // Batalkan keluar
+                return;
             }
         }
 
-        // Redirect ke halaman list experience
+        // Jika hanya peserta biasa, cukup pindah halaman
         router.push('/peserta/experience');
     };
+
+    if (loading) return <div className="h-screen flex items-center justify-center font-bold">Menyiapkan Ruangan...</div>;
+    if (!meeting) return <div className="h-screen flex items-center justify-center text-red-500">Ruang diskusi tidak ditemukan atau telah berakhir.</div>;
 
     return (
         <Sidebar>

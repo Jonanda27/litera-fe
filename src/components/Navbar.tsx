@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/lib/constans/constans';
 
 // Daftar motivasi tentang buku/menulis
 const motivations = [
@@ -50,12 +51,12 @@ export default function Navbar() {
     }
 
     try {
-      const response = await fetch('http://localhost:4000/api/auth/me', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
 
       if (!response.ok) throw new Error("Gagal mengambil data");
 
@@ -77,12 +78,12 @@ export default function Navbar() {
     
     setIsLoading(true);
     try {
-      await fetch('http://localhost:4000/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+  await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
     } catch (error) {
       console.error("Logout API error:", error);
     } finally {

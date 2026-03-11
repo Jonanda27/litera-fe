@@ -4,6 +4,7 @@ import { useState, useEffect, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { Edit3, Trash2, MapPin, X, Plus, Save, Info, History, Users } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface LocationItem {
   id: string;
@@ -59,9 +60,9 @@ export default function StepWorldBuilding({ formData, onDataChange }: any) {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:4000/api/books/settings/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`${API_BASE_URL}/books/settings/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       
       const mappedData = res.data.map((item: any) => ({
         ...item,
@@ -99,16 +100,16 @@ export default function StepWorldBuilding({ formData, onDataChange }: any) {
       const payload = { ...newLoc, bookId };
 
       if (editingId) {
-        // UPDATE 
-        await axios.patch(`http://localhost:4000/api/books/settings/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        // CREATE 
-        await axios.post(`http://localhost:4000/api/books/settings`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+  // UPDATE 
+  await axios.patch(`${API_BASE_URL}/books/settings/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  // CREATE 
+  await axios.post(`${API_BASE_URL}/books/settings`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       setIsAdding(false);
       resetForm();
@@ -124,9 +125,9 @@ export default function StepWorldBuilding({ formData, onDataChange }: any) {
     if (!confirm("Hapus lokasi ini secara permanen?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/settings/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+     await axios.delete(`${API_BASE_URL}/books/settings/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       fetchLocations();
     } catch (err) {
       alert("Gagal menghapus data.");

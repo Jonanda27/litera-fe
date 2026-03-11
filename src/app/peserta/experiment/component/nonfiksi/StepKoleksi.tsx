@@ -21,6 +21,7 @@ import {
   ExternalLink,
   MessageCircle
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface QuoteItem {
   id: string;
@@ -70,9 +71,9 @@ export default function StepQuoteCollection({ formData, onDataChange }: StepQuot
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`http://localhost:4000/api/books/quotes/${bookId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(`${API_BASE_URL}/books/quotes/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -125,15 +126,17 @@ export default function StepQuoteCollection({ formData, onDataChange }: StepQuot
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-      if (editingId) {
-        await axios.patch(`http://localhost:4000/api/books/quotes/${editingId}`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      } else {
-        await axios.post(`http://localhost:4000/api/books/quotes`, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+     if (editingId) {
+  // UPDATE API
+  await axios.patch(`${API_BASE_URL}/books/quotes/${editingId}`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+} else {
+  // CREATE API
+  await axios.post(`${API_BASE_URL}/books/quotes`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
 
       hasFetchedRef.current = null;
       setEditingId(null);
@@ -141,9 +144,9 @@ export default function StepQuoteCollection({ formData, onDataChange }: StepQuot
       resetForm();
 
       // Fetch ulang data terbaru
-      const res = await axios.get(`http://localhost:4000/api/books/quotes/${bookId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await axios.get(`${API_BASE_URL}/books/quotes/${bookId}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       setQuotes(res.data.map((item: any) => ({ ...item, id: item.id.toString() })));
       
     } catch (error) {
@@ -160,9 +163,9 @@ export default function StepQuoteCollection({ formData, onDataChange }: StepQuot
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:4000/api/books/quotes/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`${API_BASE_URL}/books/quotes/${id}`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
       const updated = quotes.filter((q) => q.id !== id);
       setQuotes(updated);
       if (updated.length === 0) setIsAdding(true);

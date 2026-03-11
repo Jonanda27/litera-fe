@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import AddProjectModal from "./component/AddProjectModal";
 import ExpProjectCard from "./component/ExpProjectCard";
 import ModalInputTitle from "./component/ModalInputTitle";
+import { API_BASE_URL } from "@/lib/constans/constans";
 
 export default function ExperimentPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,7 +24,7 @@ export default function ExperimentPage() {
   try {
     const token = localStorage.getItem("token");
     // Gunakan endpoint list buku milik user, bukan 'all'
-    const res = await fetch("http://localhost:4000/api/books", {
+    const res = await fetch(`${API_BASE_URL}/books`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     
@@ -71,7 +72,7 @@ export default function ExperimentPage() {
   const handleCreateNewBook = async (title: string, category: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:4000/api/books", {
+     const res = await fetch(`${API_BASE_URL}/books`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
