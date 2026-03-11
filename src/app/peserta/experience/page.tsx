@@ -35,6 +35,8 @@ interface DiscussionRoom {
   id: number;
   name: string;
   description: string;
+  owner_id: number;
+  meeting_id: string | null;
 }
 
 const SOCKET_URL = "http://localhost:4000";
@@ -313,7 +315,7 @@ export default function Experience() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch("http://localhost:4000/api/meetings/create-meeting", {
+      const response = await fetch(`http://localhost:4000/api/meetings/create-meeting/${currentDiscussionId}/start-meeting`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -322,7 +324,6 @@ export default function Experience() {
         body: JSON.stringify({
           title: meetingTitle,
           description: meetingDesc,
-          moderator_id: currentUser?.id,
         }),
       });
 
@@ -332,6 +333,7 @@ export default function Experience() {
         setIsCreateMeetingModalOpen(false);
         setMeetingTitle("");
         setMeetingDesc("");
+        await fetchAllDiscussions();
         router.push(`/peserta/experience/component/${result.data.id}`);
       } else {
         alert("Gagal membuat meeting: " + result.message);
@@ -374,6 +376,15 @@ export default function Experience() {
   };
 
   const activeList = viewMode === "all" ? allDiscussions : myDiscussions;
+
+  // Ambil data detail grup yang sedang aktif dibuka
+  const currentRoomData = allDiscussions.find(d => d.id.toString() === currentDiscussionId);
+
+  // Cek apakah user yang login adalah pemilik grup ini
+  const isOwner = currentRoomData && currentUser && Number(currentRoomData.owner_id) === currentUser.id;
+
+  // Cek apakah grup ini sudah punya meeting aktif
+  const hasActiveMeeting = currentRoomData?.meeting_id != null;
 
   if (isLoadingSync)
     return (
@@ -602,12 +613,25 @@ export default function Experience() {
                     })}
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsCreateMeetingModalOpen(true)}
-                  className="mx-4 mb-4 bg-[#c31a26] hover:bg-[#a5161f] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl shadow-red-100 flex items-center justify-center gap-3"
-                >
-                  <Plus size={16} /> Mulai Diskusi
-                </button>
+                {hasActiveMeeting ? (
+                  <button
+                    onClick={() => router.push(`/peserta/experience/component/${currentRoomData?.meeting_id}`)}
+                    className="mx-4 mb-4 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 animate-bounce"
+                  >
+                    <Radio size={16} /> Join Live Meeting
+                  </button>
+                ) : isOwner ? (
+                  <button
+                    onClick={() => setIsCreateMeetingModalOpen(true)}
+                    className="mx-4 mb-4 bg-[#c31a26] hover:bg-[#a5161f] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3"
+                  >
+                    <Plus size={16} /> Mulai Diskusi
+                  </button>
+                ) : (
+                  <div className="mx-4 mb-4 py-3 text-center border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    Tidak ada sesi video
+                  </div>
+                )}
                 {/* Bagian DiscussionCards (Meeting Aktif) */}
                 <div className="h-[45%] border-t bg-white flex flex-col min-h-0 overflow-hidden">
                   <DiscussionCards items={meetings} />
@@ -637,7 +661,7 @@ export default function Experience() {
             >
               {/* Dekorasi Background Halus */}
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full blur-3xl opacity-50" />
-              
+
               <button
                 onClick={() => setIsCreateMeetingModalOpen(false)}
                 className="absolute top-6 right-6 p-2 hover:bg-red-50 rounded-full transition-colors group z-10"
@@ -704,11 +728,10 @@ export default function Experience() {
                   <button
                     type="submit"
                     disabled={isMeetingLoading}
-                    className={`flex-[2] py-4 rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                      isMeetingLoading 
-                      ? "bg-slate-300 text-white cursor-not-allowed" 
+                    className={`flex-[2] py-4 rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isMeetingLoading
+                      ? "bg-slate-300 text-white cursor-not-allowed"
                       : "bg-[#c31a26] text-white hover:bg-[#a5161f] shadow-red-200"
-                    }`}
+                      }`}
                   >
                     {isMeetingLoading ? (
                       <>

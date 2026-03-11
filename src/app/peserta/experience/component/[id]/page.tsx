@@ -11,6 +11,11 @@ interface MeetingData {
     room_name: string;
     moderator_id: string | number;
     status: string;
+    discussion: {
+        id: string | number;
+        owner_id: string | number;
+        name: string;
+    };
 }
 
 export default function MeetingRoomPage() {
@@ -55,7 +60,37 @@ export default function MeetingRoomPage() {
     if (!meeting) return <div className="h-screen flex items-center justify-center text-red-500">Ruang diskusi tidak ditemukan atau telah berakhir.</div>;
 
     // Cek apakah user yang sedang buka adalah moderatornya
-    const isModerator = user && String(user.id) === String(meeting.moderator_id);
+    const isModerator = !!(
+        user &&
+        meeting?.discussion &&
+        String(user.id) === String(meeting.discussion.owner_id)
+    );
+
+    const handleExit = async () => {
+        // Jika dia adalah moderator/owner
+        if (isModerator) {
+            const confirmEnd = window.confirm("Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang. Lanjutkan?");
+
+            if (confirmEnd) {
+                try {
+                    const token = localStorage.getItem('token');
+                    // Panggil API End Meeting (Pastikan rute backend sesuai)
+                    // Gunakan ID Discussion yang kita dapat dari data meeting
+                    await fetch(`http://localhost:4000/api/discussions/${meeting.discussion.id}/end-meeting`, {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                } catch (err) {
+                    console.error("Gagal mengakhiri meeting", err);
+                }
+            } else {
+                return; // Batalkan keluar
+            }
+        }
+
+        // Redirect ke halaman list experience
+        router.push('/peserta/experience');
+    };
 
     return (
         <Sidebar>
@@ -71,13 +106,13 @@ export default function MeetingRoomPage() {
                     </div>
 
                     <button
-                        onClick={() => router.push('/peserta/experience')}
-                        className="group flex items-center gap-2 px-6 py-3 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-2xl font-bold transition-all duration-300 border border-red-100 shadow-sm"
+                        onClick={handleExit}
+                        className={`px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-lg ${isModerator
+                            ? "bg-[#c31a26] text-white hover:bg-red-700 shadow-red-100"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-900"
+                            }`}
                     >
-                        <span>Keluar Ruangan</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
+                        {isModerator ? "Akhiri Sesi (Owner)" : "Keluar Ruangan"}
                     </button>
                 </div>
 
@@ -85,7 +120,7 @@ export default function MeetingRoomPage() {
                 <div className="bg-slate-900 p-1.5 rounded-[32px] border border-slate-200 shadow-2xl overflow-hidden">
                     <div className="bg-black rounded-[26px] overflow-hidden h-[75vh] min-h-[600px] relative">
                         <JitsiMeeting
-                            roomName={meeting.title}
+                            roomName={meeting.room_name}
                             userName={user?.name || "Anonymous"}
                             isModerator={!!isModerator}
                         />
