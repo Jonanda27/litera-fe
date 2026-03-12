@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { MeetingProvider } from "@/lib/constans/context/MeetingContext";
+import GlobalJitsiWrapper from "@/lib/constans/context/GlobalJitsiWrapper";
+
+// IMPORT PROVIDER DAN WRAPPER
+// Ingat: Sesuaikan path "@/" di bawah ini dengan lokasi folder tempat kamu menyimpan file-nya!
+
 
 export const metadata: Metadata = {
   title: "LITERA - Literasi Untuk Semua",
@@ -14,7 +20,13 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="antialiased">
-        {children}
+        {/* Bungkus seluruh aplikasi dengan MeetingProvider */}
+        <MeetingProvider>
+          {children}
+          
+          {/* Komponen ini akan standby di background dan muncul saat meeting aktif */}
+          <GlobalJitsiWrapper />
+        </MeetingProvider>
       </body>
     </html>
   );
