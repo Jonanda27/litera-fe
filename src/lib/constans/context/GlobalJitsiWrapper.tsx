@@ -60,11 +60,10 @@ export default function GlobalJitsiWrapper() {
 
   return (
     <div
-      className={`z-[9999] fixed ${
-        isMinimized
+      className={`z-[9999] fixed ${isMinimized
           ? "bottom-6 right-6 w-[350px] sm:w-[450px] aspect-video bg-slate-900 p-1.5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700"
           : "inset-4 sm:inset-10 bg-slate-900 p-2 rounded-[32px] shadow-2xl border border-slate-700 flex flex-col"
-      }`}
+        }`}
       style={{
         // Memindahkan elemen berdasarkan state position
         transform: isMinimized ? `translate(${position.x}px, ${position.y}px)` : "none",
@@ -72,15 +71,15 @@ export default function GlobalJitsiWrapper() {
         transition: isDragging ? "none" : "all 0.5s ease-in-out",
       }}
     >
-      
+
       {/* DRAG HANDLE (Pegangan untuk menggeser, hanya muncul saat minimized) */}
       {isMinimized && (
-        <div 
-            className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-400 p-1 px-5 rounded-t-xl cursor-grab active:cursor-grabbing hover:text-white border border-b-0 border-slate-700 flex items-center justify-center shadow-lg transition-colors z-[101]"
-            onMouseDown={handleMouseDown}
-            title="Tahan untuk menggeser"
+        <div
+          className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-400 p-1 px-5 rounded-t-xl cursor-grab active:cursor-grabbing hover:text-white border border-b-0 border-slate-700 flex items-center justify-center shadow-lg transition-colors z-[101]"
+          onMouseDown={handleMouseDown}
+          title="Tahan untuk menggeser"
         >
-            <GripHorizontal size={20} />
+          <GripHorizontal size={20} />
         </div>
       )}
 
@@ -92,7 +91,7 @@ export default function GlobalJitsiWrapper() {
         >
           {isMinimized ? <Maximize2 size={20} /> : <Minimize2 size={20} />}
         </button>
-        
+
         {/* Tombol Close Global (Meninggalkan meeting dari mana saja) */}
         {!isMinimized && (
           <button
@@ -105,14 +104,15 @@ export default function GlobalJitsiWrapper() {
       </div>
 
       <div className="w-full h-full bg-black rounded-[18px] overflow-hidden relative">
-        
+
         {/* OVERLAY PELINDUNG: Menutup iFrame selama proses drag agar mouse tidak terserap ke dalam Jitsi */}
         {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing" />}
-        
+
         <JitsiMeeting
           roomName={activeMeeting.roomName}
           userName={activeMeeting.userName}
           isModerator={activeMeeting.isModerator}
+          onLeave={endMeeting}
         />
       </div>
     </div>

@@ -1,18 +1,20 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
+import { API_BASE_URL } from "../../../lib/constans/constans";
 
 interface MeetingData {
   roomName: string;
   userName: string;
   isModerator: boolean;
   title: string;
+  discussionId: string | number;
 }
 
 interface MeetingContextType {
   activeMeeting: MeetingData | null;
   isMinimized: boolean;
   startMeeting: (data: MeetingData) => void;
-  endMeeting: () => void;
+  endMeeting: () => Promise<void>;
   toggleMinimize: (status: boolean) => void;
 }
 
@@ -27,7 +29,28 @@ export const MeetingProvider = ({ children }: { children: React.ReactNode }) => 
     setIsMinimized(false);
   };
 
-  const endMeeting = () => {
+  const endMeeting = async () => {
+    if (activeMeeting?.isModerator && activeMeeting.discussionId) {
+      try {
+        const token = localStorage.getItem('token');
+        console.log("Mengirim request PATCH ke backend via Context...");
+
+        const res = await fetch(`${API_BASE_URL}/meetings/discussions/${activeMeeting.discussionId}/end-meeting`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (res.ok) {
+          console.log("Status meeting di backend berhasil diubah.");
+        }
+      } catch (err) {
+        console.error("Gagal update status meeting di backend:", err);
+      }
+    }
+
     setActiveMeeting(null);
     setIsMinimized(false);
   };

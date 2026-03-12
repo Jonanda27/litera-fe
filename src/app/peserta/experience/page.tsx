@@ -622,7 +622,7 @@ export default function Experience() {
                 {hasActiveMeeting ? (
                   <button
                     onClick={() => router.push(`/peserta/experience/component/${currentRoomData?.meeting_id}`)}
-                    className="mx-4 mb-4 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3 animate-bounce"
+                    className="mx-4 mb-4 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3"
                   >
                     <Radio size={16} /> Join Live Meeting
                   </button>

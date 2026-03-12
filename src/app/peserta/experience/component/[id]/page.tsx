@@ -76,7 +76,7 @@ export default function MeetingRoomPage() {
 
     const handleExit = async () => {
         console.log("Tombol Exit diklik. Status isModerator:", isModerator);
-        
+
         if (isModerator) {
             const confirmEnd = window.confirm(
                 "Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang agar tidak bisa diakses lagi. Lanjutkan?"
@@ -107,7 +107,7 @@ export default function MeetingRoomPage() {
             }
         } else {
             // Jika hanya peserta biasa, matikan jitsi dan pindah halaman
-            endMeeting(); 
+            endMeeting();
             router.push('/peserta/experience');
         }
     };
@@ -115,12 +115,13 @@ export default function MeetingRoomPage() {
     // Fungsi untuk memicu Jitsi global
     const handleJoinGlobalMeeting = () => {
         if (!meeting || !user) return;
-        
+
         startMeeting({
             roomName: meeting.room_name,
             userName: user.name || "Anonymous",
             isModerator: isModerator,
-            title: meeting.title
+            title: meeting.title,
+            discussionId: meeting.Discussion.id
         });
     };
 
@@ -157,7 +158,7 @@ export default function MeetingRoomPage() {
                 {/* Panel Kontrol Meeting */}
                 <div className="bg-slate-900 p-1.5 rounded-[32px] border border-slate-200 shadow-2xl overflow-hidden">
                     <div className="bg-black rounded-[26px] overflow-hidden h-[75vh] min-h-[600px] relative flex flex-col items-center justify-center">
-                        
+
                         {!isCurrentlyInThisMeeting ? (
                             // Tampilan jika pengguna belum mengklik Join
                             <div className="text-center flex flex-col items-center z-10">
@@ -170,8 +171,8 @@ export default function MeetingRoomPage() {
                                 <p className="text-slate-400 mb-8 max-w-md font-medium">
                                     Klik tombol di bawah untuk masuk ke ruang video. Sesi ini akan tetap berjalan melayang meskipun Anda berpindah halaman.
                                 </p>
-                                <button 
-                                    onClick={handleJoinGlobalMeeting} 
+                                <button
+                                    onClick={handleJoinGlobalMeeting}
                                     className="px-10 py-4 bg-[#c31a26] hover:bg-red-700 text-white rounded-2xl font-black shadow-xl transition-all shadow-red-900/50 uppercase tracking-widest"
                                 >
                                     Mulai Video Sesi
@@ -190,14 +191,14 @@ export default function MeetingRoomPage() {
                                     Video sedang berjalan. Anda bebas membuka halaman modul lain tanpa terputus.
                                 </p>
                                 <div className="flex gap-4">
-                                    <button 
-                                        onClick={() => toggleMinimize(false)} 
+                                    <button
+                                        onClick={() => toggleMinimize(false)}
                                         className="px-8 py-4 bg-[#1e4e8c] hover:bg-blue-700 text-white rounded-2xl font-black shadow-xl transition-all uppercase tracking-widest"
                                     >
                                         Buka Layar Penuh
                                     </button>
-                                    <button 
-                                        onClick={() => toggleMinimize(true)} 
+                                    <button
+                                        onClick={() => toggleMinimize(true)}
                                         className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black shadow-xl border border-slate-700 transition-all uppercase tracking-widest"
                                     >
                                         Perkecil ke Sudut

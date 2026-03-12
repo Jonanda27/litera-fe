@@ -13,18 +13,19 @@ interface JitsiMeetingProps {
   roomName: string;
   userName: string;
   isModerator: boolean;
+  onLeave?: () => void;
 }
 
 const JitsiMeeting = ({
   roomName,
   userName,
   isModerator,
+  onLeave,
 }: JitsiMeetingProps) => {
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
 
   const startMeeting = () => {
-    // Hapus instance lama jika ada sebelum membuat baru
     if (apiRef.current) {
       apiRef.current.dispose();
     }
@@ -56,33 +57,42 @@ const JitsiMeeting = ({
           DEFAULT_REMOTE_DISPLAY_NAME: "Peserta",
           TOOLBAR_BUTTONS: isModerator
             ? [
-                "microphone",
-                "camera",
-                "desktop",
-                "fullscreen",
-                "chat",
-                "settings",
-                "hangup",
-                "videoquality",
-                "tileview",
-                "mute-everyone",
-                "security",
-              ]
+              "microphone",
+              "camera",
+              "desktop",
+              "fullscreen",
+              "chat",
+              "settings",
+              "hangup",
+              "videoquality",
+              "tileview",
+              "mute-everyone",
+              "security",
+            ]
             : [
-                "microphone",
-                "camera",
-                "desktop",
-                "fullscreen",
-                "chat",
-                "settings",
-                "hangup",
-                "videoquality",
-                "tileview",
-                "raisehand",
-              ],
+              "microphone",
+              "camera",
+              "desktop",
+              "fullscreen",
+              "chat",
+              "settings",
+              "hangup",
+              "videoquality",
+              "tileview",
+              "raisehand",
+            ],
         },
       };
       apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
+
+      apiRef.current.addEventListeners({
+        videoConferenceLeft: () => {
+          if (onLeave) onLeave();
+        },
+        readyToClose: () => {
+          if (onLeave) onLeave();
+        }
+      });
 
       // Event listener lainnya tetap sama...
     }
