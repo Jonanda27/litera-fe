@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { Video } from 'lucide-react'; // <-- Import icon tambahan
 import Sidebar from '@/components/Sidebar';
-import JitsiMeeting from '@/app/peserta/experience/component/JitsiMeeting'; // Sesuaikan path ini
 import { API_BASE_URL } from "../../../../../lib/constans/constans";
+import { useMeetingContext } from '@/lib/constans/context/MeetingContext';
+// PASTIKAN PATH INI SESUAI DENGAN LOKASI FILE CONTEXT KAMU:
 
 interface MeetingData {
     id: string;
@@ -26,6 +28,9 @@ export default function MeetingRoomPage() {
     const [meeting, setMeeting] = useState<MeetingData | null>(null);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<{ id: any, name: string } | null>(null);
+
+    // <-- MENGAMBIL FUNGSI DARI CONTEXT GLOBAL -->
+    const { startMeeting, endMeeting, activeMeeting, toggleMinimize } = useMeetingContext();
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -69,11 +74,9 @@ export default function MeetingRoomPage() {
         }
     }, [user, meeting]);
 
-    if (loading) return <div className="h-screen flex items-center justify-center font-bold">Menyiapkan Ruangan...</div>;
-    if (!meeting) return <div className="h-screen flex items-center justify-center text-red-500">Ruang diskusi tidak ditemukan atau telah berakhir.</div>;
-
     const handleExit = async () => {
         console.log("Tombol Exit diklik. Status isModerator:", isModerator);
+        
         if (isModerator) {
             const confirmEnd = window.confirm(
                 "Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang agar tidak bisa diakses lagi. Lanjutkan?"
@@ -92,6 +95,7 @@ export default function MeetingRoomPage() {
                     });
 
                     if (res.ok) {
+                        endMeeting(); // <-- Menutup Jitsi global saat moderator mengakhiri meeting
                         router.push('/peserta/experience');
                         return;
                     }
@@ -101,14 +105,30 @@ export default function MeetingRoomPage() {
             } else {
                 return;
             }
+        } else {
+            // Jika hanya peserta biasa, matikan jitsi dan pindah halaman
+            endMeeting(); 
+            router.push('/peserta/experience');
         }
+    };
 
-        // Jika hanya peserta biasa, cukup pindah halaman
-        router.push('/peserta/experience');
+    // Fungsi untuk memicu Jitsi global
+    const handleJoinGlobalMeeting = () => {
+        if (!meeting || !user) return;
+        
+        startMeeting({
+            roomName: meeting.room_name,
+            userName: user.name || "Anonymous",
+            isModerator: isModerator,
+            title: meeting.title
+        });
     };
 
     if (loading) return <div className="h-screen flex items-center justify-center font-bold">Menyiapkan Ruangan...</div>;
     if (!meeting) return <div className="h-screen flex items-center justify-center text-red-500">Ruang diskusi tidak ditemukan atau telah berakhir.</div>;
+
+    // Pengecekan apakah user sedang membuka jendela meeting untuk ID ini
+    const isCurrentlyInThisMeeting = activeMeeting?.roomName === meeting.room_name;
 
     return (
         <Sidebar>
@@ -134,14 +154,60 @@ export default function MeetingRoomPage() {
                     </button>
                 </div>
 
-                {/* Interface Meeting Full Width */}
+                {/* Panel Kontrol Meeting */}
                 <div className="bg-slate-900 p-1.5 rounded-[32px] border border-slate-200 shadow-2xl overflow-hidden">
-                    <div className="bg-black rounded-[26px] overflow-hidden h-[75vh] min-h-[600px] relative">
-                        <JitsiMeeting
-                            roomName={meeting.room_name}
-                            userName={user?.name || "Anonymous"}
-                            isModerator={!!isModerator}
-                        />
+                    <div className="bg-black rounded-[26px] overflow-hidden h-[75vh] min-h-[600px] relative flex flex-col items-center justify-center">
+                        
+                        {!isCurrentlyInThisMeeting ? (
+                            // Tampilan jika pengguna belum mengklik Join
+                            <div className="text-center flex flex-col items-center z-10">
+                                <div className="w-24 h-24 bg-blue-500/20 rounded-full flex items-center justify-center mb-6">
+                                    <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/50">
+                                        <Video size={32} />
+                                    </div>
+                                </div>
+                                <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Siap Bergabung?</h2>
+                                <p className="text-slate-400 mb-8 max-w-md font-medium">
+                                    Klik tombol di bawah untuk masuk ke ruang video. Sesi ini akan tetap berjalan melayang meskipun Anda berpindah halaman.
+                                </p>
+                                <button 
+                                    onClick={handleJoinGlobalMeeting} 
+                                    className="px-10 py-4 bg-[#c31a26] hover:bg-red-700 text-white rounded-2xl font-black shadow-xl transition-all shadow-red-900/50 uppercase tracking-widest"
+                                >
+                                    Mulai Video Sesi
+                                </button>
+                            </div>
+                        ) : (
+                            // Tampilan Panel jika Jitsi sedang aktif
+                            <div className="text-center flex flex-col items-center z-10">
+                                <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                                    <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/50">
+                                        <Video size={32} />
+                                    </div>
+                                </div>
+                                <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Anda Terhubung</h2>
+                                <p className="text-slate-400 mb-8 max-w-md font-medium">
+                                    Video sedang berjalan. Anda bebas membuka halaman modul lain tanpa terputus.
+                                </p>
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={() => toggleMinimize(false)} 
+                                        className="px-8 py-4 bg-[#1e4e8c] hover:bg-blue-700 text-white rounded-2xl font-black shadow-xl transition-all uppercase tracking-widest"
+                                    >
+                                        Buka Layar Penuh
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleMinimize(true)} 
+                                        className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black shadow-xl border border-slate-700 transition-all uppercase tracking-widest"
+                                    >
+                                        Perkecil ke Sudut
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Efek visual titik-titik (Background Pattern) */}
+                        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #ffffff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                     </div>
                 </div>
 
