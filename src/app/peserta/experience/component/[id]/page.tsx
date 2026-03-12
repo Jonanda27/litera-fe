@@ -10,11 +10,10 @@ interface MeetingData {
     id: string;
     title: string;
     room_name: string;
-    moderator_id: string | number;
     status: string;
-    discussion: {
+    Discussion: {
         id: string | number;
-        owner_id: string | number;
+        owner_id: number;
         name: string;
     };
 }
@@ -56,17 +55,25 @@ export default function MeetingRoomPage() {
         if (meetingId) fetchMeetingDetail();
     }, [meetingId]);
 
+    const isModerator = !!(
+        user &&
+        meeting?.Discussion &&
+        String(user.id) === String(meeting.Discussion.owner_id)
+    );
+
+    useEffect(() => {
+        if (user && meeting) {
+            console.log("User ID:", user.id, "Type:", typeof user.id);
+            console.log("Owner ID:", meeting.Discussion?.owner_id, "Type:", typeof meeting.Discussion?.owner_id);
+            console.log("Is Moderator?", String(user.id) === String(meeting.Discussion?.owner_id));
+        }
+    }, [user, meeting]);
+
     if (loading) return <div className="h-screen flex items-center justify-center font-bold">Menyiapkan Ruangan...</div>;
     if (!meeting) return <div className="h-screen flex items-center justify-center text-red-500">Ruang diskusi tidak ditemukan atau telah berakhir.</div>;
 
-    // Cek apakah user yang sedang buka adalah moderatornya
-    const isModerator = !!(
-        user &&
-        meeting?.discussion &&
-        String(user.id) === String(meeting.discussion.owner_id)
-    );
-
     const handleExit = async () => {
+        console.log("Tombol Exit diklik. Status isModerator:", isModerator);
         if (isModerator) {
             const confirmEnd = window.confirm(
                 "Anda adalah pemilik grup. Keluar akan mengakhiri diskusi ini untuk semua orang agar tidak bisa diakses lagi. Lanjutkan?"
@@ -75,8 +82,8 @@ export default function MeetingRoomPage() {
             if (confirmEnd) {
                 try {
                     const token = localStorage.getItem('token');
-                    // Panggil API End Meeting menggunakan ID Discussion
-                    const res = await fetch(`${API_BASE_URL}/discussions/${meeting?.discussion.id}/end-meeting`, {
+                    console.log("Mengirim request PATCH ke backend...");
+                    const res = await fetch(`${API_BASE_URL}/meetings/discussions/${meeting?.Discussion.id}/end-meeting`, {
                         method: 'PATCH',
                         headers: {
                             'Authorization': `Bearer ${token}`,

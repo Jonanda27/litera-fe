@@ -388,6 +388,10 @@ export default function Experience() {
   // Cek apakah grup ini sudah punya meeting aktif
   const hasActiveMeeting = currentRoomData?.meeting_id != null;
 
+  const filteredMeetings = meetings.filter((m: any) =>
+    m.id.toString() === currentRoomData?.meeting_id?.toString()
+  );
+
   if (isLoadingSync)
     return (
       <div className="h-screen flex items-center justify-center font-black text-[#1e4e8c] animate-pulse">
@@ -636,7 +640,13 @@ export default function Experience() {
                 )}
                 {/* Bagian DiscussionCards (Meeting Aktif) */}
                 <div className="h-[45%] border-t bg-white flex flex-col min-h-0 overflow-hidden">
-                  <DiscussionCards items={meetings} />
+                  {filteredMeetings.length > 0 ? (
+                    <DiscussionCards items={filteredMeetings} />
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
+                      <p className="text-[10px] font-black uppercase">Tidak ada info meeting</p>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
