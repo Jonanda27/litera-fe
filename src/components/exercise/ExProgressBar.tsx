@@ -7,14 +7,14 @@ export function ExProgressBar({ progress }: { progress: number }) {
   const safeProgress = Math.min(Math.max(progress, 0), 100);
 
   return (
-    <div className="relative w-full bg-[#1e4e8c] h-10 rounded-full overflow-hidden shadow-lg border-4 border-white">
+    <div className="relative w-full bg-[#1e4e8c] h-8 md:h-10 rounded-full overflow-hidden shadow-lg border-2 md:border-4 border-white">
       
       {/* Background Layer: Muncul jika progres 0 atau rendah agar teks tidak "terpotong" */}
       {safeProgress < 15 && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white/40 font-black  text-xs md:text-sm uppercase tracking-wider">
+        <div className="absolute inset-0 flex items-center justify-center px-2">
+          <span className="text-white/60 md:text-white/40 font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-wider text-center truncate">
             {safeProgress === 0 
-              ? "Mulai progres belajar kamu sekarang! (0%)" 
+              ? "Mulai belajar (0%)" 
               : `Progres kamu ${safeProgress}%`
             }
           </span>
@@ -33,9 +33,9 @@ export function ExProgressBar({ progress }: { progress: number }) {
           <motion.span 
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-white font-bold text-sm whitespace-nowrap px-4"
+            className="text-white font-black text-[10px] sm:text-xs md:text-sm whitespace-nowrap px-2 md:px-4 tracking-wider uppercase"
           >
-            PROGRES KAMU {safeProgress}%
+            {safeProgress}% <span className="hidden sm:inline">PROGRES KAMU</span>
           </motion.span>
         )}
       </motion.div>

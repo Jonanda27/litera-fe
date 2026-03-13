@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios"; // Gunakan axios untuk mempermudah hit API
+import axios from "axios";
 import {
   KeyboardSensor,
   PointerSensor,
@@ -12,8 +12,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { toPng } from "html-to-image";
 
-// Import Steps (Tetap sama)
-//Fiksi
+// Import Steps (Fiksi)
 import StepIdeCepat from "./fiksi/StepIdeCepat";
 import StepPapanVisi from "./fiksi/StepPapanVisi";
 import StepRiset from "./fiksi/StepRiset";
@@ -24,9 +23,9 @@ import StepTimeline from "./fiksi/StepTimeline";
 import StepPlotBoard from "./fiksi/StepPlotBoard";
 import StepPenulisan from "./fiksi/StepPenulisan";
 import StepRevisi from "./fiksi/StepRevisi";
+import StepFinalisasi from "./fiksi/StepFinalisasi";
 
-//Nonfiksi
-
+// Import Steps (Nonfiksi)
 import StepRisetNonFiksi from "./nonfiksi/StepRisetNonFiksi";
 import StepDaftarIstilah from "./nonfiksi/StepDaftarIstilah";
 import StepDaftarPustaka from "./nonfiksi/StepDaftarPustaka";
@@ -35,9 +34,10 @@ import StepWorksheet from "./nonfiksi/StepWorksheet";
 import StepKoleksi from "./nonfiksi/StepKoleksi";
 import StepChapterStructure from "./nonfiksi/StepChapterStructure";
 import StepPenulisanNonFiction from "./nonfiksi/StepPenulisanNon";
+
 import { API_BASE_URL } from "@/lib/constans/constans";
 
-// KONFIGURASI LANGKAH (Tetap sama)
+// KONFIGURASI LANGKAH
 const FICTION_STEPS = [
   { id: 1, title: "Ide Cepat" },
   { id: 2, title: "Papan Visi" },
@@ -91,7 +91,16 @@ const AddProjectModal = ({
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isZenMode, setIsZenMode] = useState(false);
+
+  // --- STATE UNTUK PREVIEW & KONFIGURASI EXPORT ---
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewConfig, setPreviewConfig] = useState({
+    fontFamily: "'Times New Roman', serif",
+    fontSize: "12pt",
+    pageSize: "A4",
+    margin: "2.54cm",
+  });
+
   const [formData, setFormData] = useState<any>({
     id: selectedId,
     bookId: selectedId,
@@ -100,27 +109,24 @@ const AddProjectModal = ({
 
   useEffect(() => {
     const fetchBookDetail = async () => {
-      // 1. TAMBAHKAN INI: Selalu reset ke step 1 setiap kali modal dibuka
       if (isOpen) {
         setCurrentStep(1);
       }
 
-      // Hanya fetch jika modal terbuka dan ada ID (Membuka Editor/Proyek Lama)
       if (isOpen && selectedId) {
         setLoadingDetail(true);
         try {
           const token = localStorage.getItem("token");
           const response = await axios.get(
-  `${API_BASE_URL}/books/${selectedId}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  },
-);
+            `${API_BASE_URL}/books/${selectedId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
           const bookData = response.data.data;
 
-          // Gunakan spread operator yang aman
           setFormData({
-            ...bookData, // Masukkan semua data dari API
+            ...bookData,
             id: selectedId,
             bookId: selectedId,
             title: bookData?.title || "Tanpa Judul",
@@ -130,11 +136,8 @@ const AddProjectModal = ({
         } finally {
           setLoadingDetail(false);
         }
-      }
-      // Jika buka proyek baru (tanpa ID)
-      else if (isOpen && !selectedId) {
+      } else if (isOpen && !selectedId) {
         setFormData({ title: "", id: null, bookId: null });
-        // setCurrentStep(1); -> (Bagian ini bisa dihapus karena sudah di-handle di paling atas)
       }
     };
 
@@ -153,17 +156,22 @@ const AddProjectModal = ({
 
   const handleNextStep = async () => {
     const paper = document.getElementById("paper-revisi");
-    if (paper && currentStep === totalSteps - 2) {
+    const isBeforeFinalStep =
+      (category === "Fiksi" && currentStep === 14) ||
+      (category === "Non-Fiksi" && currentStep === 8);
+
+    if (paper && isBeforeFinalStep) {
       try {
         const dataUrl = await toPng(paper, {
-          pixelRatio: 4,
-          backgroundColor: "#94a3b8",
+          pixelRatio: 3,
+          backgroundColor: "#ffffff",
         });
         setPreviewImage(dataUrl);
       } catch (err) {
-        console.error(err);
+        console.error("Gagal mengambil preview naskah:", err);
       }
     }
+
     if (currentStep < totalSteps) {
       setCurrentStep((p) => p + 1);
     }
@@ -176,9 +184,9 @@ const AddProjectModal = ({
   const renderStepContent = () => {
     if (loadingDetail) {
       return (
-        <div className="flex flex-col items-center justify-center p-20 space-y-4">
+        <div className="flex flex-col items-center justify-center p-10 md:p-20 space-y-4">
           <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+          <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest text-center">
             Memuat Detail Proyek...
           </p>
         </div>
@@ -189,11 +197,12 @@ const AddProjectModal = ({
       switch (currentStep) {
         case 1:
           return (
-           <StepRisetNonFiksi 
-          formData={formData} 
-          // GUNAKAN FUNGSI UPDATER UNTUK MERGE DATA, AGAR ID TIDAK TERHAPUS
-          onDataChange={(newData) => setFormData((prev: any) => ({ ...prev, ...newData }))} 
-        />
+            <StepRisetNonFiksi
+              formData={formData}
+              onDataChange={(newData) =>
+                setFormData((prev: any) => ({ ...prev, ...newData }))
+              }
+            />
           );
         case 2:
           return (
@@ -203,29 +212,38 @@ const AddProjectModal = ({
           return (
             <StepDaftarPustaka formData={formData} onDataChange={setFormData} />
           );
-          case 4:
+        case 4:
           return (
             <StepStudiKasus formData={formData} onDataChange={setFormData} />
           );
-          case 5:
+        case 5:
           return (
             <StepWorksheet formData={formData} onDataChange={setFormData} />
           );
-           case 6:
+        case 6:
+          return <StepKoleksi formData={formData} onDataChange={setFormData} />;
+        case 7:
           return (
-            <StepKoleksi formData={formData} onDataChange={setFormData} />
+            <StepChapterStructure
+              formData={formData}
+              onDataChange={setFormData}
+            />
           );
-          case 7:
-          return (
-            <StepChapterStructure formData={formData} onDataChange={setFormData} />
-          );
-          case 8:
+        case 8:
           return (
             <StepPenulisanNonFiction
               isZenMode={isZenMode}
               setIsZenMode={setIsZenMode}
               formData={formData}
               handleInputChange={handleInputChange}
+            />
+          );
+        case 9:
+          return (
+            <StepFinalisasi
+              previewImage={previewImage}
+              previewConfig={previewConfig}
+              setPreviewConfig={setPreviewConfig}
             />
           );
         default:
@@ -240,7 +258,7 @@ const AddProjectModal = ({
             <StepIdeCepat
               formData={formData}
               onDataChange={setFormData}
-              key={formData.id} // Tambahkan key ini agar komponen refresh saat ID masuk
+              key={formData.id}
             />
           );
         case 2:
@@ -285,10 +303,35 @@ const AddProjectModal = ({
               handleInputChange={handleInputChange}
             />
           );
+        case 11:
+          return (
+            <StepFinalisasi
+              previewImage={previewImage}
+              previewConfig={previewConfig}
+              setPreviewConfig={setPreviewConfig}
+            />
+          );
+        case 14:
+          return (
+            <StepRevisi
+              comments={[]}
+              versions={[]}
+              formData={formData}
+              handleInputChange={handleInputChange}
+            />
+          );
+        case 15:
+          return (
+            <StepFinalisasi
+              previewImage={previewImage}
+              previewConfig={previewConfig}
+              setPreviewConfig={setPreviewConfig}
+            />
+          );
         default:
           return (
-            <div className="p-10 text-center font-bold text-slate-400">
-              Tahap Pengembangan {currentStep}
+            <div className="p-10 text-center font-bold text-slate-400 uppercase text-xs md:text-sm">
+              Tahap {activeSteps[currentStep - 1]?.title} (Under Development)
             </div>
           );
       }
@@ -298,58 +341,63 @@ const AddProjectModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-2 md:p-4 backdrop-blur-sm text-black">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white w-full max-w-5xl max-h-[95vh] overflow-hidden rounded-[2.5rem] shadow-2xl flex flex-col"
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`bg-white w-full max-w-5xl ${isZenMode ? "h-screen max-h-screen rounded-none" : "max-h-[92vh] md:max-h-[95vh] rounded-2xl md:rounded-[2.5rem]"} overflow-hidden shadow-2xl flex flex-col transition-all duration-500`}
       >
         {/* HEADER */}
-        <div className="p-6 border-b bg-slate-50">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${category === "Non-Fiksi" ? "bg-amber-100 text-amber-600" : "bg-violet-100 text-violet-600"}`}
-                >
-                  {category}
-                </span>
-                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                  {loadingDetail ? "..." : formData.title || "Proyek Baru"}
-                </h2>
+        {!isZenMode && (
+          <div className="p-4 md:p-6 border-b bg-slate-50 shrink-0">
+            <div className="flex justify-between items-start md:items-center mb-4 md:mb-6">
+              <div className="pr-4">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[8px] md:text-[9px] font-black uppercase ${category === "Non-Fiksi" ? "bg-amber-100 text-amber-600" : "bg-violet-100 text-violet-600"}`}
+                  >
+                    {category}
+                  </span>
+                  <h2 className="text-base md:text-xl font-black text-slate-900 uppercase tracking-tight line-clamp-1">
+                    {loadingDetail ? "..." : formData.title || "Proyek Baru"}
+                  </h2>
+                </div>
+                <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-wider">
+                  Tahap {currentStep}{" "}
+                  <span className="hidden sm:inline">dari {totalSteps}</span>:{" "}
+                  {activeSteps[currentStep - 1]?.title}
+                </p>
               </div>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                Tahap {currentStep} dari {totalSteps}:{" "}
-                {activeSteps[currentStep - 1]?.title}
-              </p>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 md:w-10 md:h-10 shrink-0 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-rose-500 hover:text-white transition-all text-xs"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-rose-500 hover:text-white transition-all"
-            >
-              ✕
-            </button>
-          </div>
 
-          {/* PROGRESS BAR */}
-          <div className="flex gap-1.5">
-            {activeSteps.map((step) => (
-              <div
-                key={step.id}
-                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                  currentStep >= step.id
-                    ? category === "Non-Fiksi"
-                      ? "bg-amber-500"
-                      : "bg-violet-600"
-                    : "bg-slate-200"
-                }`}
-              />
-            ))}
+            {/* PROGRESS BAR - Responsive Gap */}
+            <div className="flex gap-0.5 md:gap-1.5">
+              {activeSteps.map((step) => (
+                <div
+                  key={step.id}
+                  className={`h-1 md:h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                    currentStep >= step.id
+                      ? category === "Non-Fiksi"
+                        ? "bg-amber-500"
+                        : "bg-violet-600"
+                      : "bg-slate-200"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* CONTENT AREA */}
-        <div className="flex-1 overflow-y-auto p-8 bg-white">
+        <div
+          className={`flex-1 overflow-y-auto ${isZenMode ? "p-0" : "p-4 md:p-8"} bg-white custom-scrollbar`}
+        >
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep + category + loadingDetail}
@@ -357,6 +405,7 @@ const AddProjectModal = ({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
+              className="h-full"
             >
               {renderStepContent()}
             </motion.div>
@@ -364,44 +413,50 @@ const AddProjectModal = ({
         </div>
 
         {/* FOOTER NAVIGATION */}
-        <div className="p-6 border-t bg-slate-50 flex justify-between items-center shrink-0">
-          <button
-            onClick={handlePrevStep}
-            disabled={currentStep === 1 || loadingDetail}
-            className={`font-black text-xs uppercase flex items-center gap-2 transition-all ${
-              currentStep === 1 || loadingDetail
-                ? "opacity-0 pointer-events-none"
-                : "text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            ← Kembali
-          </button>
-
-          <div className="flex items-center gap-4">
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-              Langkah {currentStep} / {totalSteps}
-            </span>
+        {!isZenMode && (
+          <div className="p-4 md:p-6 border-t bg-slate-50 flex justify-between items-center shrink-0">
             <button
-              onClick={
-                currentStep === totalSteps
-                  ? () => onSave(formData)
-                  : handleNextStep
-              }
-              disabled={loadingDetail}
-              className={`px-10 py-4 text-white font-black rounded-full shadow-lg uppercase text-xs active:scale-95 transition-all ${
-                loadingDetail
-                  ? "bg-slate-300 cursor-not-allowed"
-                  : category === "Non-Fiksi"
-                    ? "bg-amber-600 hover:bg-amber-700"
-                    : "bg-violet-600 hover:bg-violet-700"
+              onClick={handlePrevStep}
+              disabled={currentStep === 1 || loadingDetail}
+              className={`font-black text-[10px] md:text-xs uppercase flex items-center gap-1 md:gap-2 transition-all ${
+                currentStep === 1 || loadingDetail
+                  ? "opacity-0 pointer-events-none"
+                  : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              {currentStep === totalSteps
-                ? "Selesaikan Proyek"
-                : "Selanjutnya →"}
+              ← <span className="hidden sm:inline">Kembali</span>
             </button>
+
+            <div className="flex items-center gap-2 md:gap-4">
+              <span className="text-[8px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest hidden xs:block">
+                Langkah {currentStep} / {totalSteps}
+              </span>
+              <button
+                onClick={
+                  currentStep === totalSteps
+                    ? () => onSave(formData)
+                    : handleNextStep
+                }
+                disabled={loadingDetail}
+                className={`px-6 md:px-10 py-3 md:py-4 text-white font-black rounded-full shadow-lg uppercase text-[10px] md:text-xs active:scale-95 transition-all whitespace-nowrap ${
+                  loadingDetail
+                    ? "bg-slate-300 cursor-not-allowed"
+                    : category === "Non-Fiksi"
+                      ? "bg-amber-600 hover:bg-amber-700"
+                      : "bg-violet-600 hover:bg-violet-700"
+                }`}
+              >
+                {currentStep === totalSteps ? (
+                  "Selesaikan Proyek"
+                ) : (
+                  <span className="flex items-center gap-1">
+                    Selanjutnya <span className="hidden sm:inline">→</span>
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </motion.div>
     </div>
   );

@@ -3,11 +3,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
-  AlignJustify, 
+import {
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
   Type,
   ChevronDown,
   BookOpen
@@ -34,12 +34,12 @@ export default function StepPenulisan({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFontSize, setSelectedFontSize] = useState("12pt");
   const [selectedFontFamily, setSelectedFontFamily] = useState("'Times New Roman', serif");
-  
+
   // --- INTEGRASI OUTLINE & CUSTOM DROP-DOWN ---
   const [outlines, setOutlines] = useState<any[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<any>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
+
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- 1. FETCH DAFTAR BAB DARI OUTLINE ---
@@ -49,7 +49,7 @@ export default function StepPenulisan({
         const token = localStorage.getItem("token");
         if (!token || !formData.bookId) return;
 
-      const res = await axios.get(`${API_BASE_URL}/books/outlines/${formData.bookId}`, {
+        const res = await axios.get(`${API_BASE_URL}/books/outlines/${formData.bookId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setOutlines(res.data);
@@ -68,21 +68,21 @@ export default function StepPenulisan({
 
       try {
         setIsLoading(true);
-       const response = await fetch(
-  `${API_BASE_URL}/books/get-chapter?bookId=${formData.bookId}&outlineId=${selectedChapter.id}`,
-  {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-  }
-);
+        const response = await fetch(
+          `${API_BASE_URL}/books/get-chapter?bookId=${formData.bookId}&outlineId=${selectedChapter.id}`,
+          {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+          }
+        );
 
         const result = await response.json();
 
         if (response.ok && Array.isArray(result.data) && result.data.length > 0) {
           setPageCount(result.data.length);
-          
+
           setTimeout(() => {
             result.data.forEach((item: any, i: number) => {
               if (editorRefs.current[i]) {
@@ -136,15 +136,15 @@ export default function StepPenulisan({
         page: index + 1,
         content: ref ? ref.innerHTML : ""
       }));
-    
+
     setSaveStatus("Saving...");
     try {
       const token = localStorage.getItem("token");
-     const response = await fetch(`${API_BASE_URL}/books/save-chapter`,{
+      const response = await fetch(`${API_BASE_URL}/books/save-chapter`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}` 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           bookId: formData.bookId,
@@ -180,13 +180,13 @@ export default function StepPenulisan({
   const applyFontSize = (size: string) => {
     setSelectedFontSize(size);
     // Hack untuk custom font size di contentEditable karena execCommand hanya mendukung 1-7
-    document.execCommand('fontSize', false, "7"); 
+    document.execCommand('fontSize', false, "7");
     editorRefs.current.forEach(ref => {
-        const fontSpans = ref?.querySelectorAll('font[size="7"]');
-        fontSpans?.forEach(span => {
-            (span as HTMLElement).removeAttribute('size');
-            (span as HTMLElement).style.fontSize = size;
-        });
+      const fontSpans = ref?.querySelectorAll('font[size="7"]');
+      fontSpans?.forEach(span => {
+        (span as HTMLElement).removeAttribute('size');
+        (span as HTMLElement).style.fontSize = size;
+      });
     });
     updateStats();
   };
@@ -197,47 +197,73 @@ export default function StepPenulisan({
     updateStats();
   };
 
+  const handleInput = (index: number) => {
+    updateStats();
+    handleReflow(index);
+  };
+
   // --- 5. NAVIGATION & OVERFLOW ---
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     setCurrentPage(index + 1);
-    
-    requestAnimationFrame(() => {
-      if (el.scrollHeight > el.clientHeight) {
-        if (index === pageCount - 1) {
-          setPageCount(prev => prev + 1);
-          setTimeout(() => {
-             editorRefs.current[index + 1]?.focus();
-             setCurrentPage(index + 2);
-          }, 10);
-        } else {
-          editorRefs.current[index + 1]?.focus();
-          setCurrentPage(index + 2);
-        }
-      }
-    });
 
-    if (e.key === "Backspace" && el.innerText.trim() === "" && index > 0) {
-      setPageCount(prev => prev - 1);
-      setCurrentPage(index);
-      setTimeout(() => {
-        const prevPage = editorRefs.current[index - 1];
-        if (prevPage) {
-          prevPage.focus();
-          const selection = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(prevPage);
-          range.collapse(false);
-          selection?.removeAllRanges();
-          selection?.addRange(range);
+    if (e.key === "Enter") {
+      requestAnimationFrame(() => {
+        if (el.scrollHeight > el.clientHeight) {
+          if (index === pageCount - 1) {
+            setPageCount(prev => prev + 1);
+          }
+          setTimeout(() => {
+            editorRefs.current[index + 1]?.focus();
+          }, 10);
         }
-      }, 10);
+      });
+    }
+
+    if (e.key === "Backspace" && el.innerText.length === 0 && index > 0) {
+      e.preventDefault();
+      const prevPage = editorRefs.current[index - 1];
+      if (prevPage) {
+        setPageCount(prev => prev - 1);
+        prevPage.focus();
+        // Taruh kursor di akhir
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(prevPage);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
     }
   };
 
+  const handleReflow = useCallback((index: number) => {
+    const el = editorRefs.current[index];
+    if (!el) return;
+
+    if (el.scrollHeight > el.clientHeight) {
+      if (index === pageCount - 1) {
+        setPageCount(prev => prev + 1);
+        return;
+      }
+
+      const nextPage = editorRefs.current[index + 1];
+      if (nextPage) {
+        while (el.scrollHeight > el.clientHeight && el.childNodes.length > 0) {
+          const lastChild = el.lastChild;
+          if (!lastChild) break;
+
+          nextPage.insertBefore(lastChild, nextPage.firstChild);
+        }
+
+        handleReflow(index + 1);
+      }
+    }
+  }, [pageCount]);
+
   return (
     <div className={`space-y-6 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 md:p-12 overflow-y-auto" : ""}`}>
-      
+
       {/* HEADER: DROPDOWN BAB MODERN */}
       {!isZenMode && (
         <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
@@ -245,10 +271,10 @@ export default function StepPenulisan({
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block pl-1">
               Pilih Bab Untuk Ditulis
             </label>
-            
+
             {/* Custom UI Dropdown */}
             <div className="relative w-full max-w-md">
-              <button 
+              <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="w-full flex items-center justify-between bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl hover:border-blue-500 transition-all shadow-inner group"
               >
@@ -261,7 +287,7 @@ export default function StepPenulisan({
                   </span>
                 </div>
                 <motion.div animate={{ rotate: isDropdownOpen ? 180 : 0 }}>
-                    <ChevronDown className="text-slate-400 group-hover:text-blue-500" size={18} />
+                  <ChevronDown className="text-slate-400 group-hover:text-blue-500" size={18} />
                 </motion.div>
               </button>
 
@@ -269,7 +295,7 @@ export default function StepPenulisan({
                 {isDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -284,11 +310,10 @@ export default function StepPenulisan({
                                 setSelectedChapter(chap);
                                 setIsDropdownOpen(false);
                               }}
-                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${
-                                selectedChapter?.id === chap.id 
-                                ? "bg-blue-50 text-blue-700" 
+                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${selectedChapter?.id === chap.id
+                                ? "bg-blue-50 text-blue-700"
                                 : "hover:bg-slate-50 text-slate-600"
-                              }`}
+                                }`}
                             >
                               <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${selectedChapter?.id === chap.id ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
                                 {chap.chapter_number}
@@ -314,7 +339,7 @@ export default function StepPenulisan({
           <div className="flex items-center gap-4">
             <AnimatePresence>
               {selectedChapter && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   className="bg-blue-50 px-5 py-3 rounded-2xl border border-blue-100 flex items-center gap-3"
@@ -341,24 +366,24 @@ export default function StepPenulisan({
             </span>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
-           <span className="text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700">
-             Halaman: {currentPage} / {pageCount}
-           </span>
-           <button 
-             onClick={() => setIsZenMode(!isZenMode)} 
-             className="bg-black text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all"
-           >
-             {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
-           </button>
+          <span className="text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700">
+            Halaman: {currentPage} / {pageCount}
+          </span>
+          <button
+            onClick={() => setIsZenMode(!isZenMode)}
+            className="bg-black text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all"
+          >
+            {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
+          </button>
         </div>
       </div>
 
       <div className="max-w-[1200px] mx-auto">
         {!selectedChapter ? (
           <div className="h-[500px] flex flex-col items-center justify-center bg-slate-50/50 rounded-[3rem] border-4 border-dashed border-slate-200">
-            <motion.div 
+            <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ repeat: Infinity, duration: 2 }}
               className="text-6xl mb-6 opacity-30"
@@ -370,10 +395,10 @@ export default function StepPenulisan({
           </div>
         ) : (
           <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
-            
+
             {/* TOOLBAR */}
             <div className="w-full bg-slate-50 px-6 py-4 border-b-2 border-slate-100 flex flex-wrap items-center gap-4 sticky top-0 z-50 shadow-sm text-black">
-              
+
               {/* Bold, Italic, Underline */}
               <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black">
                 <button onMouseDown={(e) => { e.preventDefault(); applyStyle("bold"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors">B</button>
@@ -400,9 +425,9 @@ export default function StepPenulisan({
               {/* Font Family Selector */}
               <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
                 <Type size={14} className="text-slate-400 mr-2" />
-                <select 
-                  value={selectedFontFamily} 
-                  onChange={(e) => applyFontFamily(e.target.value)} 
+                <select
+                  value={selectedFontFamily}
+                  onChange={(e) => applyFontFamily(e.target.value)}
                   className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
                 >
                   <option value="'Times New Roman', serif">Times New Roman</option>
@@ -416,9 +441,9 @@ export default function StepPenulisan({
               {/* Font Size Selector */}
               <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
                 <span className="text-[8px] font-black uppercase text-slate-400 mr-2">Size</span>
-                <select 
-                  value={selectedFontSize} 
-                  onChange={(e) => applyFontSize(e.target.value)} 
+                <select
+                  value={selectedFontSize}
+                  onChange={(e) => applyFontSize(e.target.value)}
                   className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
                 >
                   {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36].map((size) => (
@@ -442,28 +467,29 @@ export default function StepPenulisan({
                   <div className={`absolute -left-16 top-10 font-black text-4xl transition-all ${currentPage === index + 1 ? "text-black opacity-100 scale-110" : "text-slate-100 opacity-30"}`}>
                     {index + 1}
                   </div>
-                  <div 
+                  <div
                     ref={(el) => { editorRefs.current[index] = el; }}
                     contentEditable={!isLoading}
                     suppressContentEditableWarning={true}
                     onFocus={() => setCurrentPage(index + 1)}
-                    onInput={updateStats}
+                    onInput={() => handleInput(index)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     className="bg-white shadow-2xl outline-none text-black font-serif prose prose-slate a4-page-div"
-                    style={{ 
-                        width: '210mm',
-                        height: '297mm', 
-                        padding: '2.54cm', 
-                        fontSize: selectedFontSize, 
-                        fontFamily: selectedFontFamily,
-                        lineHeight: '1.6',
-                        overflow: 'hidden', 
-                        boxSizing: 'border-box',
+                    style={{
+                      width: '210mm',
+                      height: '297mm',
+                      padding: '2.54cm',
+                      fontSize: selectedFontSize,
+                      fontFamily: selectedFontFamily,
+                      lineHeight: '1.6',
+                      overflow: 'hidden',
+                      boxSizing: 'border-box',
+                      wordBreak: 'break-word'
                     }}
                   />
                 </div>
               ))}
-              
+
               <button onClick={() => setPageCount(prev => prev + 1)} className="mt-4 mb-20 px-10 py-4 bg-black/20 hover:bg-black text-white rounded-full text-[10px] font-black uppercase border-2 border-white/30 transition-all shadow-xl backdrop-blur-md">
                 + Tambah Halaman Manual
               </button>
@@ -482,7 +508,7 @@ export default function StepPenulisan({
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-               <div className="text-[10px] font-black uppercase bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700 shadow-inner">
+              <div className="text-[10px] font-black uppercase bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700 shadow-inner">
                 Total Halaman: {pageCount}
               </div>
             </div>

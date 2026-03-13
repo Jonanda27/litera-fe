@@ -56,11 +56,11 @@ export default function StepPenulisanNonFiction({
       try {
         const token = localStorage.getItem("token");
         const res = await axios.get(
-  `${API_BASE_URL}/books/chapter-structures/${bookId}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  }
-);
+          `${API_BASE_URL}/books/chapter-structures/${bookId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setChapters(res.data);
       } catch (err) {
         console.error("Gagal mengambil struktur bab");
@@ -77,10 +77,10 @@ export default function StepPenulisanNonFiction({
 
       try {
         setIsLoading(true);
-       const response = await fetch(
-  `${API_BASE_URL}/books/non-fiction/get-content?bookId=${bookId}&chapterNumber=${selectedChapter.chapterNumber}`,
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+        const response = await fetch(
+          `${API_BASE_URL}/books/non-fiction/get-content?bookId=${bookId}&chapterNumber=${selectedChapter.chapterNumber}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
         const result = await response.json();
 
@@ -150,8 +150,8 @@ export default function StepPenulisanNonFiction({
     setSaveStatus("Saving...");
     try {
       const token = localStorage.getItem("token");
-    const response = await fetch(
-  `${API_BASE_URL}/books/non-fiction/save-content`,
+      const response = await fetch(
+        `${API_BASE_URL}/books/non-fiction/save-content`,
         {
           method: "POST",
           headers: {
@@ -209,46 +209,75 @@ export default function StepPenulisanNonFiction({
     updateStats();
   };
 
+  const handleOnInput = (index: number) => {
+    updateStats();
+    handleReflow(index);
+  };
+
   // --- 5. NAVIGATION & OVERFLOW ---
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLDivElement>,
-  ) => {
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     setCurrentPage(index + 1);
 
-    requestAnimationFrame(() => {
-      if (el.scrollHeight > el.clientHeight) {
-        if (index === pageCount - 1) {
-          setPageCount((prev) => prev + 1);
-          setTimeout(() => {
-            editorRefs.current[index + 1]?.focus();
-            setCurrentPage(index + 2);
-          }, 10);
-        } else {
-          editorRefs.current[index + 1]?.focus();
-          setCurrentPage(index + 2);
-        }
-      }
-    });
-
-    if (e.key === "Backspace" && el.innerText.trim() === "" && index > 0) {
-      setPageCount((prev) => prev - 1);
-      setCurrentPage(index);
-      setTimeout(() => {
+    // Jika menekan Backspace di awal halaman, pindah ke halaman sebelumnya
+    if (e.key === "Backspace" && index > 0) {
+      const selection = window.getSelection();
+      if (selection && selection.anchorOffset === 0 && selection.anchorNode === el.firstChild) {
+        e.preventDefault();
         const prevPage = editorRefs.current[index - 1];
         if (prevPage) {
+          // Hapus halaman saat ini jika kosong (opsional)
+          if (el.innerText.trim() === "") {
+            setPageCount(prev => prev - 1);
+          }
           prevPage.focus();
-          const selection = window.getSelection();
           const range = document.createRange();
           range.selectNodeContents(prevPage);
           range.collapse(false);
-          selection?.removeAllRanges();
-          selection?.addRange(range);
+          selection.removeAllRanges();
+          selection.addRange(range);
         }
-      }, 10);
+      }
+    }
+
+    // Jika Enter dan halaman penuh, langsung fokus ke halaman baru
+    if (e.key === "Enter") {
+      requestAnimationFrame(() => {
+        if (el.scrollHeight > el.clientHeight) {
+          if (index === pageCount - 1) {
+            setPageCount(prev => prev + 1);
+          }
+          setTimeout(() => {
+            editorRefs.current[index + 1]?.focus();
+          }, 10);
+        }
+      });
     }
   };
+
+  const handleReflow = useCallback((index: number) => {
+    const el = editorRefs.current[index];
+    if (!el) return;
+
+    if (el.scrollHeight > el.clientHeight) {
+      if (index === pageCount - 1) {
+        setPageCount((prev) => prev + 1);
+        return;
+      }
+
+      const nextPage = editorRefs.current[index + 1];
+      if (nextPage) {
+        while (el.scrollHeight > el.clientHeight && el.childNodes.length > 0) {
+          const lastChild = el.lastChild;
+          if (!lastChild) break;
+
+          nextPage.insertBefore(lastChild, nextPage.firstChild);
+        }
+
+        handleReflow(index + 1);
+      }
+    }
+  }, [pageCount]);
 
   return (
     <div
@@ -306,12 +335,11 @@ export default function StepPenulisanNonFiction({
                                 setSelectedChapter(ch);
                                 setIsDropdownOpen(false);
                               }}
-                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${
-                                selectedChapter?.chapterNumber ===
-                                ch.chapterNumber
+                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${selectedChapter?.chapterNumber ===
+                                  ch.chapterNumber
                                   ? "bg-slate-100 text-slate-900"
                                   : "hover:bg-slate-50 text-slate-600"
-                              }`}
+                                }`}
                             >
                               <span
                                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${selectedChapter?.chapterNumber === ch.chapterNumber ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-400 border-slate-200"}`}
@@ -342,11 +370,10 @@ export default function StepPenulisanNonFiction({
 
           <div className="flex items-center gap-4">
             <div
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all ${
-                saveStatus === "Saved"
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all ${saveStatus === "Saved"
                   ? "bg-emerald-50 border-emerald-200 text-emerald-600"
                   : "bg-slate-50 border-slate-200 text-slate-500"
-              }`}
+                }`}
             >
               {saveStatus === "Saved" ? (
                 <CheckCircle2 size={14} />
@@ -553,7 +580,7 @@ export default function StepPenulisanNonFiction({
                     contentEditable={!isLoading}
                     suppressContentEditableWarning={true}
                     onFocus={() => setCurrentPage(index + 1)}
-                    onInput={updateStats}
+                    onInput={() => handleOnInput(index)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     className="bg-white shadow-2xl outline-none text-black prose prose-slate a4-page-div"
                     style={{
@@ -565,6 +592,7 @@ export default function StepPenulisanNonFiction({
                       lineHeight: "1.8",
                       overflow: "hidden",
                       boxSizing: "border-box",
+                      wordBreak: "break-word"
                     }}
                   />
                 </div>

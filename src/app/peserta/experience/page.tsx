@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Video,
   Radio,
+  ArrowLeft, // Tambahan icon ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -74,7 +75,11 @@ export default function Experience() {
   // --- STATE NOTIFIKASI & MEETING ---
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [meetings, setMeetings] = useState([]);
-  const [isCreateMeetingModalOpen, setIsCreateMeetingModalOpen] = useState(false);
+  const [isCreateMeetingModalOpen, setIsCreateMeetingModalOpen] =
+    useState(false);
+
+  // --- STATE UI RESPONSIVE ---
+  const [isMobileMembersOpen, setIsMobileMembersOpen] = useState(false);
 
   // --- STATE FORM MEETING ---
   const [meetingTitle, setMeetingTitle] = useState("");
@@ -99,7 +104,7 @@ export default function Experience() {
 
   const fetchMeetings = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/meetings/all-meetings`)
+      const res = await fetch(`${API_BASE_URL}/meetings/all-meetings`);
       const result = await res.json();
       if (result.success || result.data) setMeetings(result.data);
     } catch (err) {
@@ -317,17 +322,20 @@ export default function Experience() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/meetings/create-meeting/${currentDiscussionId}/start-meeting`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_BASE_URL}/meetings/create-meeting/${currentDiscussionId}/start-meeting`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            title: meetingTitle,
+            description: meetingDesc,
+          }),
         },
-        body: JSON.stringify({
-          title: meetingTitle,
-          description: meetingDesc,
-        }),
-      });
+      );
 
       const result = await response.json();
 
@@ -379,17 +387,16 @@ export default function Experience() {
 
   const activeList = viewMode === "all" ? allDiscussions : myDiscussions;
 
-  // Ambil data detail grup yang sedang aktif dibuka
-  const currentRoomData = allDiscussions.find(d => d.id.toString() === currentDiscussionId);
-
-  // Cek apakah user yang login adalah pemilik grup ini
-  const isOwner = currentRoomData && currentUser && Number(currentRoomData.owner_id) === currentUser.id;
-
-  // Cek apakah grup ini sudah punya meeting aktif
+  const currentRoomData = allDiscussions.find(
+    (d) => d.id.toString() === currentDiscussionId,
+  );
+  const isOwner =
+    currentRoomData &&
+    currentUser &&
+    Number(currentRoomData.owner_id) === currentUser.id;
   const hasActiveMeeting = currentRoomData?.meeting_id != null;
-
-  const filteredMeetings = meetings.filter((m: any) =>
-    m.id.toString() === currentRoomData?.meeting_id?.toString()
+  const filteredMeetings = meetings.filter(
+    (m: any) => m.id.toString() === currentRoomData?.meeting_id?.toString(),
   );
 
   if (isLoadingSync)
@@ -401,50 +408,53 @@ export default function Experience() {
 
   return (
     <Sidebar>
-      <div className="max-w-[1400px] mx-auto h-[calc(100vh-140px)] flex flex-col">
+      <div className="max-w-[1400px] mx-auto h-[calc(100dvh-80px)] md:h-[calc(100vh-120px)] flex flex-col px-2 md:px-4 lg:px-0">
         {/* Header Section */}
-        <div className="flex justify-between items-end mb-6 flex-shrink-0">
+        <div className="flex justify-between items-end mb-3 md:mb-6 flex-shrink-0 pt-4 md:pt-0 px-2 md:px-0">
           <div>
-            <h1 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tighter">
               Experience
             </h1>
-            <p className="text-slate-500 font-bold text-xs uppercase mt-1 tracking-widest">
+            <p className="text-slate-500 font-bold text-[10px] md:text-xs uppercase mt-0.5 md:mt-1 tracking-widest">
               Ruang Diskusi & Community Hub
             </p>
           </div>
         </div>
 
-        <div className="flex-1 grid lg:grid-cols-12 bg-white rounded-[2.5rem] border shadow-2xl overflow-hidden min-h-0">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 bg-white rounded-2xl md:rounded-[2.5rem] border shadow-xl overflow-hidden min-h-0 relative">
           {/* 1. Sidebar Kiri (Daftar Diskusi) */}
-          <div className="hidden md:flex md:col-span-3 border-r flex-col bg-slate-50/50">
-            <div className="p-5 border-b bg-white flex justify-between items-center">
-              <h3 className="font-black text-slate-800 text-[10px] uppercase tracking-widest">
+          <div
+            className={`${currentDiscussionId ? "hidden md:flex" : "flex"} col-span-12 md:col-span-4 lg:col-span-3 border-r flex-col bg-slate-50/50 z-10`}
+          >
+            <div className="p-4 md:p-5 border-b bg-white flex justify-between items-center shrink-0">
+              <h3 className="font-black text-slate-800 text-[10px] md:text-[11px] uppercase tracking-widest">
                 Explore Chat
               </h3>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="p-2 bg-[#c31a26] text-white rounded-xl hover:scale-110 transition-all shadow-lg"
+                className="p-2 md:p-2.5 bg-[#c31a26] text-white rounded-xl hover:scale-110 transition-all shadow-lg"
               >
-                <Plus size={14} />
+                <Plus size={14} className="md:w-4 md:h-4" />
               </button>
             </div>
 
-            <div className="flex p-2 gap-1 bg-white border-b">
+            <div className="flex p-2 gap-1 bg-white border-b shrink-0">
               <button
                 onClick={() => setViewMode("all")}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1 ${viewMode === "all" ? "bg-[#c31a26] text-white shadow-md" : "text-slate-400 hover:bg-slate-50"}`}
+                className={`flex-1 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1.5 ${viewMode === "all" ? "bg-[#c31a26] text-white shadow-md" : "text-slate-400 hover:bg-slate-50"}`}
               >
-                <Globe size={12} /> Semua
+                <Globe size={12} className="md:w-3.5 md:h-3.5" /> Semua
               </button>
               <button
                 onClick={() => setViewMode("joined")}
-                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center justify-center gap-1 ${viewMode === "joined" ? "bg-[#1e4e8c] text-white shadow-md" : "text-slate-400 hover:bg-slate-50"}`}
+                className={`flex-1 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1.5 ${viewMode === "joined" ? "bg-[#1e4e8c] text-white shadow-md" : "text-slate-400 hover:bg-slate-50"}`}
               >
-                <BookmarkCheck size={12} /> Diikuti
+                <BookmarkCheck size={12} className="md:w-3.5 md:h-3.5" />{" "}
+                Diikuti
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-2.5 md:p-3 space-y-2 custom-scrollbar">
               {activeList.map((room) => {
                 const roomId = room.id.toString();
                 const count = unreadCounts[roomId] || 0;
@@ -452,15 +462,15 @@ export default function Experience() {
                   <div
                     key={room.id}
                     onClick={() => handleRoomClick(room)}
-                    className={`p-4 rounded-2xl cursor-pointer transition-all border-2 relative ${currentDiscussionId === roomId ? "bg-white border-[#c31a26] shadow-md" : "border-transparent hover:bg-white/60"}`}
+                    className={`p-3 md:p-4 rounded-[1rem] cursor-pointer transition-all border-2 relative ${currentDiscussionId === roomId ? "bg-white border-[#c31a26] shadow-sm" : "border-transparent hover:bg-white/60"}`}
                   >
                     <div className="flex justify-between items-center">
-                      <p className="font-black text-[12px] text-slate-800 uppercase truncate">
+                      <p className="font-black text-[11px] md:text-[12px] text-slate-800 uppercase truncate">
                         # {room.name}
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {count > 0 && (
-                          <span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                          <span className="bg-red-600 text-white text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-full">
                             {count}
                           </span>
                         )}
@@ -478,28 +488,47 @@ export default function Experience() {
           </div>
 
           {/* 2. Chat Window Area (Tengah) */}
-          <div className="col-span-12 md:col-span-9 lg:col-span-6 flex flex-col bg-white border-r min-h-0">
+          <div
+            className={`${!currentDiscussionId ? "hidden md:flex" : "flex"} col-span-12 md:col-span-8 lg:col-span-6 flex-col bg-white lg:border-r min-h-0 relative z-10`}
+          >
             {currentDiscussionId ? (
               <>
-                <div className="p-5 border-b flex items-center justify-between bg-white">
+                <div className="p-3 md:p-4 border-b flex items-center justify-between bg-white shrink-0 shadow-sm z-10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#c31a26] rounded-2xl flex items-center justify-center text-white font-black shadow-lg uppercase">
+                    <button
+                      onClick={() => setCurrentDiscussionId("")}
+                      className="md:hidden p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+
+                    <div className="w-9 h-9 md:w-10 md:h-10 bg-[#c31a26] rounded-xl flex items-center justify-center text-white font-black shadow-md uppercase text-sm md:text-base shrink-0">
                       {allDiscussions
                         .find((d) => d.id.toString() === currentDiscussionId)
                         ?.name.charAt(0)}
                     </div>
-                    <h3 className="font-black text-slate-800 uppercase text-sm">
+                    <h3 className="font-black text-slate-800 uppercase text-xs md:text-sm truncate max-w-[140px] sm:max-w-[200px]">
                       {allDiscussions.find(
                         (d) => d.id.toString() === currentDiscussionId,
                       )?.name || "Diskusi"}
                     </h3>
                   </div>
+
+                  <button
+                    onClick={() => setIsMobileMembersOpen(true)}
+                    className="lg:hidden flex items-center gap-1.5 p-2 md:px-3 bg-blue-50 text-[#1e4e8c] rounded-xl hover:bg-blue-100 transition-colors"
+                  >
+                    <Users size={16} className="md:w-4 md:h-4" />
+                    <span className="text-[9px] md:text-[10px] font-black uppercase hidden sm:block tracking-widest">
+                      Detail
+                    </span>
+                  </button>
                 </div>
 
-                <div className="flex-1 overflow-hidden relative bg-[#f1f5f9] flex flex-col min-h-0">
+                <div className="flex-1 overflow-hidden relative bg-[#f8fafc] flex flex-col min-h-0">
                   <div
                     ref={scrollRef}
-                    className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth"
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth"
                   >
                     {messages.map((msg) => (
                       <div
@@ -507,18 +536,18 @@ export default function Experience() {
                         className={`flex ${msg.isMe ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[85%] p-4 rounded-3xl text-sm shadow-sm relative ${msg.isMe ? "bg-[#1e4e8c] text-white rounded-tr-none" : "bg-white text-slate-900 rounded-tl-none border"}`}
+                          className={`max-w-[85%] md:max-w-[75%] p-3 md:p-4 rounded-2xl md:rounded-[1.5rem] text-xs md:text-sm shadow-sm relative ${msg.isMe ? "bg-[#1e4e8c] text-white rounded-tr-sm" : "bg-white text-slate-900 rounded-tl-sm border border-slate-100"}`}
                         >
                           {!msg.isMe && (
-                            <p className="text-[10px] font-black mb-1 text-[#c31a26] uppercase">
+                            <p className="text-[9px] md:text-[10px] font-black mb-1 text-[#c31a26] uppercase tracking-wider">
                               {msg.sender}
                             </p>
                           )}
-                          <p className="font-medium leading-relaxed">
+                          <p className="font-medium leading-relaxed text-sm">
                             {msg.text}
                           </p>
                           <p
-                            className={`text-[8px] font-black mt-2 text-right ${msg.isMe ? "text-white/60" : "text-slate-400"}`}
+                            className={`text-[8px] md:text-[9px] font-bold mt-2 text-right ${msg.isMe ? "text-white/60" : "text-slate-400"}`}
                           >
                             {msg.timestamp}
                           </p>
@@ -528,44 +557,45 @@ export default function Experience() {
                   </div>
                 </div>
 
-                <div className="p-5 bg-white border-t">
+                <div className="p-3 md:p-4 bg-white border-t shrink-0">
                   {joinedRoomIds.includes(currentDiscussionId) ? (
                     <form
                       onSubmit={sendMessage}
-                      className="flex items-center gap-3 bg-slate-100 rounded-2xl p-1 px-4 border focus-within:border-[#1e4e8c] transition-all"
+                      className="flex items-center gap-2 md:gap-3 bg-slate-50 rounded-xl md:rounded-2xl p-1.5 px-3 md:px-4 border border-slate-200 focus-within:border-[#1e4e8c] focus-within:bg-white transition-all shadow-inner"
                     >
                       <input
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
-                        placeholder="Tulis pesan kamu..."
-                        className="w-full bg-transparent border-none py-3 text-sm outline-none font-bold text-slate-800"
+                        placeholder="Ketik pesan..."
+                        className="w-full bg-transparent border-none py-2 md:py-3 text-xs md:text-sm outline-none font-medium text-slate-800"
                       />
                       <button
                         type="submit"
-                        className="bg-[#c31a26] text-white p-3 rounded-xl shadow-lg active:scale-95 transition-all"
+                        className="bg-[#c31a26] text-white p-2.5 md:p-3 rounded-lg md:rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all shrink-0"
                       >
-                        <Send size={18} />
+                        <Send size={16} className="md:w-5 md:h-5" />
                       </button>
                     </form>
                   ) : (
                     <button
                       onClick={triggerJoinModal}
-                      className="w-full py-4 bg-[#1e4e8c] hover:bg-[#153a69] text-white rounded-2xl font-black uppercase text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 group"
+                      className="w-full py-3.5 md:py-4 bg-[#1e4e8c] hover:bg-[#153a69] text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 group"
                     >
-                      <UserPlus size={18} /> Bergabung ke Grup
+                      <UserPlus size={16} className="md:w-4 md:h-4" /> Bergabung
+                      ke Grup
                     </button>
                   )}
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-10 text-center bg-slate-50">
-                <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-3xl">
+              <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 text-center bg-slate-50/50">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-[2rem] flex items-center justify-center mb-4 text-2xl md:text-3xl shadow-sm border border-slate-100">
                   💬
                 </div>
-                <h3 className="text-lg font-black text-slate-800 uppercase">
+                <h3 className="text-base md:text-lg font-black text-slate-800 uppercase">
                   Pilih Ruangan
                 </h3>
-                <p className="text-xs text-slate-400 font-bold max-w-xs mt-2 uppercase">
+                <p className="text-[10px] md:text-xs text-slate-400 font-bold max-w-[200px] md:max-w-xs mt-2 uppercase leading-relaxed">
                   Silakan pilih dari daftar diskusi di samping untuk mulai
                   berinteraksi.
                 </p>
@@ -574,16 +604,42 @@ export default function Experience() {
           </div>
 
           {/* 3. Sidebar Kanan (Anggota & Meeting) */}
-          <div className="hidden lg:flex lg:col-span-3 flex-col bg-slate-50/30 min-h-0 border-l">
+          {isMobileMembersOpen && (
+            <div
+              className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[40] lg:hidden transition-opacity"
+              onClick={() => setIsMobileMembersOpen(false)}
+            />
+          )}
+
+          <div
+            className={`fixed inset-y-0 right-0 z-[50] w-[85%] sm:w-[380px] bg-white flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out 
+            lg:static lg:w-auto lg:transform-none lg:shadow-none lg:flex lg:col-span-3 lg:bg-slate-50/30 min-h-0 lg:border-l
+            ${isMobileMembersOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+          >
+            <div className="lg:hidden p-4 md:p-5 border-b bg-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-50 text-[#1e4e8c] rounded-lg flex items-center justify-center">
+                  <Users size={16} />
+                </div>
+                <h3 className="font-black text-slate-800 text-xs uppercase tracking-widest">
+                  Info Ruangan
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsMobileMembersOpen(false)}
+                className="p-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
             {currentDiscussionId ? (
               <>
-                {/* Bagian Anggota */}
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="p-6 border-b bg-white font-black text-slate-800 text-[10px] uppercase tracking-widest flex items-center justify-between">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="p-4 md:p-5 border-b bg-white/50 font-black text-slate-800 text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-between shrink-0">
                     Anggota Grup ({roomMembers.length})
-                    <Users size={16} className="text-slate-400" />
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                  <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 custom-scrollbar">
                     {roomMembers.map((member) => {
                       const isOnline = onlineUsers.some(
                         (u) => Number(u.id) === Number(member.id),
@@ -594,21 +650,25 @@ export default function Experience() {
                           className="flex items-center gap-3 group"
                         >
                           <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-[10px] font-black shadow-md ${isOnline ? "bg-[#c31a26]" : "bg-slate-300"}`}
+                            className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center text-white text-[10px] md:text-xs font-black shadow-sm ${isOnline ? "bg-[#c31a26]" : "bg-slate-300"}`}
                           >
                             {member.nama?.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[11px] font-black text-slate-800 uppercase truncate">
+                            <p className="text-[11px] md:text-xs font-black text-slate-800 uppercase truncate">
                               {member.nama}{" "}
-                              {member.id === currentUser?.id && "(Anda)"}
+                              {member.id === currentUser?.id && (
+                                <span className="text-slate-400 font-bold">
+                                  (Anda)
+                                </span>
+                              )}
                             </p>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5 mt-0.5">
                               <span
                                 className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-green-500 animate-pulse" : "bg-slate-300"}`}
                               ></span>
                               <span
-                                className={`text-[8px] font-black uppercase ${isOnline ? "text-green-600" : "text-slate-400"}`}
+                                className={`text-[8px] md:text-[9px] font-black uppercase tracking-wider ${isOnline ? "text-green-600" : "text-slate-400"}`}
                               >
                                 {isOnline ? "Connected" : "Offline"}
                               </span>
@@ -619,40 +679,55 @@ export default function Experience() {
                     })}
                   </div>
                 </div>
-                {hasActiveMeeting ? (
-                  <button
-                    onClick={() => router.push(`/peserta/experience/component/${currentRoomData?.meeting_id}`)}
-                    className="mx-4 mb-4 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3"
-                  >
-                    <Radio size={16} /> Join Live Meeting
-                  </button>
-                ) : isOwner ? (
-                  <button
-                    onClick={() => setIsCreateMeetingModalOpen(true)}
-                    className="mx-4 mb-4 bg-[#c31a26] hover:bg-[#a5161f] text-white px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl flex items-center justify-center gap-3"
-                  >
-                    <Plus size={16} /> Mulai Diskusi
-                  </button>
-                ) : (
-                  <div className="mx-4 mb-4 py-3 text-center border-2 border-dashed border-slate-200 rounded-2xl text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    Tidak ada sesi video
+
+                {/* --- BAGIAN YANG DIPERBAIKI: KEATASIN DISCUSSION CARD --- */}
+                <div className="shrink-0 bg-slate-50/50 border-t border-slate-100 flex flex-col min-h-0">
+                  <div className="px-4 py-3 md:px-5 md:py-4">
+                    {" "}
+                    {/* Padding dikurangi */}
+                    {hasActiveMeeting ? (
+                      <button
+                        onClick={() =>
+                          router.push(
+                            `/peserta/experience/component/${currentRoomData?.meeting_id}`,
+                          )
+                        }
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 md:py-3 rounded-xl font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all shadow-lg flex items-center justify-center gap-2 animate-bounce"
+                      >
+                        <Radio size={16} /> Join Live Meeting
+                      </button>
+                    ) : isOwner ? (
+                      <button
+                        onClick={() => setIsCreateMeetingModalOpen(true)}
+                        className="w-full bg-[#c31a26] hover:bg-[#a5161f] text-white px-4 py-2.5 md:py-3 rounded-xl font-black uppercase text-[10px] md:text-[11px] tracking-widest transition-all shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <Plus size={16} /> Mulai Diskusi Video
+                      </button>
+                    ) : (
+                      <div className="w-full py-2.5 text-center border-2 border-dashed border-slate-200 bg-white rounded-xl text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Belum Ada Sesi Video
+                      </div>
+                    )}
                   </div>
-                )}
-                {/* Bagian DiscussionCards (Meeting Aktif) */}
-                <div className="h-[45%] border-t bg-white flex flex-col min-h-0 overflow-hidden">
-                  {filteredMeetings.length > 0 ? (
-                    <DiscussionCards items={filteredMeetings} />
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
-                      <p className="text-[10px] font-black uppercase">Tidak ada info meeting</p>
-                    </div>
-                  )}
+
+                  {/* DiscussionCards: Tinggi disesuaikan agar area ini naik ke atas */}
+                  <div className="flex-1 max-h-[250px] md:max-h-[300px] overflow-hidden bg-white/50">
+                    {filteredMeetings.length > 0 ? (
+                      <DiscussionCards items={filteredMeetings} />
+                    ) : (
+                      <div className="h-24 flex flex-col items-center justify-center p-4 text-center opacity-40">
+                        <p className="text-[9px] font-black uppercase tracking-widest">
+                          Tidak ada info meeting
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-10 opacity-20 grayscale">
                 <Users size={40} className="mb-4" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-center">
+                <p className="text-[10px] font-black uppercase tracking-widest text-center leading-relaxed">
                   Detail akan muncul setelah memilih ruangan
                 </p>
               </div>
@@ -661,7 +736,7 @@ export default function Experience() {
         </div>
       </div>
 
-      {/* --- MODAL MULAI DISKUSI (MEETING) - NUANSA MERAH --- */}
+      {/* MODAL - TETAP SAMA */}
       <AnimatePresence>
         {isCreateMeetingModalOpen && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -669,89 +744,88 @@ export default function Experience() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-8 w-full max-w-lg shadow-2xl border-4 border-[#c31a26] relative overflow-hidden"
+              className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 w-full max-w-lg shadow-2xl border-4 border-[#c31a26] relative overflow-hidden"
             >
-              {/* Dekorasi Background Halus */}
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-50 rounded-full blur-3xl opacity-50" />
-
               <button
                 onClick={() => setIsCreateMeetingModalOpen(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-red-50 rounded-full transition-colors group z-10"
+                className="absolute top-4 md:top-6 right-4 md:right-6 p-2 hover:bg-red-50 rounded-full transition-colors group z-10"
               >
-                <X size={20} className="text-slate-400 group-hover:text-[#c31a26]" />
+                <X
+                  size={20}
+                  className="text-slate-400 group-hover:text-[#c31a26]"
+                />
               </button>
-
-              <div className="mb-8 relative">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-[#c31a26] shadow-inner">
-                    <Video size={28} />
+              <div className="mb-6 md:mb-8 relative text-center md:text-left">
+                <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 mb-4">
+                  <div className="w-12 h-12 md:w-14 md:h-14 bg-red-50 rounded-xl md:rounded-2xl flex items-center justify-center text-[#c31a26] shadow-inner shrink-0">
+                    <Video size={24} className="md:w-7 md:h-7" />
                   </div>
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <Radio size={14} className="text-[#c31a26] animate-pulse" />
-                      <span className="text-[10px] font-black text-[#c31a26] uppercase tracking-[0.2em]">Live Session</span>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <Radio
+                        size={12}
+                        className="text-[#c31a26] animate-pulse md:w-3.5 md:h-3.5"
+                      />
+                      <span className="text-[9px] md:text-[10px] font-black text-[#c31a26] uppercase tracking-[0.2em]">
+                        Live Session
+                      </span>
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter">
                       Mulai Diskusi
                     </h2>
                   </div>
                 </div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Hubungkan komunitas Anda dalam ruang tatap muka digital.
-                </p>
               </div>
-
-              <form onSubmit={handleCreateMeeting} className="space-y-5 relative">
+              <form
+                onSubmit={handleCreateMeeting}
+                className="space-y-4 md:space-y-5 relative"
+              >
                 <div>
-                  <label className="block text-[10px] font-black text-slate-700 mb-2 uppercase tracking-widest">
+                  <label className="block text-[9px] md:text-[10px] font-black text-slate-700 mb-2 uppercase tracking-widest">
                     Judul Diskusi
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] focus:bg-white outline-none font-bold text-slate-800 text-sm transition-all placeholder:text-slate-300"
+                    className="w-full p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] focus:bg-white outline-none font-bold text-slate-800 text-xs md:text-sm transition-all placeholder:text-slate-300"
                     placeholder="CONTOH: SHARING SESSION UI/UX"
                     value={meetingTitle}
                     onChange={(e) => setMeetingTitle(e.target.value)}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-[10px] font-black text-slate-700 mb-2 uppercase tracking-widest">
+                  <label className="block text-[9px] md:text-[10px] font-black text-slate-700 mb-2 uppercase tracking-widest">
                     Deskripsi Sesi
                   </label>
                   <textarea
                     rows={3}
-                    className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] focus:bg-white outline-none font-bold text-slate-800 text-sm transition-all placeholder:text-slate-300"
+                    className="w-full p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] focus:bg-white outline-none font-bold text-slate-800 text-xs md:text-sm transition-all placeholder:text-slate-300 custom-scrollbar"
                     placeholder="JELASKAN APA YANG AKAN DIBAHAS..."
                     value={meetingDesc}
                     onChange={(e) => setMeetingDesc(e.target.value)}
                   />
                 </div>
-
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-2 md:gap-3 pt-2 md:pt-4">
                   <button
                     type="button"
                     onClick={() => setIsCreateMeetingModalOpen(false)}
-                    className="flex-1 py-4 font-black text-slate-400 hover:text-slate-600 uppercase text-xs transition-colors"
+                    className="flex-1 py-3 md:py-4 font-black text-slate-400 hover:text-slate-600 uppercase text-[10px] md:text-xs transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isMeetingLoading}
-                    className={`flex-[2] py-4 rounded-2xl font-black uppercase text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isMeetingLoading
-                      ? "bg-slate-300 text-white cursor-not-allowed"
-                      : "bg-[#c31a26] text-white hover:bg-[#a5161f] shadow-red-200"
-                      }`}
+                    className={`flex-[2] py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${isMeetingLoading ? "bg-slate-300 text-white cursor-not-allowed" : "bg-[#c31a26] text-white hover:bg-[#a5161f] shadow-red-200"}`}
                   >
                     {isMeetingLoading ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         <span>Memproses...</span>
                       </>
                     ) : (
-                      "Buat & Gabung Sekarang →"
+                      "Buat & Gabung →"
                     )}
                   </button>
                 </div>
@@ -761,7 +835,6 @@ export default function Experience() {
         )}
       </AnimatePresence>
 
-      {/* --- MODAL TERBITKAN TOPIK (CHAT ROOM) --- */}
       <AnimatePresence>
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -769,30 +842,33 @@ export default function Experience() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl border-4 border-[#1e4e8c]"
+              className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 w-full max-w-md shadow-2xl border-4 border-[#1e4e8c] relative"
             >
-              <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase tracking-tighter">
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 mb-4 md:mb-6 uppercase tracking-tighter">
                 Terbitkan Topik
               </h2>
-              <form onSubmit={handleCreateRoom} className="space-y-5">
+              <form
+                onSubmit={handleCreateRoom}
+                className="space-y-4 md:space-y-5"
+              >
                 <input
                   autoFocus
-                  className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] outline-none font-black text-slate-800 uppercase text-sm transition-all"
+                  className="w-full p-3 md:p-4 rounded-xl md:rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-[#c31a26] outline-none font-black text-slate-800 uppercase text-xs md:text-sm transition-all"
                   placeholder="Nama Ruangan..."
                   value={newRoomName}
                   onChange={(e) => setNewRoomName(e.target.value)}
                 />
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-2 md:gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="flex-1 py-3 font-black text-slate-400 uppercase text-xs"
+                    className="flex-1 py-3 font-black text-slate-400 uppercase text-[10px] md:text-xs"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="flex-[2] py-4 bg-[#c31a26] text-white rounded-2xl font-black uppercase text-xs shadow-xl"
+                    className="flex-[2] py-3 md:py-4 bg-[#c31a26] text-white rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-xl active:scale-95 transition-transform"
                   >
                     Buat Sekarang →
                   </button>
@@ -803,7 +879,6 @@ export default function Experience() {
         )}
       </AnimatePresence>
 
-      {/* --- MODAL KONFIRMASI GABUNG (CHAT ROOM) --- */}
       <AnimatePresence>
         {isConfirmModalOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -811,29 +886,29 @@ export default function Experience() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
-              className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm shadow-2xl text-center border-4 border-[#c31a26]"
+              className="bg-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 w-full max-w-sm shadow-2xl text-center border-4 border-[#c31a26]"
             >
-              <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5 text-3xl">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 md:mb-5 text-2xl md:text-3xl shadow-inner">
                 🤝
               </div>
-              <h2 className="text-xl font-black text-slate-900 mb-2 uppercase">
+              <h2 className="text-lg md:text-xl font-black text-slate-900 mb-2 uppercase">
                 Ayo Bergabung!
               </h2>
-              <p className="text-[10px] text-slate-500 mb-8 font-bold uppercase leading-relaxed tracking-wider">
+              <p className="text-[9px] md:text-[10px] text-slate-500 mb-6 md:mb-8 font-bold uppercase leading-relaxed tracking-wider">
                 Bergabung ke ruang{" "}
                 <span className="text-[#c31a26]">"{pendingRoom?.name}"</span>{" "}
                 untuk mulai berbagi pengalaman.
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2 md:gap-3">
                 <button
                   onClick={() => setIsConfirmModalOpen(false)}
-                  className="flex-1 py-3 font-black text-slate-400 uppercase text-[10px]"
+                  className="flex-1 py-3 font-black text-slate-400 uppercase text-[9px] md:text-[10px]"
                 >
                   Batal
                 </button>
                 <button
                   onClick={handleConfirmJoin}
-                  className="flex-[2] py-4 bg-[#1e4e8c] text-white rounded-2xl font-black uppercase text-[10px] shadow-xl"
+                  className="flex-[2] py-3 md:py-4 bg-[#1e4e8c] text-white rounded-xl md:rounded-2xl font-black uppercase text-[9px] md:text-[10px] shadow-xl active:scale-95 transition-transform"
                 >
                   Ya, Gabung!
                 </button>

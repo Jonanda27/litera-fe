@@ -57,8 +57,8 @@ export default function Dashboard() {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#1e4e8c] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="font-black italic text-[#1e4e8c] animate-pulse uppercase">
+          <div className="w-12 h-12 md:w-16 md:h-16 border-4 border-[#1e4e8c] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-black italic text-[#1e4e8c] animate-pulse uppercase text-sm md:text-base">
             Memuat Dashboard...
           </p>
         </div>
@@ -67,7 +67,7 @@ export default function Dashboard() {
 
   if (!summary)
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center p-4 text-center">
         <p className="font-bold text-red-600">
           Gagal memuat data dashboard. Pastikan server berjalan.
         </p>
@@ -83,12 +83,12 @@ export default function Dashboard() {
         className="space-y-6"
       >
         {/* Header Title */}
-        <header className="flex justify-between items-end">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase ">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight uppercase">
               DASHBOARD
             </h1>
-            <p className="text-[#c31a26] font-black mt-1 uppercase text-sm tracking-widest">
+            <p className="text-[#c31a26] font-black mt-1 uppercase text-xs md:text-sm tracking-widest">
               {summary.level_saat_ini || "Level 1: Dasar Literasi"}
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function Dashboard() {
         */}
         <ProgressBar progress={summary.persentase_progres} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           <div className="lg:col-span-2 space-y-6">
             {/* COURSE CARD 
               Menampilkan detail progres modul yang SEDANG aktif dikerjakan.
@@ -116,16 +116,15 @@ export default function Dashboard() {
             {/* List Aktivitas */}
             <motion.div
               variants={containerVars}
-              className="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden"
+              className="bg-white rounded-2xl md:rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden"
             >
-              <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
-                <div className="flex items-center gap-2 font-black text-slate-700 uppercase italic text-sm">
-                  <span className="text-[#1e4e8c]">🚀</span> Lanjutkan
-                  Aktivitasmu
+              <div className="p-4 md:p-5 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-2 font-black text-slate-700 uppercase italic text-xs md:text-sm">
+                  <span className="text-[#1e4e8c]">🚀</span> Lanjutkan Aktivitasmu
                 </div>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-4 md:p-6 space-y-3 md:space-y-4">
                 {summary.activities && summary.activities.length > 0 ? (
                   summary.activities.map((activity: any, index: number) => (
                     <ActivityRow
@@ -171,19 +170,25 @@ export default function Dashboard() {
 // Sub-component untuk Row Aktivitas
 function ActivityRow({ title, progress, btnLabel, isProject = false }: any) {
   return (
-    <div className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-all group">
-      <div className="w-12 h-12 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center">
-        <div
-          className={`w-full h-full flex items-center justify-center text-white text-[10px] font-black italic ${isProject ? "bg-[#c31a26]" : "bg-[#1e4e8c]"}`}
-        >
-          {isProject ? "PROJ" : "DISK"}
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 hover:bg-slate-50 rounded-2xl transition-all group border border-transparent hover:border-slate-100">
+      <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center">
+          <div
+            className={`w-full h-full flex items-center justify-center text-white text-[8px] md:text-[10px] font-black italic ${isProject ? "bg-[#c31a26]" : "bg-[#1e4e8c]"}`}
+          >
+            {isProject ? "PROJ" : "DISK"}
+          </div>
         </div>
-      </div>
-      <div className="flex-1">
-        <h4 className="text-sm font-black text-slate-800 leading-tight mb-2 uppercase italic">
+        <h4 className="text-xs md:text-sm font-black text-slate-800 leading-tight uppercase italic sm:hidden line-clamp-2">
           {title}
         </h4>
-        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+      </div>
+      
+      <div className="flex-1 w-full">
+        <h4 className="hidden sm:block text-sm font-black text-slate-800 leading-tight mb-2 uppercase italic truncate">
+          {title}
+        </h4>
+        <div className="w-full bg-slate-100 h-2.5 md:h-2.5 rounded-full overflow-hidden border border-slate-200">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
@@ -192,7 +197,8 @@ function ActivityRow({ title, progress, btnLabel, isProject = false }: any) {
           />
         </div>
       </div>
-      <button className="px-5 py-2 bg-slate-900 text-white hover:bg-[#c31a26] font-black rounded-xl text-[10px] uppercase italic transition-all shadow-md active:scale-95">
+
+      <button className="w-full sm:w-auto mt-2 sm:mt-0 px-4 md:px-5 py-2.5 md:py-2 bg-slate-900 text-white hover:bg-[#c31a26] font-black rounded-xl text-[10px] uppercase italic transition-all shadow-md active:scale-95">
         {btnLabel}
       </button>
     </div>
