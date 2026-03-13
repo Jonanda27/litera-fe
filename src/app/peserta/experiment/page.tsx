@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { motion } from "framer-motion";
+import { Plus } from "lucide-react"; // Import icon plus
 
 import AddProjectModal from "./component/AddProjectModal";
 import ExpProjectCard from "./component/ExpProjectCard";
@@ -19,38 +20,39 @@ export default function ExperimentPage() {
   // State baru untuk melacak kategori aktif
   const [selectedCategory, setSelectedCategory] = useState<string>("Fiksi");
 
- const fetchProjects = async () => {
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("token");
-    // Gunakan endpoint list buku milik user, bukan 'all'
-    const res = await fetch(`${API_BASE_URL}/books`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    
-    const result = await res.json();
-    if (res.ok && result.data) {
-      // Mapping data langsung dari hasil database
-      setProjects(
-        result.data.map((b: any) => ({
-          id: b.id,
-          title: b.title,
-          category: b.category || "Fiksi",
-          lastUpdate: new Date(b.updatedAt).toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-          obstacle: b.obstacle || "Belum ada kendala",
-        }))
-      );
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      // Gunakan endpoint list buku milik user, bukan 'all'
+      const res = await fetch(`${API_BASE_URL}/books`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const result = await res.json();
+      if (res.ok && result.data) {
+        // Mapping data langsung dari hasil database
+        setProjects(
+          result.data.map((b: any) => ({
+            id: b.id,
+            title: b.title,
+            category: b.category || "Fiksi",
+            lastUpdate: new Date(b.updatedAt).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+            obstacle: b.obstacle || "Belum ada kendala",
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Error fetching projects:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -64,7 +66,6 @@ export default function ExperimentPage() {
       setSelectedCategory(bookData.category || "Fiksi");
 
       // PENTING: Kita perlu mengirimkan data ini ke state modal nantinya
-      // atau pastikan AddProjectModal tahu cara mengisi formData-nya sendiri
       setIsModalOpen(true);
     }
   };
@@ -72,7 +73,7 @@ export default function ExperimentPage() {
   const handleCreateNewBook = async (title: string, category: string) => {
     try {
       const token = localStorage.getItem("token");
-     const res = await fetch(`${API_BASE_URL}/books`, {
+      const res = await fetch(`${API_BASE_URL}/books`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -101,18 +102,19 @@ export default function ExperimentPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1400px] mx-auto space-y-8"
+        className="max-w-[1400px] mx-auto space-y-6 md:space-y-8 px-4 md:px-6 lg:px-8 pb-24 md:pb-10"
       >
-        <header className="space-y-1">
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">
+        <header className="space-y-2 pt-4 md:pt-0">
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">
             EXPERIMENT
           </h1>
-          <p className="text-slate-800 font-bold text-lg italic">
+          <p className="text-slate-700 md:text-slate-800 font-bold text-base md:text-lg italic leading-tight">
             Klik kartu buku untuk melihat progres penulisan mingguan.
           </p>
         </header>
 
-        <section className="space-y-4 pt-4 min-h-[300px]">
+        {/* Grid Section Responsif */}
+        <section className="space-y-4 pt-2 md:pt-4 min-h-[300px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <div className="w-10 h-10 border-4 border-slate-200 border-t-[#1E4E8C] rounded-full animate-spin mb-4"></div>
@@ -121,18 +123,20 @@ export default function ExperimentPage() {
               </p>
             </div>
           ) : projects.length > 0 ? (
-           projects.map((proj, index) => (
-  <ExpProjectCard
-    key={`${proj.id}-${index}`} // Menjamin key unik di mata React
-    id={proj.id}
-    title={proj.title}
-    lastUpdate={proj.lastUpdate}
-    obstacle={proj.obstacle}
-    onOpen={(fullData) => handleOpenModal(fullData)}
-  />
-))
+            <div className="grid grid-cols-1 gap-4">
+               {projects.map((proj, index) => (
+                <ExpProjectCard
+                  key={`${proj.id}-${index}`}
+                  id={proj.id}
+                  title={proj.title}
+                  lastUpdate={proj.lastUpdate}
+                  obstacle={proj.obstacle}
+                  onOpen={(fullData) => handleOpenModal(fullData)}
+                />
+              ))}
+            </div>
           ) : (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[3rem] p-20 text-center">
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl md:rounded-[3rem] p-10 md:p-20 text-center">
               <p className="text-slate-400 font-bold italic">
                 Belum ada proyek penulisan.
               </p>
@@ -140,14 +144,24 @@ export default function ExperimentPage() {
           )}
         </section>
 
-        <div className="flex justify-end pr-4">
+        {/* Tombol Desktop (Laptop/iPad) */}
+        <div className="hidden md:flex justify-end pr-4">
           <button
             onClick={() => handleOpenModal(null)}
-            className="text-[#1E4E8C] font-black text-sm italic hover:underline uppercase"
+            className="text-[#1E4E8C] font-black text-sm italic hover:underline uppercase transition-all"
           >
             + Tambah Proyek Baru
           </button>
         </div>
+
+        {/* Floating Action Button (FAB) khusus Mobile */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => handleOpenModal(null)}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#1E4E8C] text-white rounded-full flex items-center justify-center shadow-2xl z-50 border-2 border-white"
+        >
+          <Plus size={28} />
+        </motion.button>
 
         <ModalInputTitle
           isOpen={isTitleModalOpen}
@@ -163,7 +177,7 @@ export default function ExperimentPage() {
             fetchProjects();
           }}
           selectedId={selectedId}
-          category={selectedCategory} // Prop baru dikirim ke sini
+          category={selectedCategory} 
         />
       </motion.div>
     </Sidebar>

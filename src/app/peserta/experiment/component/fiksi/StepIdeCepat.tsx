@@ -22,33 +22,30 @@ interface IdeaItem {
 export default function StepIdeCepat({ formData, onDataChange }: any) {
   const [ideas, setIdeas] = useState<IdeaItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null); // State untuk mode Edit
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIdea, setSelectedIdea] = useState<IdeaItem | null>(null);
   const [loading, setLoading] = useState(false);
 
   const bookId = formData?.id || formData?.bookId;
 
   useEffect(() => {
-    // Pastikan fetch hanya jalan jika bookId benar-benar ada
     if (bookId) {
-      console.log("Fetching ideas for Book ID:", bookId);
       fetchIdeas();
     }
-  }, [bookId]); // Re-run jika bookId berubah (misal setelah loadingDetail selesai)
+  }, [bookId]);
 
   const fetchIdeas = async () => {
     if (!bookId) return;
     try {
       setLoading(true);
       const response = await axios.get(
-  `${API_BASE_URL}/books/quick-ideas/${bookId}`,
-  {
-    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-  },
-);
+        `${API_BASE_URL}/books/quick-ideas/${bookId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        },
+      );
       setIdeas(response.data);
-      
-      // LOGIKA BARU: Jika data kosong, langsung tampilkan form tambah ide
+
       if (response.data.length === 0) {
         setIsAdding(true);
       }
@@ -80,7 +77,6 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
     priority: "Segera",
   });
 
-  // Fungsi Reset Form
   const resetForm = () => {
     setIsAdding(false);
     setEditingId(null);
@@ -96,7 +92,6 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
     });
   };
 
-  // Fungsi Masuk Mode Edit
   const handleEditClick = (idea: IdeaItem) => {
     setEditingId(idea.id);
     const ideaDate = idea.date ? idea.date.split("T")[0] : getCurrentDate();
@@ -124,18 +119,14 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
   };
 
   const handleSaveIdea = async () => {
-    // Ambil ID tepat saat tombol diklik
     const currentBookId = formData?.id || formData?.bookId;
-
-    console.log("Mencoba simpan ide untuk ID:", currentBookId);
-
     if (!currentBookId) {
       return alert("ID Buku tidak ditemukan. Coba refresh halaman.");
     }
 
     try {
       const payload = {
-        bookId: Number(currentBookId), // Pastikan angka
+        bookId: Number(currentBookId),
         title: newItem.title,
         date: newItem.date,
         time: newItem.time,
@@ -146,30 +137,21 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
         priority: newItem.priority,
       };
       if (editingId) {
-        // Mode UPDATE
-       await axios.patch(
-  `${API_BASE_URL}/books/quick-ideas/${editingId}`,
-  payload,
-  {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  }
-);
+        await axios.patch(
+          `${API_BASE_URL}/books/quick-ideas/${editingId}`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          },
+        );
       } else {
-        // Mode CREATE
-        await axios.post(
-  `${API_BASE_URL}/books/quick-ideas`,
-  payload,
-  {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem("token")}`,
-    },
-  },
-);
+        await axios.post(`${API_BASE_URL}/books/quick-ideas`, payload, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
       }
-
-      fetchIdeas(); // Refresh data
+      fetchIdeas();
       resetForm();
     } catch (error: any) {
       alert(
@@ -178,22 +160,16 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
     }
   };
 
-  // Fungsi Hapus
   const handleDeleteIdea = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Agar modal detail tidak terbuka
+    e.stopPropagation();
     if (!confirm("Hapus ide ini secara permanen?")) return;
-
     try {
-     await axios.delete(`${API_BASE_URL}/books/quick-ideas/${id}`, {
+      await axios.delete(`${API_BASE_URL}/books/quick-ideas/${id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const updatedIdeas = ideas.filter((i) => i.id !== id);
       setIdeas(updatedIdeas);
-      
-      // Jika setelah dihapus jadi kosong, buka form lagi
-      if (updatedIdeas.length === 0) {
-        setIsAdding(true);
-      }
+      if (updatedIdeas.length === 0) setIsAdding(true);
     } catch (error: any) {
       alert("Gagal menghapus ide.");
     }
@@ -208,24 +184,25 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center bg-gradient-to-r from-amber-400 to-rose-500 p-5 rounded-[2rem] shadow-md">
+    <div className="space-y-4 md:space-y-6">
+      {/* HEADER SECTION - Tetap sama untuk laptop, responsif di mobile */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-amber-400 to-rose-500 p-4 md:p-5 rounded-2xl md:rounded-[2rem] shadow-md gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl text-white">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl text-white shrink-0">
             ⚡
           </div>
           <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
               Tangkap Ide Cepat
             </h3>
-            <p className="text-[10px] font-bold text-amber-100 uppercase opacity-80">
+            <p className="text-[9px] md:text-[10px] font-bold text-amber-100 uppercase opacity-80 leading-tight">
               Jangan biarkan inspirasi lewat begitu saja
             </p>
           </div>
         </div>
         <button
           onClick={() => (isAdding ? resetForm() : setIsAdding(true))}
-          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg active:scale-95 ${isAdding ? "bg-white text-rose-600" : "bg-slate-900 text-amber-400 shadow-amber-900/20"}`}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg active:scale-95 ${isAdding ? "bg-white text-rose-600" : "bg-slate-900 text-amber-400 shadow-amber-900/20"}`}
         >
           {isAdding ? "✕ Batal" : "+ Rekam Ide"}
         </button>
@@ -239,10 +216,12 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
             exit={{ height: 0, opacity: 0, y: -20 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-2 border-amber-100 rounded-[2.5rem] p-6 shadow-xl space-y-5">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            <div className="bg-white border-2 border-amber-100 rounded-2xl md:rounded-[2.5rem] p-4 md:p-6 shadow-xl space-y-4 md:space-y-5">
+              <h4 className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
                 {editingId ? "📝 Edit Ide" : "✨ Rekam Ide Baru"}
               </h4>
+
+              {/* GRID: Tetap 3 kolom di laptop (md:grid-cols-3), 1 kolom di mobile */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <InputGroup label="Judul Ide">
@@ -253,19 +232,19 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                       onChange={(e: any) =>
                         setNewItem({ ...newItem, title: e.target.value })
                       }
-                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-slate-900"
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-slate-900 transition-all"
                     />
                   </InputGroup>
                 </div>
                 <InputGroup label="Waktu Muncul">
-                  <div className="flex gap-2 h-11 bg-slate-50 px-3 rounded-xl border border-slate-200 items-center">
+                  <div className="flex gap-2 h-11 bg-slate-50 px-3 rounded-xl border border-slate-200 items-center justify-between">
                     <input
                       type="date"
                       value={newItem.date}
                       onChange={(e: any) =>
                         setNewItem({ ...newItem, date: e.target.value })
                       }
-                      className="bg-transparent text-[10px] font-bold text-slate-900 outline-none"
+                      className="bg-transparent text-[9px] md:text-[10px] font-bold text-slate-900 outline-none w-full"
                     />
                     <input
                       type="time"
@@ -273,14 +252,14 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                       onChange={(e: any) =>
                         setNewItem({ ...newItem, time: e.target.value })
                       }
-                      className="bg-transparent text-[10px] font-bold text-slate-900 outline-none"
+                      className="bg-transparent text-[9px] md:text-[10px] font-bold text-slate-900 outline-none shrink-0"
                     />
                   </div>
                 </InputGroup>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                   Kategori Ide
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -290,7 +269,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                       onClick={() =>
                         setNewItem({ ...newItem, category_tag: cat })
                       }
-                      className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase border-2 transition-all ${newItem.category_tag === cat ? "bg-amber-500 border-amber-500 text-white shadow-md" : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"}`}
+                      className={`px-3 py-2 rounded-lg text-[8px] md:text-[9px] font-black uppercase border-2 transition-all ${newItem.category_tag === cat ? "bg-amber-500 border-amber-500 text-white shadow-md" : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"}`}
                     >
                       {cat}
                     </button>
@@ -305,11 +284,12 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                   onChange={(e: any) =>
                     setNewItem({ ...newItem, description: e.target.value })
                   }
-                  className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white outline-none text-sm font-bold text-slate-900 h-28 resize-none"
+                  className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 focus:bg-white outline-none text-sm font-bold text-slate-900 h-24 md:h-28 resize-none transition-all custom-scrollbar"
                 />
               </InputGroup>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* GRID: Tetap 2 kolom di laptop (md:grid-cols-2), 1 kolom di mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                 <MiniInput
                   label="Suasana Hati (Mood)"
                   placeholder="Galau, Seru, Horor..."
@@ -326,11 +306,11 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                 />
               </div>
 
-              <div className="space-y-3 pt-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+              <div className="space-y-2 md:space-y-3 pt-1 md:pt-2">
+                <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                   Prioritas Ide
                 </label>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   {[
                     {
                       id: "Segera",
@@ -353,7 +333,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                       onClick={() =>
                         setNewItem({ ...newItem, priority: p.id as any })
                       }
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${newItem.priority === p.id ? `${p.color} border-transparent text-white shadow-lg scale-[1.02]` : "bg-white border-slate-100 text-slate-400"}`}
+                      className={`flex-1 py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase border-2 transition-all ${newItem.priority === p.id ? `${p.color} border-transparent text-white shadow-lg scale-[1.02]` : "bg-white border-slate-100 text-slate-400"}`}
                     >
                       {p.label}
                     </button>
@@ -363,7 +343,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
 
               <button
                 onClick={handleSaveIdea}
-                className="w-full py-4 bg-slate-900 text-amber-400 rounded-2xl text-xs font-black uppercase shadow-xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 md:py-4 bg-slate-900 text-amber-400 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase shadow-xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <span>💾</span>{" "}
                 {editingId ? "Update Perubahan Ide" : "Simpan Ide Kilat"}
@@ -373,57 +353,65 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* LIST SECTION: 2 Kolom di Laptop (lg:grid-cols-2), 1 di mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {ideas.map((idea) => (
           <motion.div
             layout
             key={idea.id}
             onClick={() => setSelectedIdea(idea)}
-            className="bg-white p-5 rounded-[2.5rem] border-2 border-slate-100 hover:border-amber-400 transition-all group relative cursor-pointer"
+            className="bg-white p-4 md:p-5 rounded-2xl md:rounded-[2.5rem] border-2 border-slate-100 hover:border-amber-400 transition-all group relative cursor-pointer shadow-sm"
           >
-            {/* Tombol Hapus & Edit yang muncul saat hover */}
-            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+            <div className="absolute top-3 right-3 md:top-4 md:right-4 flex gap-1.5 md:gap-2 opacity-0 group-hover:opacity-100 transition-all">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEditClick(idea);
                 }}
-                className="w-8 h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all text-xs"
+                className="w-7 h-7 md:w-8 md:h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all text-[10px]"
               >
                 📝
               </button>
               <button
                 onClick={(e) => handleDeleteIdea(e, idea.id)}
-                className="w-8 h-8 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all text-xs"
+                className="w-7 h-7 md:w-8 md:h-8 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all text-[10px]"
               >
                 ✕
               </button>
             </div>
 
             <div className="flex justify-between items-start mb-3">
-              <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[8px] font-black uppercase">
+              <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-[7px] md:text-[8px] font-black uppercase border border-amber-100">
                 {idea.category_tag}
               </span>
               <div
                 className={`w-2 h-2 rounded-full ${idea.priority === "Segera" ? "bg-rose-500" : idea.priority === "Nanti" ? "bg-amber-500" : "bg-slate-300"}`}
               />
             </div>
-            <h4 className="text-sm font-black text-slate-900 uppercase mb-2 line-clamp-1 pr-16">
+
+            <h4 className="text-sm font-black text-slate-900 uppercase mb-2 line-clamp-1 pr-14 md:pr-16 leading-tight">
               {idea.title}
             </h4>
-            <p className="text-xs font-bold text-slate-500 line-clamp-3 mb-4 leading-relaxed italic">
+            <p className="text-[11px] md:text-xs font-bold text-slate-500 line-clamp-2 md:line-clamp-3 mb-4 leading-relaxed italic opacity-80">
               "{idea.description}"
             </p>
-            <div className="flex justify-between items-center pt-3 border-t border-slate-50">
-              <div className="flex gap-3">
-                <span className="text-[9px] font-black text-slate-300 uppercase">
-                  🎭 {idea.mood || "?"}
+
+            <div className="flex flex-wrap justify-between items-center pt-3 border-t border-slate-50 gap-2">
+              <div className="flex gap-2 md:gap-3">
+                <span className="text-[8px] md:text-[9px] font-black text-slate-300 uppercase flex items-center gap-1">
+                  🎭{" "}
+                  <span className="max-w-[60px] truncate">
+                    {idea.mood || "?"}
+                  </span>
                 </span>
-                <span className="text-[9px] font-black text-slate-300 uppercase">
-                  🔗 {idea.reference || "?"}
+                <span className="text-[8px] md:text-[9px] font-black text-slate-300 uppercase flex items-center gap-1">
+                  🔗{" "}
+                  <span className="max-w-[60px] truncate">
+                    {idea.reference || "?"}
+                  </span>
                 </span>
               </div>
-              <span className="text-[8px] font-black text-slate-400 uppercase">
+              <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-tighter">
                 {idea.createdAt
                   ? new Date(idea.createdAt).toLocaleDateString("id-ID")
                   : idea.date}
@@ -433,45 +421,45 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
         ))}
       </div>
 
-      {/* Modal Detail */}
+      {/* DETAIL MODAL - Responsif untuk semua layar */}
       <AnimatePresence>
         {selectedIdea && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 md:p-4 bg-slate-900/70 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[3rem] p-8 max-w-lg w-full shadow-2xl relative border-4 border-amber-400"
+              className="bg-white rounded-2xl md:rounded-[3rem] p-5 md:p-8 max-w-lg w-full shadow-2xl relative border-2 md:border-4 border-amber-400 max-h-[90vh] overflow-y-auto"
             >
               <button
                 onClick={() => setSelectedIdea(null)}
-                className="absolute top-6 right-6 w-10 h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-xs font-black hover:bg-rose-500 hover:text-white transition-all"
+                className="absolute top-4 right-4 md:top-6 md:right-6 w-8 h-8 md:w-10 md:h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-[10px] font-black hover:bg-rose-500 hover:text-white transition-all shadow-sm"
               >
                 ✕
               </button>
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 <div>
-                  <span className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider">
+                  <span className="bg-amber-100 text-amber-700 px-3 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-wider">
                     {selectedIdea.category_tag}
                   </span>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase leading-tight mt-4">
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase leading-tight mt-3 md:mt-4">
                     {selectedIdea.title}
                   </h2>
                 </div>
-                <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 italic text-slate-600 leading-relaxed text-sm font-bold">
+                <div className="bg-slate-50 p-4 md:p-6 rounded-xl md:rounded-[2rem] border border-slate-200 italic text-slate-600 leading-relaxed text-xs md:text-sm font-bold">
                   "{selectedIdea.description}"
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white border-2 border-slate-50 p-4 rounded-2xl">
-                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                  <div className="bg-white border-2 border-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl">
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">
                       🎭 Suasana Hati
                     </p>
                     <p className="text-xs font-bold text-slate-900">
                       {selectedIdea.mood || "Tidak ada catatan"}
                     </p>
                   </div>
-                  <div className="bg-white border-2 border-slate-50 p-4 rounded-2xl">
-                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">
+                  <div className="bg-white border-2 border-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl">
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase mb-1">
                       🔗 Referensi
                     </p>
                     <p className="text-xs font-bold text-slate-900 truncate">
@@ -479,7 +467,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                     </p>
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t border-slate-50 gap-3">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-3 h-3 rounded-full ${selectedIdea.priority === "Segera" ? "bg-rose-500" : "bg-amber-500"}`}
@@ -488,7 +476,7 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
                       {selectedIdea.priority}
                     </span>
                   </div>
-                  <span className="text-[9px] font-black text-slate-300 uppercase italic">
+                  <span className="text-[8px] md:text-[9px] font-black text-slate-300 uppercase italic">
                     Direkam:{" "}
                     {selectedIdea.createdAt
                       ? new Date(selectedIdea.createdAt).toLocaleString("id-ID")
@@ -504,11 +492,10 @@ export default function StepIdeCepat({ formData, onDataChange }: any) {
   );
 }
 
-// Sub-komponen InputGroup
 function InputGroup({ label, children }: any) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
+      <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
         {label}
       </label>
       {children}
@@ -516,11 +503,10 @@ function InputGroup({ label, children }: any) {
   );
 }
 
-// Sub-komponen MiniInput
 function MiniInput({ label, value, onChange, placeholder }: any) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+      <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
         {label}
       </label>
       <input
@@ -528,7 +514,7 @@ function MiniInput({ label, value, onChange, placeholder }: any) {
         placeholder={placeholder}
         value={value}
         onChange={(e: any) => onChange(e.target.value)}
-        className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-amber-400 outline-none transition-all"
+        className="w-full p-2.5 md:p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-amber-400 focus:bg-white outline-none transition-all"
       />
     </div>
   );
