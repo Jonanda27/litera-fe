@@ -1,16 +1,7 @@
-// src/components/dashboard/ActivityTimeline.tsx
+// File: src/components/dashboard/ActivityTimeline.tsx
 import React from 'react';
 import { motion } from 'framer-motion';
-
-// Definisi kontrak data untuk Log Aktivitas (Sesuai dengan rancangan tabel ActivityLogs)
-export interface ActivityLog {
-    id: string | number;
-    actor: string;
-    role: 'Admin' | 'Mentor' | 'Peserta';
-    action: string;
-    target: string;
-    timestamp: string; // Format ISO atau format yang sudah di-parse
-}
+import { ActivityLog } from '../../lib/types/activity';
 
 export interface ActivityTimelineProps {
     activities: ActivityLog[];
@@ -18,16 +9,47 @@ export interface ActivityTimelineProps {
 }
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, isLoading }) => {
-    // Fungsi analitis untuk memetakan jenis aksi ke warna/ikon visual yang representatif
+    // Fungsi analitis untuk memetakan jenis aksi (dari backend) ke gaya visual yang representatif
     const getActionTheme = (action: string) => {
         const act = action.toUpperCase();
-        if (act.includes('CREATE') || act.includes('TAMBAH')) return { color: 'bg-green-500', icon: '✨' };
-        if (act.includes('DELETE') || act.includes('HAPUS') || act.includes('BLOCK')) return { color: 'bg-red-500', icon: '🗑️' };
-        if (act.includes('UPDATE') || act.includes('UBAH')) return { color: 'bg-blue-500', icon: '✏️' };
-        if (act.includes('LOGIN')) return { color: 'bg-indigo-500', icon: '🔑' };
-        return { color: 'bg-slate-400', icon: '📌' }; // Default
+
+        // Klasifikasi Aksi Buat/Tambah
+        if (act.includes('CREATE') || act.includes('REGISTER')) {
+            return {
+                color: 'bg-emerald-100 text-emerald-600 border-emerald-200',
+                icon: '✨',
+                label: 'Dibuat'
+            };
+        }
+
+        // Klasifikasi Aksi Hapus/Blokir
+        if (act.includes('DELETE') || act.includes('REMOVE')) {
+            return {
+                color: 'bg-rose-100 text-rose-600 border-rose-200',
+                icon: '🗑️',
+                label: 'Dihapus'
+            };
+        }
+
+        // Klasifikasi Aksi Ubah/Pembaruan
+        if (act.includes('UPDATE') || act.includes('EDIT')) {
+            return {
+                color: 'bg-blue-100 text-blue-600 border-blue-200',
+                icon: '✏️',
+                label: 'Diperbarui'
+            };
+        }
+
+        // Klasifikasi Aksi Autentikasi & Penyelesaian
+        if (act.includes('LOGIN')) return { color: 'bg-indigo-100 text-indigo-600 border-indigo-200', icon: '🔑', label: 'Akses Masuk' };
+        if (act.includes('LOGOUT')) return { color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '🚪', label: 'Akses Keluar' };
+        if (act.includes('COMPLETE')) return { color: 'bg-amber-100 text-amber-600 border-amber-200', icon: '🏆', label: 'Diselesaikan' };
+
+        // Default (Aktivitas Umum)
+        return { color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '📌', label: 'Aktivitas Sistem' };
     };
 
+    // State Loading: Kerangka Tulang (Skeleton) untuk transisi UX yang mulus
     if (isLoading) {
         return (
             <div className="space-y-6">
@@ -44,50 +66,68 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, 
         );
     }
 
+    // State Kosong: Tidak ada log aktivitas yang ditemukan berdasarkan filter
     if (!activities || activities.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                 <span className="text-4xl mb-3">📭</span>
-                <p className="font-medium">Belum ada aktivitas sistem yang tercatat.</p>
+                <p className="font-medium text-sm">Belum ada aktivitas sistem yang tercatat pada rentang ini.</p>
             </div>
         );
     }
 
     return (
-        <div className="relative border-l-2 border-slate-100 ml-4 space-y-8 pb-4">
+        <div className="relative border-l-2 border-slate-200 ml-4 space-y-8 pb-4">
             {activities.map((log, index) => {
                 const theme = getActionTheme(log.action);
+
+                // Ekstrak detail spesifik dari objek JSON jika tersedia
+                const hasDetails = log.details && Object.keys(log.details).length > 0;
 
                 return (
                     <motion.div
                         key={log.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
+                        transition={{ delay: index * 0.05 }} // Sedikit dipercepat untuk responsivitas
                         className="relative pl-6 sm:pl-8"
                     >
                         {/* Indikator Titik Timeline */}
-                        <span
-                            className={`absolute -left-4.25 top-1 w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-[10px] ${theme.color}`}
+                        <div
+                            className={`absolute -left-4.75 top-1 w-9 h-9 rounded-full border-[3px] border-white shadow-sm flex items-center justify-center text-sm ${theme.color}`}
                         >
                             {theme.icon}
-                        </span>
+                        </div>
 
-                        {/* Konten Log */}
-                        <div className="bg-slate-50 hover:bg-slate-100 transition-colors p-4 rounded-xl border border-slate-100 shadow-sm">
-                            <p className="text-sm text-slate-700 leading-snug">
-                                <span className="font-bold text-slate-900">{log.actor}</span>
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 mx-2">
-                                    {log.role}
+                        {/* Konten Log Card */}
+                        <div className="bg-white hover:bg-slate-50 transition-colors p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <div className="flex justify-between items-start mb-1">
+                                <p className="text-sm text-slate-800 leading-snug font-medium">
+                                    <span className="font-bold text-slate-900">User ID: {log.userId}</span>
+                                    <span className="mx-2 text-slate-400">&bull;</span>
+                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${theme.color}`}>
+                                        {theme.label}
+                                    </span>
+                                </p>
+                                <span className="text-xs font-medium text-slate-400 shrink-0 ml-4">
+                                    {new Date(log.createdAt).toLocaleString('id-ID', {
+                                        dateStyle: 'medium',
+                                        timeStyle: 'short'
+                                    })}
                                 </span>
-                                {log.action.toLowerCase()} <span className="font-semibold text-blue-600">{log.target}</span>
+                            </div>
+
+                            <p className="text-sm text-slate-600 mt-1">
+                                Operasi <strong className="text-slate-800">{log.action}</strong> pada entitas <strong className="text-blue-600">{log.resourceType}</strong>
+                                {log.resourceId && <span> (ID: {log.resourceId})</span>}.
                             </p>
-                            <span className="block mt-2 text-xs font-medium text-slate-400">
-                                {new Date(log.timestamp).toLocaleString('id-ID', {
-                                    dateStyle: 'medium',
-                                    timeStyle: 'short'
-                                })}
-                            </span>
+
+                            {/* Render area detail ekstraksi jika ada JSON payload (Indirection Representation) */}
+                            {hasDetails && (
+                                <div className="mt-3 p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs font-mono text-slate-500 overflow-x-auto">
+                                    <pre>{JSON.stringify(log.details, null, 2)}</pre>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 );
