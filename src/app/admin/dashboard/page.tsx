@@ -150,7 +150,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Section: Log Activity */}
-        <motion.div variants={itemVars} className="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[300px]">
+        <motion.div variants={itemVars} className="mt-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-75">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <span className="text-blue-500">📡</span> Aktivitas Sistem Terkini
