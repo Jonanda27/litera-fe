@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios"; 
-import { 
-  Target, 
-  AlertTriangle, 
-  Lightbulb, 
-  Star, 
-  Users, 
-  Compass, 
+import axios from "axios";
+import {
+  Target,
+  AlertTriangle,
+  Lightbulb,
+  Star,
+  Users,
+  Compass,
   Zap,
   RefreshCw,
   Save
@@ -23,8 +23,8 @@ interface StepRisetNonFiksiProps {
 
 export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetNonFiksiProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); 
-  
+  const [isSaving, setIsSaving] = useState(false);
+
   // Ref untuk mengunci proses fetch agar tidak berulang (Infinite Loop Protection)
   const hasFetchedRef = useRef<number | null>(null);
   // Ref untuk memantau data terakhir yang dikirim ke parent (AddProjectModal)
@@ -62,7 +62,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
   useEffect(() => {
     const fetchExistingResearch = async () => {
       const bookId = formData?.bookId || formData?.id;
-      
+
       // Jika tidak ada ID atau ID ini sudah pernah di-fetch, jangan hit API lagi
       if (!bookId || hasFetchedRef.current === bookId) return;
 
@@ -70,13 +70,13 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       try {
         const token = localStorage.getItem("token");
         // Endpoint sesuai rute backend: /api/books/non-fiction/research/:bookId [cite: 1907]
-       const res = await axios.get(`${API_BASE_URL}/books/non-fiction/research/${bookId}`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+        const res = await axios.get(`${API_BASE_URL}/books/non-fiction/research/${bookId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
         if (res.data && res.data.data) {
           const dbData = res.data.data;
-          
+
           // Kunci ID agar useEffect ini tidak berjalan lagi meski ada re-render
           hasFetchedRef.current = bookId;
 
@@ -92,7 +92,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
             targetLogic: dbData.targetLogic || { want: "", obstacle: "", need: "" },
             oneSentenceSummary: dbData.oneSentenceSummary || { target: "", duration: "" },
           };
-          
+
           // Update ref terakhir agar useEffect pengirim ke parent (no. 3) tidak memicu loop
           lastSentDataRef.current = JSON.stringify(syncedData);
           setData(syncedData);
@@ -110,7 +110,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
   // --- 3. KIRIM PERUBAHAN KE PARENT (LOOP PREVENTION) ---
   useEffect(() => {
     const currentDataString = JSON.stringify(data);
-    
+
     // Hanya panggil onDataChange jika data benar-benar berbeda dari yang terakhir dikirim
     if (lastSentDataRef.current !== currentDataString) {
       lastSentDataRef.current = currentDataString;
@@ -121,7 +121,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
   // --- 4. FUNGSI SIMPAN KE DATABASE (POST/PATCH) ---
   const handleSaveToDatabase = async () => {
     const currentBookId = data.bookId || formData?.bookId || formData?.id;
-    
+
     if (!currentBookId) {
       alert("Error: ID Buku tidak ditemukan. Pastikan proyek telah terdaftar.");
       return;
@@ -132,10 +132,10 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       const token = localStorage.getItem("token");
       // Endpoint sesuai rute backend: /api/books/non-fiction/research [cite: 1908]
       const res = await axios.post(
-  `${API_BASE_URL}/books/non-fiction/research`,
-  { ...data, bookId: currentBookId },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+        `${API_BASE_URL}/books/non-fiction/research`,
+        { ...data, bookId: currentBookId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (res.status === 200 || res.status === 201) {
         alert("Strategi buku berhasil disimpan ke database!");
@@ -167,14 +167,14 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
   ];
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-full mx-auto space-y-6 pb-6 text-slate-800"
     >
       {/* HEADER & TOOLBAR */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-slate-100 pb-4">
-        <div className="text-left space-y-1">
+        <div className="text-center sm:text-left space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-full shadow-md">
             <Compass size={12} />
             <h2 className="text-[9px] font-black uppercase tracking-widest">
@@ -192,17 +192,16 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
         <button
           onClick={handleSaveToDatabase}
           disabled={isSaving || isLoading}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-            isSaving 
-            ? "bg-slate-100 text-slate-400 cursor-not-allowed" 
+          className={`w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${isSaving
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
             : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-200"
-          }`}
+            }`}
         >
           {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
           {isSaving ? "Menyimpan..." : "Simpan Ke Database"}
         </button>
       </div>
-      
+
       <div className="relative group max-w-lg mx-auto text-center">
         <input
           type="text"
@@ -253,8 +252,8 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       </div>
 
       {/* NICHE & TARGET */}
-      <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="bg-white rounded-2xl md:rounded-[2rem] p-4 md:p-6 border border-slate-100 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <Zap size={14} className="text-blue-600" />
@@ -266,11 +265,10 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
                   key={opt}
                   type="button"
                   onClick={() => handleChange("nicheLevel", opt)}
-                  className={`text-left px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${
-                    data.nicheLevel === opt 
-                      ? "bg-blue-600 border-blue-600 text-white shadow-sm" 
-                      : "bg-slate-50 border-slate-100 text-slate-500 hover:border-blue-200"
-                  }`}
+                  className={`text-left px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${data.nicheLevel === opt
+                    ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                    : "bg-slate-50 border-slate-100 text-slate-500 hover:border-blue-200"
+                    }`}
                 >
                   {opt}
                 </button>
@@ -293,7 +291,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       </div>
 
       {/* READER LOGIC */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-6 shadow-lg relative overflow-hidden">
+      <div className="bg-slate-900 rounded-2xl md:rounded-[2.5rem] p-4 md:p-6 shadow-lg relative overflow-hidden">
         <h3 className="text-[9px] font-black text-blue-400 uppercase text-center tracking-[0.3em] mb-5">
           The Reader's Journey Logic
         </h3>
@@ -305,17 +303,17 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
       </div>
 
       {/* ELEVATOR PITCH */}
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-[2.5rem] text-center shadow-lg">
+      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 md:p-10 rounded-2xl md:rounded-[2.5rem] text-center shadow-lg">
         <div className="space-y-4">
           <h3 className="text-white/60 text-[9px] font-black uppercase tracking-widest">Elevator Pitch (Ultimate Hook)</h3>
-          <div className="text-sm md:text-base text-white font-medium leading-relaxed italic">
+          <div className="text-sm md:text-lg text-white font-medium leading-relaxed italic flex flex-wrap justify-center items-center gap-y-3">
             "Buku ini adalah panduan untuk{" "}
             <input
               type="text"
               value={data.oneSentenceSummary.target}
               onChange={(e) => handleNestedChange("oneSentenceSummary", "target", e.target.value)}
               placeholder="target utama"
-              className="bg-white/10 border-b border-white/30 outline-none px-2 py-0.5 text-amber-300 placeholder:text-white/20 rounded font-bold w-40 inline-block text-center focus:bg-white/20 transition-all mx-1"
+              className="bg-white/10 border-b border-white/30 outline-none px-2 py-1 text-amber-300 placeholder:text-white/20 rounded font-bold w-full sm:w-48 text-center focus:bg-white/20 transition-all mx-1"
             />{" "}
             dalam waktu{" "}
             <input
@@ -323,7 +321,7 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
               value={data.oneSentenceSummary.duration}
               onChange={(e) => handleNestedChange("oneSentenceSummary", "duration", e.target.value)}
               placeholder="durasi"
-              className="bg-white/10 border-b border-white/30 outline-none px-2 py-0.5 text-amber-300 placeholder:text-white/20 rounded font-bold w-24 inline-block text-center focus:bg-white/20 transition-all mx-1"
+              className="bg-white/10 border-b border-white/30 outline-none px-2 py-1 text-amber-300 placeholder:text-white/20 rounded font-bold w-full sm:w-32 text-center focus:bg-white/20 transition-all mx-1"
             />."
           </div>
         </div>
@@ -331,19 +329,22 @@ export default function StepRisetNonFiksi({ formData, onDataChange }: StepRisetN
 
       <style jsx>{`
         .form-textarea-modal {
-          width: 100%;
-          padding: 12px;
-          background-color: #f8fafc;
-          border: 1px solid #f1f5f9;
-          border-radius: 16px;
-          outline: none;
-          font-size: 13px;
-          font-weight: 600;
-          height: 80px;
-          resize: none;
-          transition: all 0.2s;
-          color: #334155;
-        }
+        width: 100%;
+        padding: 12px;
+        background-color: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        outline: none;
+        font-size: 12px;
+        font-weight: 600;
+        height: 80px;
+        resize: none;
+        transition: all 0.2s;
+        color: #334155;
+      }
+      @media (min-width: 768px) {
+        .form-textarea-modal { border-radius: 16px; font-size: 13px; }
+      }
         .form-textarea-modal:focus {
           background-color: white;
           box-shadow: 0 4px 12px rgba(0,0,0,0.03);
@@ -380,16 +381,16 @@ function LogicRow({ label, color, value, onChange, placeholder }: any) {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-white/5 p-1.5 pr-4 rounded-xl border border-white/5 focus-within:border-white/10 transition-all">
-      <span className={`w-16 py-1 px-3 rounded-lg text-[9px] font-black uppercase text-center ${colorClasses[color]}`}>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-white/5 p-2 pr-4 rounded-xl border border-white/5 focus-within:border-white/20 transition-all">
+      <span className={`w-full sm:w-16 py-1 px-3 rounded-lg text-[9px] font-black uppercase text-center ${colorClasses[color]}`}>
         {label}
       </span>
-      <input 
-        type="text" 
+      <input
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none text-xs font-semibold text-white placeholder:font-normal placeholder:text-slate-600 py-2"
+        className="flex-1 bg-transparent outline-none text-xs font-semibold text-white placeholder:text-slate-600 py-1"
       />
     </div>
   );

@@ -58,9 +58,9 @@ export default function StepFinalisasi({
           {
             properties: {
               page: {
-                size: { 
-                    width: "210mm", 
-                    height: "297mm" 
+                size: {
+                  width: "210mm",
+                  height: "297mm"
                 },
                 margin: { top: 0, right: 0, bottom: 0, left: 0 },
               },
@@ -71,7 +71,7 @@ export default function StepFinalisasi({
                   new ImageRun({
                     data: arrayBuffer,
                     // Tambahkan type di sini untuk mengatasi error IImageOptions
-                    type: "png", 
+                    type: "png",
                     transformation: {
                       width: 595, // Standar A4 (sekitar 21cm dalam poin/pixel docx)
                       height: 842, // Standar A4 (sekitar 29.7cm dalam poin/pixel docx)
@@ -96,13 +96,13 @@ export default function StepFinalisasi({
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[75vh] space-y-4 overflow-hidden">
+    <div className="flex flex-col h-full lg:max-h-[75vh] space-y-4 overflow-y-auto lg:overflow-hidden px-1">
       <div className="bg-green-50 px-4 py-3 rounded-xl border-l-4 border-green-600 text-[11px] italic text-slate-700 shadow-sm shrink-0 uppercase font-bold">
         "Garis finish sudah terlihat! Pilih format naskah yang kamu inginkan."
       </div>
 
-      <div className="relative flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-hidden p-1">
-        
+      <div className="relative flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-visible lg:overflow-hidden p-1">
+
         {/* 1. PREVIEW LAYOUT (Adjusted Zoom) */}
         <section className="lg:col-span-8 flex flex-col space-y-3 relative z-10 min-h-0">
           <div className="flex justify-between items-center shrink-0">
@@ -111,18 +111,18 @@ export default function StepFinalisasi({
             </h4>
           </div>
 
-          <div className="flex-1 bg-slate-100 rounded-[2.5rem] shadow-inner flex items-center justify-center border border-slate-200 overflow-hidden p-8">
+          <div className="flex-1 bg-slate-100 rounded-3xl md:rounded-[2.5rem] shadow-inner flex items-center justify-center border border-slate-200 overflow-hidden p-4 md:p-8 min-h-[400px]">
             {previewImage ? (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative"
+                className="relative w-full flex justify-center"
               >
                 {/* Frame Kertas: Ukuran medium agar tidak terlalu dekat tapi tetap jelas */}
-                <div className="bg-white w-[280px] h-[396px] md:w-[340px] md:h-[480px] shadow-[0_10px_30px_rgba(0,0,0,0.15)] rounded-sm overflow-hidden border border-slate-200 relative">
-                  <img 
-                    src={previewImage} 
-                    alt="Naskah Preview" 
+                <div className="bg-white w-full max-w-[280px] md:max-w-[340px] aspect-[1/1.414] shadow-[0_10px_30px_rgba(0,0,0,0.15)] rounded-sm overflow-hidden border border-slate-200 relative">
+                  <img
+                    src={previewImage}
+                    alt="Naskah Preview"
                     className="w-full h-full object-contain"
                   />
                   {/* Subtle Spine Shade */}
@@ -139,17 +139,17 @@ export default function StepFinalisasi({
         </section>
 
         {/* 2. EXPORT CENTER */}
-        <section className="lg:col-span-4 flex flex-col space-y-4 relative z-10 min-h-0 text-black">
+        <section className="lg:col-span-4 flex flex-col space-y-4 relative z-10 min-h-0 text-black pb-10 lg:pb-0">
           <h4 className="font-black text-[11px] uppercase tracking-wider text-slate-700 shrink-0">
             2. Export Options
           </h4>
 
-          <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+          <div className="flex flex-col gap-4 overflow-y-visible lg:overflow-y-auto pr-1">
             {/* Tombol PDF */}
-            <button 
+            <button
               onClick={handleExportPDF}
               disabled={!!isExporting || !previewImage}
-              className="flex items-center gap-4 p-4 bg-white rounded-2xl hover:bg-red-50 transition-all border border-slate-100 shadow-sm shrink-0 group hover:border-red-200"
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-2xl hover:bg-red-50 transition-all border border-slate-100 shadow-sm shrink-0 group hover:border-red-200"
             >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs transition-colors ${isExporting === 'pdf' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-600'}`}>
                 {isExporting === 'pdf' ? '...' : 'PDF'}
@@ -161,10 +161,10 @@ export default function StepFinalisasi({
             </button>
 
             {/* Tombol Word */}
-            <button 
+            <button
               onClick={handleExportWord}
               disabled={!!isExporting || !previewImage}
-              className="flex items-center gap-4 p-4 bg-white rounded-2xl hover:bg-blue-50 transition-all border border-slate-100 shadow-sm shrink-0 group hover:border-blue-200"
+              className="flex items-center gap-3 md:gap-4 p-3 md:p-4 bg-white rounded-2xl hover:bg-red-50 transition-all border border-slate-100 shadow-sm shrink-0 group hover:border-red-200"
             >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs transition-colors ${isExporting === 'word' ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
                 {isExporting === 'word' ? '...' : 'DOCX'}
