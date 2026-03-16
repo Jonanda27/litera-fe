@@ -297,8 +297,8 @@ export default function ExercisePage() {
             >
               <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                  <h1 className="text-5xl font-black text-slate-900 tracking-tighter uppercase ">
-                    Exercise Manager
+                  <h1 className="text-3xl font-black text-slate-800 tracking-tight ">
+                    Manajemen Modul
                   </h1>
                   <p className="text-slate-500 font-bold text-lg">
                     Kelola materi pembelajaran dengan presisi.
