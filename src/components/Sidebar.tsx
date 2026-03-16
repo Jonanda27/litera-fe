@@ -10,13 +10,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ children }: SidebarProps) {
-  // Default terbuka di laptop, tertutup di mobile/tablet
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [rolePrefix, setRolePrefix] = useState('peserta'); 
   const pathname = usePathname();
 
-  // Efek untuk cek role user
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -35,10 +33,9 @@ export default function Sidebar({ children }: SidebarProps) {
     }
   }, []);
 
-  // Efek untuk handle responsive sidebar
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) { // Breakpoint lg
+      if (window.innerWidth < 1024) {
         setIsMobile(true);
         setSidebarOpen(false);
       } else {
@@ -46,35 +43,43 @@ export default function Sidebar({ children }: SidebarProps) {
         setSidebarOpen(true);
       }
     };
-
-    // Set initial value
     handleResize();
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Menu Navigasi
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/exercise', label: 'Exercise' },
-    { path: '/experience', label: 'Experience' },
-    { path: '/experiment', label: 'Experiment' },
-    { path: '/livesession', label: 'Live Session' },
-    { path: '/sertifikat', label: 'Sertifikasi' },
-    { path: '/tools', label: 'Tools Pendukung' },
-    { path: '/riwayat', label: 'Riwayat Kegiatan' },
-    // TAMBAHAN MENU E-BOOK (dengan properti isExternal)
-    { path: 'https://theleaders.id/', label: 'E-book', isExternal: true },
-    { path: '/pengaturan', label: 'Pengaturan' },
-    { path: '/mentor', label: 'Kontak Mentor Kamu' },
-  ];
+  // Logika Filter Menu Berdasarkan Role
+  const getMenuItems = () => {
+    // Jika role adalah admin, tampilkan menu terbatas
+    if (rolePrefix === 'admin') {
+      return [
+        { path: '/dashboard', label: 'Dashboard' },
+        { path: '/users', label: 'Manajemen Akun' }, // Sesuaikan path dengan route admin Anda
+      ];
+    }
+
+    // Menu Default untuk Peserta dan Mentor
+    return [
+      { path: '/dashboard', label: 'Dashboard' },
+      { path: '/exercise', label: 'Exercise' },
+      { path: '/experience', label: 'Experience' },
+      { path: '/experiment', label: 'Experiment' },
+      { path: '/livesession', label: 'Live Session' },
+      { path: '/sertifikat', label: 'Sertifikasi' },
+      { path: '/tools', label: 'Tools Pendukung' },
+      { path: '/riwayat', label: 'Riwayat Kegiatan' },
+      { path: 'https://theleaders.id/', label: 'E-book', isExternal: true },
+      { path: '/pengaturan', label: 'Pengaturan' },
+      { path: '/mentor', label: 'Kontak Mentor Kamu' },
+    ];
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <main className="min-h-screen bg-[#f8fafc] relative overflow-x-hidden">
       <Navbar />
 
-      {/* Overlay Gelap untuk Mobile jika Sidebar terbuka */}
       {isMobile && sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-30 transition-opacity"
@@ -89,7 +94,6 @@ export default function Sidebar({ children }: SidebarProps) {
       >
         <div className="py-8 px-4 flex flex-col gap-2 overflow-y-auto h-full">
           {menuItems.map((item) => {
-            // Logika Link Eksternal vs Internal
             if (item.isExternal) {
               return (
                 <a 
@@ -104,7 +108,6 @@ export default function Sidebar({ children }: SidebarProps) {
               );
             }
 
-            // Logika Link Internal (dengan prefix role)
             const fullHref = `/${rolePrefix}${item.path}`;
             const isActive = pathname === fullHref;
 
@@ -112,7 +115,7 @@ export default function Sidebar({ children }: SidebarProps) {
               <Link 
                 key={fullHref}
                 href={fullHref}
-                onClick={() => isMobile && setSidebarOpen(false)} // Tutup sidebar di mobile setelah klik
+                onClick={() => isMobile && setSidebarOpen(false)}
                 className={`px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm ${
                   isActive 
                     ? 'bg-white text-[#C31A26]' 
@@ -126,7 +129,6 @@ export default function Sidebar({ children }: SidebarProps) {
         </div>
       </aside>
 
-      {/* Tombol Toggle Sidebar */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className={`fixed top-24 bg-white border border-slate-200 rounded-r-lg p-2 z-50 shadow-md transition-all duration-300 ${
@@ -140,7 +142,6 @@ export default function Sidebar({ children }: SidebarProps) {
         </svg>
       </button>
 
-      {/* Konten Utama */}
       <div 
         className={`pt-20 transition-all duration-300 min-h-screen ${
           sidebarOpen && !isMobile ? 'lg:ml-64' : 'ml-0'

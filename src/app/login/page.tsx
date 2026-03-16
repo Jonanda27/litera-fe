@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/constans/constans';
+import Cookies from 'js-cookie'; // Import library Cookies
 
 export default function Login() {
   const router = useRouter();
@@ -14,28 +15,40 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // State untuk menu mobile
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); 
 
   // Cek jika user sudah login
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = Cookies.get('token'); // Cek dari Cookie (lebih akurat untuk Middleware)
     const userStr = localStorage.getItem('user');
     if (token && userStr) {
-      const user = JSON.parse(userStr);
-      redirectByRole(user.role);
+      try {
+        const user = JSON.parse(userStr);
+        redirectByRole(user.role);
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
     }
   }, []);
 
   const redirectByRole = (role: string) => {
-    if (role === 'mentor') {
-      router.push('/mentor/dashboard');
-    } else if (role === 'user') {
-      router.push('/peserta/dashboard');
-    } else if (role === 'admin' || role === 'administrator') {
-      router.push('/admin/dashboard');
-    } else {
-      router.push('/dashboard');
+    console.log("User Role detected:", role);
+    let targetPath = '/dashboard';
+
+    // Normalisasi role ke huruf kecil untuk menghindari error kapitalisasi
+    const normalizedRole = role.toLowerCase();
+
+    if (normalizedRole === 'mentor') {
+      targetPath = '/mentor/dashboard';
+    } else if (normalizedRole === 'peserta') {
+      targetPath = '/peserta/dashboard';
+    } else if (normalizedRole === 'admin' || normalizedRole === 'administrator') {
+      targetPath = '/admin/dashboard';
     }
+
+    // Gunakan window.location.href alih-alih router.push 
+    // agar Middleware Next.js melakukan validasi ulang terhadap Cookie yang baru diset
+    window.location.href = targetPath;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,11 +68,17 @@ export default function Login() {
         throw new Error(data.message || 'Email atau password salah');
       }
 
+      // 1. Simpan di LocalStorage (untuk kebutuhan client-side state)
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
+      // 2. SIMPAN DI COOKIE (Sangat Penting agar Middleware Server tidak melempar balik ke Login)
+      // expires: 1 berarti cookie berlaku selama 1 hari
+      Cookies.set('token', data.token, { expires: 1, path: '/' });
+
+      // 3. Lakukan redirect
       redirectByRole(data.user.role);
-      router.refresh(); 
+      
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -138,7 +157,7 @@ export default function Login() {
         )}
       </nav>
 
-      {/* Breadcrumb Navigation - SEKARANG SAMA DENGAN REGISTER */}
+      {/* Breadcrumb Navigation */}
       <div className="pt-24 px-6 md:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-2 text-sm">

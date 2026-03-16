@@ -25,7 +25,7 @@ export default function ExercisePage() {
           {/* Sub Header */}
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-xl font-black text-slate-800">
-              Level-1/Modul-1 <span className="text-[#c31a26] font-bold text-sm italic ml-2">Saat ini kamu sedang menyelesaikan pelajaran "Mindset keuangan Sehat 2"</span>
+              Level-1/Modul-1 <span className="text-[#c31a26] font-bold text-sm  ml-2">Saat ini kamu sedang menyelesaikan pelajaran "Mindset keuangan Sehat 2"</span>
             </h2>
             <button className="bg-[#1e4e8c] text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg">
               Lihat Sertifikat Kamu
@@ -53,7 +53,7 @@ export default function ExercisePage() {
 
           {/* Next Link */}
           <div className="mt-8 flex justify-end">
-            <button className="text-[#1e4e8c] font-black text-sm italic hover:mr-2 transition-all">
+            <button className="text-[#1e4e8c] font-black text-sm  hover:mr-2 transition-all">
               Lanjut Ke Level-1/Modul-2 &gt;&gt;
             </button>
           </div>

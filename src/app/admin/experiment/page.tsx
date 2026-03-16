@@ -37,7 +37,7 @@ export default function ExperimentPage() {
 
         {/* Link Tambah Proyek */}
         <div className="flex justify-end pr-4">
-          <button className="text-[#1E4E8C] font-black text-sm italic hover:underline">
+          <button className="text-[#1E4E8C] font-black text-sm  hover:underline">
             Tambah Proyek
           </button>
         </div>

@@ -47,14 +47,9 @@ const FICTION_STEPS = [
   { id: 6, title: "Peta Dunia" },
   { id: 7, title: "Kronologi Cerita" },
   { id: 8, title: "Papan PLot" },
-  { id: 9, title: "Editor Naskah" },
-  { id: 10, title: "Babak 2" },
-  { id: 11, title: "Babak 3" },
-  { id: 12, title: "Draf Penulisan" },
-  { id: 13, title: "Self Editing" },
-  { id: 14, title: "Revisi Total" },
-  { id: 15, title: "Finalisasi" },
-  { id: 16, title: "Persiapan Terbit" },
+  { id: 9, title: "Draf Penulisan" },
+  { id: 10, title: "Revisi Total" },
+  { id: 11, title: "Finalisasi" },
 ];
 
 const NON_FICTION_STEPS = [
@@ -92,7 +87,6 @@ const AddProjectModal = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [isZenMode, setIsZenMode] = useState(false);
 
-  // --- STATE UNTUK PREVIEW & KONFIGURASI EXPORT ---
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewConfig, setPreviewConfig] = useState({
     fontFamily: "'Times New Roman', serif",
@@ -121,7 +115,7 @@ const AddProjectModal = ({
             `${API_BASE_URL}/books/${selectedId}`,
             {
               headers: { Authorization: `Bearer ${token}` },
-            },
+            }
           );
           const bookData = response.data.data;
 
@@ -148,7 +142,7 @@ const AddProjectModal = ({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
 
   const handleInputChange = (field: string, value: any) =>
@@ -345,7 +339,11 @@ const AddProjectModal = ({
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`bg-white w-full max-w-5xl ${isZenMode ? "h-screen max-h-screen rounded-none" : "max-h-[92vh] md:max-h-[95vh] rounded-2xl md:rounded-[2.5rem]"} overflow-hidden shadow-2xl flex flex-col transition-all duration-500`}
+        className={`bg-white w-full max-w-5xl ${
+          isZenMode
+            ? "h-screen max-h-screen rounded-none"
+            : "max-h-[92vh] md:max-h-[95vh] rounded-2xl md:rounded-[2.5rem]"
+        } overflow-hidden shadow-2xl flex flex-col transition-all duration-500`}
       >
         {/* HEADER */}
         {!isZenMode && (
@@ -354,7 +352,11 @@ const AddProjectModal = ({
               <div className="pr-4">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span
-                    className={`px-2 py-0.5 rounded text-[8px] md:text-[9px] font-black uppercase ${category === "Non-Fiksi" ? "bg-amber-100 text-amber-600" : "bg-violet-100 text-violet-600"}`}
+                    className={`px-2 py-0.5 rounded text-[8px] md:text-[9px] font-black uppercase ${
+                      category === "Non-Fiksi"
+                        ? "bg-amber-100 text-amber-600"
+                        : "bg-violet-100 text-violet-600"
+                    }`}
                   >
                     {category}
                   </span>
@@ -376,7 +378,7 @@ const AddProjectModal = ({
               </button>
             </div>
 
-            {/* PROGRESS BAR - Responsive Gap */}
+            {/* PROGRESS BAR */}
             <div className="flex gap-0.5 md:gap-1.5">
               {activeSteps.map((step) => (
                 <div
@@ -396,7 +398,9 @@ const AddProjectModal = ({
 
         {/* CONTENT AREA */}
         <div
-          className={`flex-1 overflow-y-auto ${isZenMode ? "p-0" : "p-4 md:p-8"} bg-white custom-scrollbar`}
+          className={`flex-1 overflow-y-auto ${
+            isZenMode ? "p-0" : "p-4 md:p-8"
+          } bg-white custom-scrollbar`}
         >
           <AnimatePresence mode="wait">
             <motion.div
@@ -412,25 +416,30 @@ const AddProjectModal = ({
           </AnimatePresence>
         </div>
 
-        {/* FOOTER NAVIGATION */}
+        {/* FOOTER NAVIGATION - PERBAIKAN KHUSUS MOBILE */}
         {!isZenMode && (
           <div className="p-4 md:p-6 border-t bg-slate-50 flex justify-between items-center shrink-0">
+            {/* Tombol Kembali */}
             <button
               onClick={handlePrevStep}
               disabled={currentStep === 1 || loadingDetail}
-              className={`font-black text-[10px] md:text-xs uppercase flex items-center gap-1 md:gap-2 transition-all ${
+              className={`font-black uppercase flex items-center gap-1 md:gap-2 transition-all shrink-0 ${
                 currentStep === 1 || loadingDetail
                   ? "opacity-0 pointer-events-none"
                   : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              ← <span className="hidden sm:inline">Kembali</span>
+              <span className="text-xs md:text-sm">←</span>
+              <span className="text-[10px] md:text-xs">Kembali</span>
             </button>
 
-            <div className="flex items-center gap-2 md:gap-4">
-              <span className="text-[8px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest hidden xs:block">
+            {/* Bagian Kanan Footer */}
+            <div className="flex items-center gap-2">
+              {/* Teks Langkah disembunyikan di layar kecil (mobile) agar tombol tidak terdorong */}
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest hidden lg:block">
                 Langkah {currentStep} / {totalSteps}
               </span>
+
               <button
                 onClick={
                   currentStep === totalSteps
@@ -438,19 +447,19 @@ const AddProjectModal = ({
                     : handleNextStep
                 }
                 disabled={loadingDetail}
-                className={`px-6 md:px-10 py-3 md:py-4 text-white font-black rounded-full shadow-lg uppercase text-[10px] md:text-xs active:scale-95 transition-all whitespace-nowrap ${
+                className={`px-4 md:px-10 py-2.5 md:py-4 text-white font-black rounded-full shadow-lg uppercase text-[10px] md:text-xs active:scale-95 transition-all whitespace-nowrap shrink-0 ${
                   loadingDetail
                     ? "bg-slate-300 cursor-not-allowed"
                     : category === "Non-Fiksi"
-                      ? "bg-amber-600 hover:bg-amber-700"
-                      : "bg-violet-600 hover:bg-violet-700"
+                    ? "bg-amber-600 hover:bg-amber-700"
+                    : "bg-violet-600 hover:bg-violet-700"
                 }`}
               >
                 {currentStep === totalSteps ? (
                   "Selesaikan Proyek"
                 ) : (
                   <span className="flex items-center gap-1">
-                    Selanjutnya <span className="hidden sm:inline">→</span>
+                    Selanjutnya <span className="text-xs md:text-sm">→</span>
                   </span>
                 )}
               </button>

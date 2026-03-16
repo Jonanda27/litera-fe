@@ -16,8 +16,8 @@ export interface ApiResponse<T> {
 export interface BaseAccount {
     id: string;
     email: string;
-    fullName: string;
-    role: 'ADMIN' | 'PESERTA' | 'MENTOR';
+    nama: string;
+    role: 'admin' | 'peserta' | 'mentor';
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -27,7 +27,7 @@ export interface BaseAccount {
  * Peserta (User) Entity
  */
 export interface User extends BaseAccount {
-    role: 'PESERTA';
+    role: 'admin' | 'peserta';
     institution?: string;
     phoneNumber?: string;
 }
@@ -36,7 +36,7 @@ export interface User extends BaseAccount {
  * Mentor Entity
  */
 export interface Mentor extends BaseAccount {
-    role: 'MENTOR';
+    role: 'mentor';
     specialization: string[];
     bio?: string;
     rating?: number;
@@ -47,6 +47,7 @@ export interface Mentor extends BaseAccount {
  */
 export type CreateUserPayload = Omit<User, 'id' | 'role' | 'isActive' | 'createdAt' | 'updatedAt'> & {
     password?: string; // Optional if using OAuth, required if local auth
+    role: 'admin' | 'peserta';
 };
 
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'password'>>;

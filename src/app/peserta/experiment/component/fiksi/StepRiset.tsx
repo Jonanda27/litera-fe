@@ -33,18 +33,17 @@ export default function StepRiset({ formData, onDataChange }: any) {
 
   const bookId = formData?.id || formData?.bookId;
 
-  // 1. FETCH DATA DARI API
   const fetchResearch = async () => {
     if (!bookId) return;
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
       const res = await axios.get(
-  `${API_BASE_URL}/books/research/${bookId}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  },
-);
+        `${API_BASE_URL}/books/research/${bookId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       const mapped = res.data.map((item: any) => {
         const [p, t] = (item.reference_point || "|").split("|");
@@ -109,9 +108,8 @@ export default function StepRiset({ formData, onDataChange }: any) {
     }
   };
 
-  // 2. FUNGSI EDIT
   const handleEditClick = (e: React.MouseEvent, item: ResearchItem) => {
-    e.stopPropagation(); // Mencegah modal detail terbuka
+    e.stopPropagation();
     setEditingId(item.id);
     setNewItem({
       ...item,
@@ -132,7 +130,6 @@ export default function StepRiset({ formData, onDataChange }: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // 3. SIMPAN DATA (POST / PATCH)
   const handleSaveResearch = async () => {
     if (!newItem.title) return alert("Judul Materi wajib diisi");
     if (!bookId) return alert("ID Buku tidak ditemukan");
@@ -141,19 +138,19 @@ export default function StepRiset({ formData, onDataChange }: any) {
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-     if (editingId) {
-  await axios.patch(
-    `${API_BASE_URL}/books/research/${editingId}`,
-    payload,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-} else {
-  await axios.post(`${API_BASE_URL}/books/research`, payload, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
+      if (editingId) {
+        await axios.patch(
+          `${API_BASE_URL}/books/research/${editingId}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+      } else {
+        await axios.post(`${API_BASE_URL}/books/research`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
 
       setEditingId(null);
       await fetchResearch();
@@ -163,16 +160,14 @@ export default function StepRiset({ formData, onDataChange }: any) {
     }
   };
 
-  // 4. HAPUS DATA
   const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Mencegah modal detail terbuka
+    e.stopPropagation();
     if (!confirm("Hapus riset ini secara permanen?")) return;
     try {
       const token = localStorage.getItem("token");
-     await axios.delete(`${API_BASE_URL}/books/research/${id}`, {
-  headers: { Authorization: `Bearer ${token}` },
-});
-      
+      await axios.delete(`${API_BASE_URL}/books/research/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchResearch();
     } catch (err) {
       alert("Gagal menghapus data");
@@ -189,18 +184,18 @@ export default function StepRiset({ formData, onDataChange }: any) {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* HEADER SECTION */}
-      <div className="flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-600 p-5 rounded-[2rem] shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl text-white">
+    <div className="space-y-6 px-1 md:px-0">
+      {/* HEADER SECTION - Responsive Padding & Layout */}
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-amber-500 to-orange-600 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-md gap-4">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl text-white shrink-0">
             🏛️
           </div>
           <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
               Research Vault
             </h3>
-            <p className="text-[10px] font-bold text-amber-100 uppercase opacity-80">
+            <p className="text-[9px] md:text-[10px] font-bold text-amber-100 uppercase opacity-80">
               Gudang Referensi & Data Terpercaya
             </p>
           </div>
@@ -210,7 +205,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
             if (isAdding && editingId) resetForm();
             else setIsAdding(!isAdding);
           }}
-          className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-lg active:scale-95 ${
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all shadow-lg active:scale-95 ${
             isAdding
               ? "bg-white text-rose-600"
               : "bg-slate-900 text-amber-400 shadow-amber-900/20"
@@ -228,11 +223,11 @@ export default function StepRiset({ formData, onDataChange }: any) {
             exit={{ height: 0, opacity: 0, y: -20 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-2 border-amber-100 rounded-[2.5rem] p-6 shadow-xl space-y-6">
-              <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest px-1">
+            <div className="bg-white border-2 border-amber-100 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 shadow-xl space-y-6">
+              <h4 className="text-[10px] md:text-xs font-black text-amber-600 uppercase tracking-widest px-1">
                 {editingId ? "📝 Edit Materi Riset" : "✨ Tambah Materi Riset"}
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
                 <div className="md:col-span-2">
                   <InputGroup label="Judul Materi Riset">
                     <input
@@ -242,7 +237,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
                       onChange={(e) =>
                         setNewItem({ ...newItem, title: e.target.value })
                       }
-                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-black"
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-amber-500 outline-none text-sm font-bold text-black transition-all"
                     />
                   </InputGroup>
                 </div>
@@ -254,7 +249,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
                         onClick={() =>
                           setNewItem({ ...newItem, credibility: star })
                         }
-                        className={`text-lg transition-all ${newItem.credibility! >= star ? "text-amber-500" : "text-slate-300"}`}
+                        className={`text-lg transition-all ${newItem.credibility! >= star ? "text-amber-500 scale-110" : "text-slate-300"}`}
                       >
                         ★
                       </button>
@@ -264,7 +259,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
+                <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                   Jenis Sumber
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -274,9 +269,9 @@ export default function StepRiset({ formData, onDataChange }: any) {
                       onClick={() =>
                         setNewItem({ ...newItem, sourceType: opt.id as any })
                       }
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 transition-all ${newItem.sourceType === opt.id ? "bg-amber-500 border-amber-500 text-white shadow-md" : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"}`}
+                      className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase border-2 transition-all ${newItem.sourceType === opt.id ? "bg-amber-500 border-amber-500 text-white shadow-md" : "bg-white border-slate-100 text-slate-400 hover:border-amber-200"}`}
                     >
-                      <span>{opt.icon}</span> {opt.label}
+                      <span className="text-xs md:text-sm">{opt.icon}</span> {opt.label}
                     </button>
                   ))}
                 </div>
@@ -301,12 +296,12 @@ export default function StepRiset({ formData, onDataChange }: any) {
                   onChange={(e) =>
                     setNewItem({ ...newItem, importantQuotes: e.target.value })
                   }
-                  className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 h-24 resize-none text-sm font-bold text-black"
+                  className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 h-24 md:h-32 resize-none text-sm font-bold text-black"
                 />
               </InputGroup>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <InputGroup label="Tags">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+                <InputGroup label="Tags (pisahkan koma)">
                   <input
                     type="text"
                     placeholder="sejarah, medis"
@@ -317,7 +312,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
                         tags: e.target.value.split(",").map((t) => t.trim()),
                       })
                     }
-                    className="w-full p-3 rounded-xl bg-slate-50 border text-[11px] font-black uppercase text-black"
+                    className="w-full p-3 rounded-xl bg-slate-50 border text-[10px] md:text-[11px] font-black uppercase text-black"
                   />
                 </InputGroup>
                 <InputGroup label="Letak (Hal / Menit)">
@@ -354,180 +349,179 @@ export default function StepRiset({ formData, onDataChange }: any) {
                     />
                   </div>
                 </InputGroup>
-                <InputGroup label="Rencana Penggunaan">
-                  <input
-                    type="text"
-                    placeholder="Bab 3"
-                    value={newItem.usagePlan}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, usagePlan: e.target.value })
-                    }
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-black"
-                  />
-                </InputGroup>
+                <div className="sm:col-span-2 md:col-span-1">
+                  <InputGroup label="Rencana Penggunaan">
+                    <input
+                      type="text"
+                      placeholder="Misal: Bab 3"
+                      value={newItem.usagePlan}
+                      onChange={(e) =>
+                        setNewItem({ ...newItem, usagePlan: e.target.value })
+                      }
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-black"
+                    />
+                  </InputGroup>
+                </div>
               </div>
 
               <button
                 onClick={handleSaveResearch}
-                className="w-full py-4 bg-slate-900 text-amber-400 rounded-2xl font-black uppercase shadow-xl hover:bg-black active:scale-95 transition-all"
+                className="w-full py-4 bg-slate-900 text-amber-400 rounded-2xl font-black uppercase shadow-xl hover:bg-black active:scale-95 transition-all text-xs md:text-sm"
               >
-                {editingId
-                  ? "💾 Perbarui Data Riset"
-                  : "💾 Simpan ke Research Base"}
+                {editingId ? "💾 Perbarui Data Riset" : "💾 Simpan ke Research Base"}
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* RESEARCH LIST GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {researchList.map((item) => (
           <div
             key={item.id}
             onClick={() => setSelectedResearch(item)}
-            className="bg-white p-5 rounded-[2rem] border-2 border-slate-100 hover:border-amber-400 transition-all group relative cursor-pointer"
+            className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border-2 border-slate-100 hover:border-amber-400 transition-all group relative cursor-pointer shadow-sm hover:shadow-md"
           >
             <div className="flex justify-between items-start mb-3">
-              <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[8px] font-black uppercase">
+              <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase">
                 {item.sourceType}
               </span>
-              <div className="text-amber-500 text-xs">
+              <div className="text-amber-500 text-[10px] md:text-xs">
                 {"★".repeat(item.credibility)}
               </div>
             </div>
-            <h4 className="text-sm font-black text-slate-900 uppercase mb-2 line-clamp-1 pr-10">
+            <h4 className="text-xs md:text-sm font-black text-slate-900 uppercase mb-2 line-clamp-1 pr-12">
               {item.title}
             </h4>
-            <p className="text-xs font-bold text-slate-500 line-clamp-2 italic mb-3">
+            <p className="text-[10px] md:text-xs font-bold text-slate-500 line-clamp-2 italic mb-3">
               "{item.importantQuotes}"
             </p>
-            <div className="flex justify-between items-center pt-3 border-t border-slate-50">
-              <span className="text-[9px] font-black text-slate-400 uppercase">
+            <div className="flex justify-between items-center pt-3 border-t border-slate-50 gap-2">
+              <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase truncate">
                 📍 {item.usagePlan}
               </span>
-              <div className="flex gap-3">
-                <span className="text-[9px] font-black bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase">
-                  {item.pageOrTime.page
-                    ? `HAL. ${item.pageOrTime.page}`
-                    : `${item.pageOrTime.time} MIN`}
-                </span>
-              </div>
+              <span className="shrink-0 text-[8px] md:text-[9px] font-black bg-slate-100 px-2 py-1 rounded text-slate-600 uppercase">
+                {item.pageOrTime.page
+                  ? `HAL. ${item.pageOrTime.page}`
+                  : `${item.pageOrTime.time} MIN`}
+              </span>
             </div>
 
-            {/* ACTION BUTTONS (Icons only) */}
-            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+            {/* ACTION BUTTONS */}
+            <div className="absolute top-4 right-4 flex gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                <button
                   onClick={(e) => handleEditClick(e, item)}
-                  className="p-1.5 bg-amber-100 text-amber-600 rounded-lg hover:bg-amber-500 hover:text-white"
+                  className="p-2 bg-amber-100 text-amber-600 rounded-lg hover:bg-amber-500 hover:text-white transition-colors"
                 >
                   <Edit3 size={14} />
                 </button>
                 <button
                   onClick={(e) => handleDelete(e, item.id)}
-                  className="p-1.5 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-500 hover:text-white"
+                  className="p-2 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-500 hover:text-white transition-colors"
                 >
                   <Trash2 size={14} />
                 </button>
             </div>
           </div>
         ))}
+        {researchList.length === 0 && !isAdding && (
+          <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 rounded-[2rem]">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Belum ada riset yang disimpan</p>
+          </div>
+        )}
       </div>
 
-      {/* DETAIL MODAL (Layout Riset / Repository Style) */}
+      {/* DETAIL MODAL - Optimized for all screens */}
       <AnimatePresence>
         {selectedResearch && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-6 bg-slate-900/70 backdrop-blur-sm">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-2xl relative border-4 border-amber-400"
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-[1.5rem] md:rounded-[3rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar shadow-2xl relative border-[3px] md:border-4 border-amber-400"
             >
               <button 
                 onClick={() => setSelectedResearch(null)}
-                className="absolute top-6 right-6 w-10 h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                className="absolute top-4 right-4 md:top-6 md:right-6 w-8 h-8 md:w-10 md:h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all z-10"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
-              <div className="p-8 space-y-6">
-                {/* Header Detail */}
-                <div className="space-y-2">
+              <div className="p-5 md:p-10 space-y-6">
+                <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <span className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    <span className="bg-amber-100 text-amber-700 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest">
                       {selectedResearch.sourceType}
                     </span>
                     <div className="flex text-amber-500">
                        {"★".repeat(selectedResearch.credibility)}
                     </div>
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 uppercase leading-tight">
+                  <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase leading-tight">
                     {selectedResearch.title}
                   </h2>
                 </div>
 
-                {/* Quote Section (Centerpiece) */}
-                <div className="relative bg-slate-50 p-8 rounded-[2.5rem] border-2 border-slate-100 italic">
-                  <Quote className="absolute top-4 left-4 text-amber-200" size={40} />
-                  <p className="relative z-10 text-lg font-medium text-slate-700 leading-relaxed text-center px-4">
+                <div className="relative bg-slate-50 p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] border-2 border-slate-100 italic">
+                  <Quote className="absolute top-3 left-3 md:top-4 md:left-4 text-amber-200" size={30} />
+                  <p className="relative z-10 text-sm md:text-lg font-medium text-slate-700 leading-relaxed text-center px-2">
                     "{selectedResearch.importantQuotes}"
                   </p>
                 </div>
 
-                {/* Metadata Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white border-2 border-slate-50 p-4 rounded-2xl flex items-center gap-3">
-                    <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                  <div className="bg-white border-2 border-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl flex items-center gap-3">
+                    <div className="p-2 bg-amber-50 text-amber-600 rounded-xl shrink-0">
                       <MapPin size={18} />
                     </div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Rencana Penggunaan</p>
-                      <p className="text-sm font-bold text-slate-800">{selectedResearch.usagePlan}</p>
+                    <div className="min-w-0">
+                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Rencana Penggunaan</p>
+                      <p className="text-xs md:text-sm font-bold text-slate-800 truncate">{selectedResearch.usagePlan}</p>
                     </div>
                   </div>
-                  <div className="bg-white border-2 border-slate-50 p-4 rounded-2xl flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <div className="bg-white border-2 border-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl flex items-center gap-3">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl shrink-0">
                       <BookOpen size={18} />
                     </div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Letak Referensi</p>
-                      <p className="text-sm font-bold text-slate-800">
+                    <div className="min-w-0">
+                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Letak Referensi</p>
+                      <p className="text-xs md:text-sm font-bold text-slate-800 truncate">
                         {selectedResearch.pageOrTime.page ? `Halaman ${selectedResearch.pageOrTime.page}` : `Menit ${selectedResearch.pageOrTime.time}`}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Tags */}
                 <div className="space-y-2">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                   <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
                      <Tag size={12} /> Topik Terkait
                    </p>
-                   <div className="flex flex-wrap gap-2">
+                   <div className="flex flex-wrap gap-1.5 md:gap-2">
                       {selectedResearch.tags.map((tag, idx) => (
-                        <span key={idx} className="bg-slate-100 text-slate-600 px-4 py-1.5 rounded-xl text-xs font-bold border border-slate-200">
+                        <span key={idx} className="bg-slate-100 text-slate-600 px-3 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold border border-slate-200">
                           #{tag}
                         </span>
                       ))}
                    </div>
                 </div>
 
-                {/* Bottom Actions */}
-                <div className="pt-4 border-t border-slate-100 flex gap-4">
+                <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3 md:gap-4">
                   <a 
                     href={selectedResearch.reference} 
                     target="_blank" 
                     rel="noreferrer"
-                    className="flex-1 bg-amber-500 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-amber-200 flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95"
+                    className="w-full sm:flex-1 bg-amber-500 text-white py-3.5 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase shadow-lg shadow-amber-200 flex items-center justify-center gap-2 hover:bg-amber-600 transition-all active:scale-95"
                   >
-                    Buka Sumber Referensi <ExternalLink size={14} />
+                    Buka Sumber <ExternalLink size={14} />
                   </a>
                   <button 
                     onClick={() => {
                       setSelectedResearch(null);
                       handleEditClick(new MouseEvent('click') as any, selectedResearch);
                     }}
-                    className="px-8 bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase hover:bg-black transition-all"
+                    className="w-full sm:w-auto px-6 md:px-10 bg-slate-900 text-white py-3.5 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase hover:bg-black transition-all"
                   >
                     Edit Data
                   </button>
@@ -544,7 +538,7 @@ export default function StepRiset({ formData, onDataChange }: any) {
 function InputGroup({ label, children }: any) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
+      <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
         {label}
       </label>
       {children}

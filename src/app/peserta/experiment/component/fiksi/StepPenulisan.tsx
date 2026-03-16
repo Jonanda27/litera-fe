@@ -179,7 +179,6 @@ export default function StepPenulisan({
 
   const applyFontSize = (size: string) => {
     setSelectedFontSize(size);
-    // Hack untuk custom font size di contentEditable karena execCommand hanya mendukung 1-7
     document.execCommand('fontSize', false, "7");
     editorRefs.current.forEach(ref => {
       const fontSpans = ref?.querySelectorAll('font[size="7"]');
@@ -226,7 +225,6 @@ export default function StepPenulisan({
       if (prevPage) {
         setPageCount(prev => prev - 1);
         prevPage.focus();
-        // Taruh kursor di akhir
         const range = document.createRange();
         const sel = window.getSelection();
         range.selectNodeContents(prevPage);
@@ -252,42 +250,39 @@ export default function StepPenulisan({
         while (el.scrollHeight > el.clientHeight && el.childNodes.length > 0) {
           const lastChild = el.lastChild;
           if (!lastChild) break;
-
           nextPage.insertBefore(lastChild, nextPage.firstChild);
         }
-
         handleReflow(index + 1);
       }
     }
   }, [pageCount]);
 
   return (
-    <div className={`space-y-6 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 md:p-12 overflow-y-auto" : ""}`}>
+    <div className={`space-y-4 md:space-y-6 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-2 md:p-12 overflow-y-auto" : ""}`}>
 
       {/* HEADER: DROPDOWN BAB MODERN */}
       {!isZenMode && (
-        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
+        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
           <div className="flex-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block pl-1">
+            <label className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-3 block pl-1">
               Pilih Bab Untuk Ditulis
             </label>
 
-            {/* Custom UI Dropdown */}
             <div className="relative w-full max-w-md">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full flex items-center justify-between bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl hover:border-blue-500 transition-all shadow-inner group"
+                className="w-full flex items-center justify-between bg-slate-50 border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl hover:border-blue-500 transition-all shadow-inner group"
               >
                 <div className="flex items-center gap-3">
-                  <span className="bg-blue-600 text-white w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shadow-lg shadow-blue-200">
+                  <span className="bg-blue-600 text-white w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center text-[9px] md:text-[10px] font-black shadow-lg shadow-blue-200">
                     {selectedChapter ? selectedChapter.chapter_number : "?"}
                   </span>
-                  <span className={`text-sm font-bold truncate ${selectedChapter ? 'text-slate-800' : 'text-slate-400'}`}>
+                  <span className={`text-xs md:text-sm font-bold truncate ${selectedChapter ? 'text-slate-800' : 'text-slate-400'}`}>
                     {selectedChapter ? selectedChapter.title : "Klik untuk memilih bab..."}
                   </span>
                 </div>
                 <motion.div animate={{ rotate: isDropdownOpen ? 180 : 0 }}>
-                  <ChevronDown className="text-slate-400 group-hover:text-blue-500" size={18} />
+                  <ChevronDown className="text-slate-400 group-hover:text-blue-500" size={16} />
                 </motion.div>
               </button>
 
@@ -299,9 +294,9 @@ export default function StepPenulisan({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-100 rounded-3xl shadow-2xl z-20 overflow-hidden"
+                      className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-100 rounded-2xl md:rounded-3xl shadow-2xl z-20 overflow-hidden"
                     >
-                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
+                      <div className="max-h-[250px] md:max-h-[300px] overflow-y-auto custom-scrollbar p-2">
                         {outlines.length > 0 ? (
                           outlines.map((chap) => (
                             <button
@@ -310,16 +305,16 @@ export default function StepPenulisan({
                                 setSelectedChapter(chap);
                                 setIsDropdownOpen(false);
                               }}
-                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${selectedChapter?.id === chap.id
+                              className={`w-full text-left p-3 md:p-4 rounded-xl md:rounded-2xl flex items-center gap-3 md:gap-4 transition-all mb-1 ${selectedChapter?.id === chap.id
                                 ? "bg-blue-50 text-blue-700"
                                 : "hover:bg-slate-50 text-slate-600"
                                 }`}
                             >
-                              <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${selectedChapter?.id === chap.id ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+                              <span className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-[9px] md:text-[10px] font-black ${selectedChapter?.id === chap.id ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
                                 {chap.chapter_number}
                               </span>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-black uppercase tracking-tight truncate">{chap.title}</p>
+                                <p className="text-[11px] md:text-[13px] font-black uppercase tracking-tight truncate">{chap.title}</p>
                               </div>
                             </button>
                           ))
@@ -336,7 +331,7 @@ export default function StepPenulisan({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-4">
             <AnimatePresence>
               {selectedChapter && (
                 <motion.div
@@ -357,116 +352,86 @@ export default function StepPenulisan({
       )}
 
       {/* HEADER CONTROLS */}
-      <div className="flex justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto text-black">
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 bg-white rounded-xl border shadow-sm flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto text-black gap-4 px-2">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="px-3 md:px-4 py-2 bg-white rounded-xl border shadow-sm flex items-center gap-2 w-full justify-center">
             <span className={`w-2 h-2 rounded-full ${selectedChapter ? "bg-green-500 animate-pulse" : "bg-slate-300"}`} />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-              {selectedChapter ? "Ready to write" : "Waiting for chapter selection"}
+            <span className="text-[9px] md:text-[10px] font-black text-slate-600 uppercase tracking-widest truncate">
+              {selectedChapter ? "Ready to write" : "Wait selection"}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700">
-            Halaman: {currentPage} / {pageCount}
+        <div className="flex items-center justify-between w-full sm:w-auto gap-2 md:gap-4">
+          <span className="text-[9px] md:text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700 whitespace-nowrap">
+            Hal: {currentPage} / {pageCount}
           </span>
           <button
             onClick={() => setIsZenMode(!isZenMode)}
-            className="bg-black text-white px-6 py-2.5 rounded-full text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all"
+            className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all flex-1 text-center"
           >
-            {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
+            {isZenMode ? "Keluar Mode Fokus" : "Fokus 🧘‍♂️"}
           </button>
         </div>
       </div>
 
       <div className="max-w-[1200px] mx-auto">
         {!selectedChapter ? (
-          <div className="h-[500px] flex flex-col items-center justify-center bg-slate-50/50 rounded-[3rem] border-4 border-dashed border-slate-200">
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="text-6xl mb-6 opacity-30"
-            >
-              📖
-            </motion.div>
-            <h3 className="text-xl font-black text-slate-400 uppercase tracking-tighter">Mulai Menulis</h3>
-            <p className="text-sm font-bold text-slate-300 italic mt-2">Pilih bab dari menu dropdown di atas untuk mengaktifkan kertas</p>
+          <div className="h-[300px] md:h-[500px] flex flex-col items-center justify-center bg-slate-50/50 rounded-[2rem] md:rounded-[3rem] border-4 border-dashed border-slate-200 p-6 text-center">
+            <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }} className="text-4xl md:text-6xl mb-4 md:mb-6 opacity-30">📖</motion.div>
+            <h3 className="text-lg md:text-xl font-black text-slate-400 uppercase tracking-tighter">Mulai Menulis</h3>
+            <p className="text-xs md:text-sm font-bold text-slate-300 italic mt-2">Pilih bab dari menu di atas untuk mengaktifkan kertas</p>
           </div>
         ) : (
-          <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
+          <div className="border-2 border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-2xl">
 
-            {/* TOOLBAR */}
-            <div className="w-full bg-slate-50 px-6 py-4 border-b-2 border-slate-100 flex flex-wrap items-center gap-4 sticky top-0 z-50 shadow-sm text-black">
+            {/* TOOLBAR: SCROLLABLE ON MOBILE */}
+            <div className="w-full bg-slate-50 px-3 md:px-6 py-3 md:py-4 border-b-2 border-slate-100 flex overflow-x-auto md:flex-wrap items-center gap-3 md:gap-4 sticky top-0 z-50 shadow-sm text-black no-scrollbar">
 
               {/* Bold, Italic, Underline */}
-              <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black">
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("bold"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors">B</button>
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("italic"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 italic transition-colors">I</button>
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("underline"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white underline transition-colors">U</button>
+              <div className="flex bg-white rounded-lg md:rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black shrink-0">
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("bold"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors text-xs">B</button>
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("italic"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 italic transition-colors text-xs">I</button>
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("underline"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white underline transition-colors text-xs">U</button>
               </div>
 
               {/* Text Alignment */}
-              <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-slate-600">
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyLeft"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors">
-                  <AlignLeft size={16} />
-                </button>
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyCenter"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors">
-                  <AlignCenter size={16} />
-                </button>
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyRight"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors">
-                  <AlignRight size={16} />
-                </button>
-                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyFull"); }} className="w-10 h-10 flex items-center justify-center hover:bg-black hover:text-white transition-colors">
-                  <AlignJustify size={16} />
-                </button>
+              <div className="flex bg-white rounded-lg md:rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-slate-600 shrink-0">
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyLeft"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors"><AlignLeft size={14} /></button>
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyCenter"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors"><AlignCenter size={14} /></button>
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyRight"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white border-r-2 border-slate-100 transition-colors"><AlignRight size={14} /></button>
+                <button onMouseDown={(e) => { e.preventDefault(); applyStyle("justifyFull"); }} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center hover:bg-black hover:text-white transition-colors"><AlignJustify size={14} /></button>
               </div>
 
               {/* Font Family Selector */}
-              <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
-                <Type size={14} className="text-slate-400 mr-2" />
-                <select
-                  value={selectedFontFamily}
-                  onChange={(e) => applyFontFamily(e.target.value)}
-                  className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
-                >
+              <div className="flex items-center bg-white rounded-lg md:rounded-xl border-2 border-slate-200 shadow-sm px-2 md:px-3 shrink-0">
+                <Type size={12} className="text-slate-400 mr-1 md:mr-2" />
+                <select value={selectedFontFamily} onChange={(e) => applyFontFamily(e.target.value)} className="bg-transparent text-[10px] md:text-[11px] font-black outline-none py-2 cursor-pointer text-black max-w-[80px] md:max-w-none">
                   <option value="'Times New Roman', serif">Times New Roman</option>
-                  <option value="'Georgia', serif">Georgia</option>
                   <option value="'Arial', sans-serif">Arial</option>
                   <option value="'Courier New', monospace">Courier New</option>
-                  <option value="'Garamond', serif">Garamond</option>
                 </select>
               </div>
 
-              {/* Font Size Selector */}
-              <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
-                <span className="text-[8px] font-black uppercase text-slate-400 mr-2">Size</span>
-                <select
-                  value={selectedFontSize}
-                  onChange={(e) => applyFontSize(e.target.value)}
-                  className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
-                >
-                  {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36].map((size) => (
-                    <option key={size} value={`${size}pt`}>{size} pt</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex-1" />
-
-              <div className="flex items-center gap-2 px-4 py-2 bg-black rounded-full shadow-lg">
-                <span className={`w-2 h-2 rounded-full ${saveStatus === "Saving..." ? "bg-yellow-400 animate-spin" : saveStatus === "Typing..." ? "bg-blue-400 animate-pulse" : "bg-green-400"}`} />
-                <span className="text-[9px] font-black text-white uppercase tracking-widest">{saveStatus}</span>
+              {/* Status Badge inside Toolbar for Mobile */}
+              <div className="flex-1 md:hidden" />
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-black rounded-full shadow-lg shrink-0">
+                <span className={`w-1.5 h-1.5 rounded-full ${saveStatus === "Saving..." ? "bg-yellow-400 animate-spin" : saveStatus === "Typing..." ? "bg-blue-400 animate-pulse" : "bg-green-400"}`} />
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">{saveStatus}</span>
               </div>
             </div>
 
-            {/* AREA HALAMAN (A4 STYLE) */}
-            <div className="w-full p-4 md:p-12 bg-slate-400 flex flex-col items-center gap-8 min-h-[800px] overflow-y-auto custom-scrollbar" style={{ height: isZenMode ? 'calc(100vh - 180px)' : '800px' }}>
+            {/* AREA HALAMAN (RESPONSIVE SCALING) */}
+            <div className="w-full p-2 md:p-12 bg-slate-400 flex flex-col items-center gap-4 md:gap-8 min-h-[500px] md:min-h-[800px] overflow-y-auto custom-scrollbar" 
+                 style={{ height: isZenMode ? 'calc(100vh - 120px)' : '800px' }}>
+              
               {Array.from({ length: pageCount }).map((_, index) => (
-                <div key={`page-${index}`} className="relative group">
-                  <div className={`absolute -left-16 top-10 font-black text-4xl transition-all ${currentPage === index + 1 ? "text-black opacity-100 scale-110" : "text-slate-100 opacity-30"}`}>
+                <div key={`page-${index}`} className="relative group writing-page-container">
+                  {/* Page Number (Hidden on very small screens to save space) */}
+                  <div className={`hidden lg:block absolute -left-16 top-10 font-black text-4xl transition-all ${currentPage === index + 1 ? "text-black opacity-100 scale-110" : "text-slate-100 opacity-30"}`}>
                     {index + 1}
                   </div>
+                  
                   <div
                     ref={(el) => { editorRefs.current[index] = el; }}
                     contentEditable={!isLoading}
@@ -474,7 +439,7 @@ export default function StepPenulisan({
                     onFocus={() => setCurrentPage(index + 1)}
                     onInput={() => handleInput(index)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="bg-white shadow-2xl outline-none text-black font-serif prose prose-slate a4-page-div"
+                    className="bg-white shadow-2xl outline-none text-black font-serif prose prose-slate a4-page-div origin-top"
                     style={{
                       width: '210mm',
                       height: '297mm',
@@ -490,8 +455,8 @@ export default function StepPenulisan({
                 </div>
               ))}
 
-              <button onClick={() => setPageCount(prev => prev + 1)} className="mt-4 mb-20 px-10 py-4 bg-black/20 hover:bg-black text-white rounded-full text-[10px] font-black uppercase border-2 border-white/30 transition-all shadow-xl backdrop-blur-md">
-                + Tambah Halaman Manual
+              <button onClick={() => setPageCount(prev => prev + 1)} className="mt-4 mb-20 px-6 md:px-10 py-3 md:py-4 bg-black/20 hover:bg-black text-white rounded-full text-[9px] md:text-[10px] font-black uppercase border-2 border-white/30 transition-all shadow-xl backdrop-blur-md">
+                + Tambah Halaman
               </button>
             </div>
           </div>
@@ -499,17 +464,17 @@ export default function StepPenulisan({
 
         {/* STATS FOOTER */}
         {!isZenMode && (
-          <div className="mt-8 bg-black p-8 rounded-[2.5rem] text-white flex justify-between items-center shadow-2xl border-t-8 border-slate-800">
-            <div>
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Kata Bab {selectedChapter?.chapter_number || ""}</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black italic">{formData.currentWordCount || 0}</span>
-                <span className="text-sm font-bold text-slate-500">/ {formData.targetKata || 1000} Target</span>
+          <div className="mt-4 md:mt-8 bg-black p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] text-white flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl border-t-4 md:border-t-8 border-slate-800">
+            <div className="text-center md:text-left">
+              <p className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Kata Bab {selectedChapter?.chapter_number || ""}</p>
+              <div className="flex items-baseline justify-center md:justify-start gap-2">
+                <span className="text-3xl md:text-5xl font-black italic">{formData.currentWordCount || 0}</span>
+                <span className="text-xs md:text-sm font-bold text-slate-500">/ {formData.targetKata || 1000} Target</span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-[10px] font-black uppercase bg-slate-800 px-5 py-3 rounded-2xl border border-slate-700 shadow-inner">
-                Total Halaman: {pageCount}
+            <div className="flex flex-col items-center md:items-end gap-2 w-full md:w-auto">
+              <div className="text-[9px] md:text-[10px] font-black uppercase bg-slate-800 px-5 py-3 rounded-xl md:rounded-2xl border border-slate-700 shadow-inner w-full text-center">
+                Halaman: {pageCount}
               </div>
             </div>
           </div>
@@ -525,18 +490,37 @@ export default function StepPenulisan({
           font-style: italic;
           display: block;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          height: 4px;
-          width: 4px;
+        
+        /* RESPONSIVE SCALE FOR MOBILE */
+        @media (max-width: 768px) {
+          .writing-page-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            overflow: hidden;
+            height: auto;
+          }
+          /* Menghitung skala berdasarkan lebar layar (approx) */
+          .a4-page-div {
+            transform: scale(0.42); /* Scale down untuk mobile portrait */
+            transform-origin: top center;
+            margin-bottom: -170mm; /* Mengompensasi whitespace akibat scaling */
+          }
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
+        
+        @media (min-width: 480px) and (max-width: 767px) {
+           .a4-page-div {
+            transform: scale(0.6); 
+            margin-bottom: -120mm;
+          }
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}</style>
     </div>
   );
