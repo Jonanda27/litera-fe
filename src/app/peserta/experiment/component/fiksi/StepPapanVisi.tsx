@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { Edit2, Trash2, X, Maximize2, ExternalLink, Palette, User, MapPin, Book, Sparkles } from "lucide-react";
+import { Edit2, Trash2, X, ExternalLink, Palette, User, MapPin, Book, Sparkles } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
 
 interface VisionItem {
@@ -184,19 +184,19 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-1">
-      {/* HEADER SECTION - Responsive Padding & Layout */}
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between bg-gradient-to-r from-indigo-500 to-blue-600 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2rem] shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl shrink-0">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 lg:px-6">
+      {/* HEADER SECTION - Optimized for Laptop */}
+      <div className="flex flex-col sm:flex-row gap-4 sm:items-center justify-between bg-gradient-to-br from-indigo-600 to-blue-700 p-6 md:p-8 rounded-[2rem] shadow-xl">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-inner">
             🖼️
           </div>
           <div>
-            <h3 className="text-xs md:text-sm font-black text-white uppercase tracking-wider">
+            <h3 className="text-sm md:text-base font-black text-white uppercase tracking-widest">
               Papan Visi & Inspirasi
             </h3>
-            <p className="text-[9px] md:text-[10px] font-bold text-indigo-100 uppercase opacity-80">
-              Visualisasikan dunia ceritamu
+            <p className="text-[10px] md:text-xs font-bold text-indigo-100 uppercase opacity-90">
+              Visualisasikan dunia ceritamu dengan detail
             </p>
           </div>
         </div>
@@ -205,38 +205,38 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
             setIsAdding(!isAdding);
             if (isAdding) setEditingId(null);
           }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all shadow-lg active:scale-95 ${
-            isAdding ? "bg-rose-500 text-white" : "bg-white text-blue-700"
+          className={`w-full sm:w-auto px-6 py-3 rounded-2xl text-[10px] md:text-xs font-black uppercase transition-all shadow-lg active:scale-95 ${
+            isAdding ? "bg-rose-500 text-white" : "bg-white text-blue-700 hover:bg-blue-50"
           }`}
         >
-          {isAdding ? "✕ Batalkan" : "+ Tambah Inspirasi"}
+          {isAdding ? "✕ Batalkan" : "+ Tambah Inspirasi Baru"}
         </button>
       </div>
 
       <AnimatePresence>
         {isAdding && (
           <motion.div
-            initial={{ height: 0, opacity: 0, y: -20 }}
-            animate={{ height: "auto", opacity: 1, y: 0 }}
-            exit={{ height: 0, opacity: 0, y: -20 }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-2 border-indigo-100 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 shadow-xl space-y-6">
-              <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
-                {/* Kiri: Tipe & Preview */}
-                <div className="w-full lg:w-1/3 space-y-4">
+            <div className="bg-white border-2 border-indigo-50 rounded-[2rem] lg:rounded-[3rem] p-6 md:p-10 shadow-2xl space-y-8">
+              <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+                {/* Kiri: Tipe & Preview (Sticky on Laptop) */}
+                <div className="w-full lg:w-[400px] space-y-6 lg:sticky lg:top-6 self-start">
                   <InputGroup label="Tipe Konten">
-                    <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                    <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl">
                       {(["image", "link", "color"] as const).map((t) => (
                         <button
                           key={t}
                           onClick={() =>
                             setNewItem({ ...newItem, type: t, content: "" })
                           }
-                          className={`flex-1 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase transition-all ${
+                          className={`flex-1 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase transition-all ${
                             newItem.type === t
-                              ? "bg-white text-indigo-600 shadow-sm"
-                              : "text-slate-400"
+                              ? "bg-white text-indigo-600 shadow-md"
+                              : "text-slate-500 hover:text-slate-700"
                           }`}
                         >
                           {t === "image" ? "File" : t === "link" ? "URL" : "Warna"}
@@ -245,7 +245,7 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
                     </div>
                   </InputGroup>
 
-                  <div className="bg-slate-50 p-3 rounded-2xl border-2 border-dashed border-indigo-100 aspect-video lg:h-64 flex items-center justify-center overflow-hidden">
+                  <div className="bg-slate-50 p-4 rounded-[2rem] border-2 border-dashed border-indigo-100 aspect-video lg:aspect-square flex items-center justify-center overflow-hidden shadow-inner">
                     {newItem.type === "image" && (
                       <div className="w-full h-full relative group">
                         {!newItem.content ? (
@@ -256,25 +256,25 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
                               className="absolute inset-0 opacity-0 cursor-pointer z-10"
                               onChange={handleFileUpload}
                             />
-                            <span className="text-3xl block mb-1">
-                              {isUploading ? "⏳" : "📂"}
-                            </span>
-                            <p className="text-[9px] font-black text-slate-400 uppercase text-center">
-                              Klik / Taruh Gambar
+                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                              <span className="text-3xl">{isUploading ? "⏳" : "📂"}</span>
+                            </div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase text-center tracking-widest">
+                              Klik atau Taruh Gambar Disini
                             </p>
                           </div>
                         ) : (
                           <div className="w-full h-full relative">
                             <img
                               src={newItem.content}
-                              className="w-full h-full object-cover rounded-lg"
+                              className="w-full h-full object-cover rounded-2xl"
                               alt="Preview"
                             />
                             <button
                               onClick={() =>
                                 setNewItem({ ...newItem, content: "" })
                               }
-                              className="absolute top-1 right-1 bg-rose-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-lg"
+                              className="absolute top-2 right-2 bg-rose-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-xl hover:scale-110 transition-transform"
                             >
                               ✕
                             </button>
@@ -284,28 +284,30 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
                     )}
                     {newItem.type === "link" && (
                       <textarea
-                        placeholder="Tempel URL Gambar..."
+                        placeholder="Tempel URL Gambar di sini..."
                         value={newItem.content}
                         onChange={(e) =>
                           setNewItem({ ...newItem, content: e.target.value })
                         }
-                        className="w-full h-full p-3 bg-white border border-slate-200 rounded-xl text-xs font-bold resize-none outline-none"
+                        className="w-full h-full p-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold resize-none outline-none focus:ring-2 ring-indigo-100"
                       />
                     )}
                     {newItem.type === "color" && (
-                      <div className="flex flex-col items-center gap-2">
-                        <input
-                          type="color"
-                          value={newItem.dominantColor}
-                          onChange={(e) =>
-                            setNewItem({
-                              ...newItem,
-                              dominantColor: e.target.value,
-                            })
-                          }
-                          className="w-16 h-16 md:w-20 md:h-20 rounded-full cursor-pointer border-4 border-white shadow-md bg-transparent"
-                        />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative p-2 bg-white rounded-full shadow-lg">
+                          <input
+                            type="color"
+                            value={newItem.dominantColor}
+                            onChange={(e) =>
+                              setNewItem({
+                                ...newItem,
+                                dominantColor: e.target.value,
+                              })
+                            }
+                            className="w-24 h-24 md:w-32 md:h-32 rounded-full cursor-pointer border-none bg-transparent"
+                          />
+                        </div>
+                        <span className="px-4 py-2 bg-slate-900 text-white rounded-full text-[11px] font-black uppercase tracking-[0.2em]">
                           {newItem.dominantColor}
                         </span>
                       </div>
@@ -314,78 +316,93 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
                 </div>
 
                 {/* Kanan: Form Data */}
-                <div className="flex-1 space-y-4">
-                  <InputGroup label="Judul Papan (Wajib)">
+                <div className="flex-1 space-y-6">
+                  <InputGroup label="Judul Inspirasi">
                     <input
                       type="text"
-                      placeholder='Misal: "Istana Pasir"'
+                      placeholder='Contoh: Arsitektur Kota Melayang'
                       value={newItem.title}
                       onChange={(e) =>
                         setNewItem({ ...newItem, title: e.target.value })
                       }
-                      className="w-full p-3 md:p-4 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 outline-none text-xs md:text-sm font-bold text-slate-900 transition-all"
+                      className="w-full p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white outline-none text-xs md:text-sm font-bold text-slate-900 transition-all shadow-sm"
                     />
                   </InputGroup>
 
-                  <InputGroup label="Deskripsi Visual">
+                  <InputGroup label="Deskripsi Detail">
                     <textarea
-                      placeholder="Ceritakan detail visualnya agar mudah diingat..."
+                      placeholder="Apa yang menarik dari visual ini? Jelaskan tekstur, cahaya, atau nuansa yang ingin ditonjolkan..."
                       value={newItem.description}
                       onChange={(e) =>
                         setNewItem({ ...newItem, description: e.target.value })
                       }
-                      className="w-full p-3 md:p-4 rounded-xl bg-slate-50 border border-slate-200 focus:border-indigo-500 outline-none text-xs md:text-sm font-bold text-slate-900 h-24 md:h-32 resize-none"
+                      className="w-full p-4 md:p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white outline-none text-xs md:text-sm font-bold text-slate-900 h-32 md:h-48 resize-none transition-all shadow-sm"
                     />
                   </InputGroup>
 
-                  <div className="grid grid-cols-2 gap-2 md:gap-3">
-                    {["karakter", "lokasi", "bab", "suasana"].map((field) => (
-                      <div
-                        key={field}
-                        className="flex items-center bg-slate-50 rounded-xl border border-slate-100 p-2 md:p-3 focus-within:border-indigo-200 transition-all"
-                      >
-                        <span className="w-5 text-xs md:text-sm shrink-0">
-                          {field === "karakter" ? "👤" : field === "lokasi" ? "📍" : field === "bab" ? "📑" : "✨"}
-                        </span>
-                        <input
-                          type="text"
-                          placeholder={field.toUpperCase()}
-                          value={(newItem.connections as any)[field]}
-                          onChange={(e) =>
-                            setNewItem({
-                              ...newItem,
-                              connections: {
-                                ...newItem.connections,
-                                [field]: e.target.value,
-                              },
-                            } as any)
-                          }
-                          className="flex-1 bg-transparent px-1 md:px-2 outline-none text-[8px] md:text-[10px] font-black text-slate-900 uppercase"
-                        />
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
+                      Koneksi dalam Cerita
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { id: "karakter", icon: "👤", label: "Karakter Terkait" },
+                        { id: "lokasi", icon: "📍", label: "Lokasi / Setting" },
+                        { id: "bab", icon: "📑", label: "Bab / Adegan" },
+                        { id: "suasana", icon: "✨", label: "Mood / Suasana" }
+                      ].map((field) => (
+                        <div
+                          key={field.id}
+                          className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 p-3 focus-within:border-indigo-400 focus-within:bg-white transition-all shadow-sm"
+                        >
+                          <span className="w-10 h-10 flex items-center justify-center bg-white rounded-xl text-lg shadow-sm shrink-0 mr-3">
+                            {field.icon}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">{field.label}</p>
+                            <input
+                              type="text"
+                              placeholder="..."
+                              value={(newItem.connections as any)[field.id]}
+                              onChange={(e) =>
+                                setNewItem({
+                                  ...newItem,
+                                  connections: {
+                                    ...newItem.connections,
+                                    [field.id]: e.target.value,
+                                  },
+                                } as any)
+                              }
+                              className="w-full bg-transparent outline-none text-[10px] md:text-[11px] font-bold text-slate-900 uppercase"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
+
+                  <button
+                    onClick={handleSaveIdea}
+                    className="w-full py-5 bg-gradient-to-r from-indigo-600 to-blue-700 text-white rounded-2xl text-[11px] md:text-xs font-black uppercase shadow-xl hover:shadow-indigo-200 hover:translate-y-[-2px] active:scale-95 transition-all mt-4"
+                  >
+                    {editingId ? "💾 Perbarui Inspirasi" : "💾 Simpan ke Vision Board"}
+                  </button>
                 </div>
               </div>
-
-              <button
-                onClick={handleSaveIdea}
-                className="w-full py-4 bg-gradient-to-r from-indigo-600 to-blue-700 text-white rounded-[1.2rem] text-[10px] md:text-xs font-black uppercase shadow-lg active:scale-95 transition-all mt-4"
-              >
-                {editingId ? "💾 Simpan Perubahan" : "💾 Masukkan ke Papan Visi"}
-              </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* GRID DISPLAY - Responsive Grid Cols */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      {/* GRID DISPLAY - Better Laptop Spacing */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8 pb-10">
         {items.length === 0 && !isAdding && (
-          <div className="col-span-full py-16 text-center bg-slate-50/50 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-slate-200">
-            <p className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest px-4">
-              Papan Visi Masih Kosong
+          <div className="col-span-full py-24 text-center bg-slate-50/50 rounded-[3rem] border-4 border-dashed border-slate-200">
+            <div className="text-5xl mb-4">🎨</div>
+            <p className="text-[11px] md:text-sm font-black text-slate-400 uppercase tracking-[0.3em]">
+              Belum ada inspirasi visual
             </p>
+            <p className="text-[10px] font-medium text-slate-300 mt-2">Mulai bangun duniamu dengan menambah item baru.</p>
           </div>
         )}
 
@@ -393,102 +410,112 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
           <motion.div
             layout
             key={item.id}
-            className="group relative bg-white rounded-3xl border-2 border-slate-100 overflow-hidden hover:border-indigo-400 hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
+            className="group relative bg-white rounded-[2rem] border-2 border-slate-100 overflow-hidden hover:border-indigo-400 hover:shadow-2xl transition-all duration-500 cursor-pointer flex flex-col"
             onClick={() => setSelectedDetail(item)}
           >
-            <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden shrink-0">
+            <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden shrink-0">
               {item.type === "color" ? (
                 <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: item.dominantColor }}>
-                  <span className="bg-white/90 px-2 py-1 rounded text-[9px] font-black text-slate-800">{item.dominantColor}</span>
+                  <span className="bg-white/95 px-4 py-2 rounded-xl text-[10px] font-black text-slate-800 shadow-xl">{item.dominantColor}</span>
                 </div>
               ) : item.content ? (
-                <img src={item.content} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                <img src={item.content} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-100"><span className="text-4xl">🖼️</span></div>
+                <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-100"><span className="text-5xl opacity-20">🖼️</span></div>
               )}
               
-              <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
+              {/* Overlay Actions */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleEditClick(item); }}
-                  className="w-8 h-8 md:w-9 md:h-9 bg-white text-indigo-600 rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all"
+                  className="w-12 h-12 bg-white text-indigo-600 rounded-2xl shadow-xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all transform hover:scale-110"
                 >
-                  <Edit2 size={14} />
+                  <Edit2 size={18} />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                  className="w-8 h-8 md:w-9 md:h-9 bg-white text-rose-500 rounded-full shadow-lg flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                  className="w-12 h-12 bg-white text-rose-500 rounded-2xl shadow-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all transform hover:scale-110"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="p-4 space-y-2 flex-1">
-              <h4 className="text-[10px] md:text-[11px] font-black text-slate-900 uppercase truncate leading-none">{item.title}</h4>
-              <p className="text-[9px] md:text-[10px] font-bold text-slate-500 line-clamp-2 h-7 md:h-8 italic leading-tight">{item.description || "Tidak ada deskripsi..."}</p>
+            <div className="p-6 space-y-3 flex-1 bg-white">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.dominantColor }} />
+                <h4 className="text-[11px] md:text-xs font-black text-slate-900 uppercase truncate tracking-tight">{item.title}</h4>
+              </div>
+              <p className="text-[10px] md:text-11px font-bold text-slate-400 line-clamp-2 h-8 italic leading-snug">
+                {item.description || "Inspirasi ini belum memiliki deskripsi..."}
+              </p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* MODAL DETAIL - Full Responsive Redesign */}
+      {/* MODAL DETAIL - Laptop Centric Layout */}
       <AnimatePresence>
         {selectedDetail && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/70 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-slate-900/80 backdrop-blur-md">
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white w-full max-w-5xl rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[95vh] md:h-auto lg:h-[80vh]"
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-6xl rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl relative flex flex-col lg:flex-row max-h-[90vh] lg:h-[750px]"
             >
               {/* Close Button */}
               <button 
                 onClick={() => setSelectedDetail(null)}
-                className="absolute top-4 right-4 z-20 w-8 h-8 md:w-10 md:h-10 bg-black/20 md:bg-black/10 hover:bg-rose-500 text-white flex items-center justify-center rounded-full transition-all"
+                className="absolute top-6 right-6 z-20 w-12 h-12 bg-white/10 hover:bg-rose-500 text-white lg:text-slate-400 lg:hover:text-white flex items-center justify-center rounded-2xl transition-all shadow-lg backdrop-blur-md"
               >
-                <X size={18} />
+                <X size={24} />
               </button>
 
-              {/* Visual Section */}
-              <div className="w-full md:w-1/2 bg-slate-100 flex items-center justify-center min-h-[250px] md:min-h-full">
+              {/* Visual Section - Fixed 50% on Laptop */}
+              <div className="w-full lg:w-1/2 bg-slate-50 flex items-center justify-center min-h-[300px] lg:min-h-full border-r border-slate-100 relative">
                 {selectedDetail.type === "color" ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center space-y-4 p-8" style={{ backgroundColor: selectedDetail.dominantColor }}>
-                    <span className="bg-white px-5 py-2 md:px-8 md:py-3 rounded-full font-black text-lg md:text-2xl shadow-xl">{selectedDetail.dominantColor}</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center space-y-6 p-12" style={{ backgroundColor: selectedDetail.dominantColor }}>
+                    <div className="bg-white/20 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border border-white/30">
+                       <span className="font-black text-3xl md:text-5xl text-white drop-shadow-lg">{selectedDetail.dominantColor}</span>
+                    </div>
                   </div>
                 ) : (
-                  <img src={selectedDetail.content} className="w-full h-full object-contain md:object-cover" alt={selectedDetail.title} />
+                  <img src={selectedDetail.content} className="w-full h-full object-cover" alt={selectedDetail.title} />
                 )}
               </div>
 
-              {/* Content Section */}
-              <div className="w-full md:w-1/2 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar">
-                <div className="space-y-6 md:space-y-8">
+              {/* Content Section - Scrollable */}
+              <div className="w-full lg:w-1/2 p-8 md:p-12 lg:p-16 overflow-y-auto custom-scrollbar flex flex-col">
+                <div className="space-y-8 md:space-y-10 my-auto">
                   <div>
-                    <div className="flex items-center gap-2 mb-2 md:mb-3">
-                      <span className="px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em]">
                         {selectedDetail.type === 'image' ? 'Inspirasi Visual' : selectedDetail.type === 'link' ? 'Referensi Link' : 'Palet Warna'}
                       </span>
-                      <div className="w-4 h-4 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: selectedDetail.dominantColor }} />
+                      <div className="w-5 h-5 rounded-full border-2 border-slate-100 shadow-sm" style={{ backgroundColor: selectedDetail.dominantColor }} />
                     </div>
-                    <h2 className="text-xl md:text-2xl lg:text-3xl font-black text-slate-900 uppercase tracking-tight leading-tight">{selectedDetail.title}</h2>
-                  </div>
-
-                  <div className="space-y-3">
-                    <h4 className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <Sparkles size={14} className="text-indigo-500" /> Deskripsi Inspirasi
-                    </h4>
-                    <p className="text-slate-600 font-medium leading-relaxed italic text-sm md:text-base lg:text-lg bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-3xl border-l-4 border-indigo-500">
-                      "{selectedDetail.description || 'Tidak ada deskripsi visual yang ditambahkan untuk item ini.'}"
-                    </p>
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 uppercase tracking-tight leading-[1.1]">{selectedDetail.title}</h2>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="text-[9px] md:text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Koneksi Cerita</h4>
-                    <div className="grid grid-cols-2 gap-2 md:gap-3">
-                      <DetailConnection icon={<User size={14}/>} label="Karakter" value={selectedDetail.connections.karakter} />
-                      <DetailConnection icon={<MapPin size={14}/>} label="Lokasi" value={selectedDetail.connections.lokasi} />
-                      <DetailConnection icon={<Book size={14}/>} label="Bab" value={selectedDetail.connections.bab} />
-                      <DetailConnection icon={<Palette size={14}/>} label="Suasana" value={selectedDetail.connections.suasana} />
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-300 uppercase tracking-[0.3em] flex items-center gap-3">
+                      <Sparkles size={16} className="text-indigo-400" /> Deskripsi Inspirasi
+                    </h4>
+                    <div className="bg-slate-50 p-6 md:p-8 rounded-[2rem] border-l-8 border-indigo-500 shadow-inner">
+                      <p className="text-slate-600 font-bold leading-relaxed italic text-base md:text-xl">
+                        "{selectedDetail.description || 'Tidak ada catatan visual untuk item ini.'}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] md:text-xs font-black text-slate-300 uppercase tracking-[0.3em]">Mapping Cerita</h4>
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <DetailConnection icon={<User size={18}/>} label="Karakter" value={selectedDetail.connections.karakter} />
+                      <DetailConnection icon={<MapPin size={18}/>} label="Lokasi" value={selectedDetail.connections.lokasi} />
+                      <DetailConnection icon={<Book size={18}/>} label="Bab" value={selectedDetail.connections.bab} />
+                      <DetailConnection icon={<Palette size={18}/>} label="Mood" value={selectedDetail.connections.suasana} />
                     </div>
                   </div>
 
@@ -496,9 +523,10 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
                     <a 
                       href={selectedDetail.content} 
                       target="_blank" 
-                      className="flex items-center justify-center gap-2 w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] md:text-xs hover:bg-indigo-600 transition-all mt-4"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-3 w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs hover:bg-indigo-600 hover:scale-[1.02] transition-all mt-6 shadow-xl"
                     >
-                      Buka Sumber Asli <ExternalLink size={14} />
+                      Kunjungi Sumber Inspirasi <ExternalLink size={16} />
                     </a>
                   )}
                 </div>
@@ -511,22 +539,24 @@ export default function StepPramenulis({ formData, onDataChange }: any) {
   );
 }
 
+// Sub-component for connections
 function DetailConnection({ icon, label, value }: { icon: any, label: string, value: string }) {
   return (
-    <div className="p-3 md:p-4 bg-white border border-slate-100 rounded-xl md:rounded-2xl shadow-sm flex items-center gap-2 md:gap-3">
-      <div className="p-1.5 md:p-2 bg-slate-50 text-indigo-500 rounded-lg shrink-0">{icon}</div>
+    <div className="p-4 md:p-5 bg-white border border-slate-100 rounded-3xl shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
+      <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 text-indigo-500 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">{icon}</div>
       <div className="min-w-0">
-        <p className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase leading-none mb-1 truncate">{label}</p>
-        <p className="text-[9px] md:text-[11px] font-black text-slate-800 leading-none truncate">{value || "-"}</p>
+        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase leading-none mb-1.5 tracking-wider">{label}</p>
+        <p className="text-[11px] md:text-[13px] font-black text-slate-800 leading-tight truncate">{value || "—"}</p>
       </div>
     </div>
   );
 }
 
+// Sub-component for input groups
 function InputGroup({ label, children }: any) {
   return (
-    <div className="space-y-1.5 md:space-y-2">
-      <label className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
+    <div className="space-y-2.5">
+      <label className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest block pl-1">
         {label}
       </label>
       {children}

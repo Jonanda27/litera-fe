@@ -55,6 +55,7 @@ export default function Sidebar({ children }: SidebarProps) {
       return [
         { path: '/dashboard', label: 'Dashboard' },
         { path: '/users', label: 'Manajemen Akun' }, // Sesuaikan path dengan route admin Anda
+        { path: '/exercise', label: 'Manajemen Modul' }, 
       ];
     }
 
