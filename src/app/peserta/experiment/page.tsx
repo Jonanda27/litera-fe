@@ -102,13 +102,13 @@ export default function ExperimentPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-[1400px] mx-auto space-y-6 md:space-y-8 px-4 md:px-6 lg:px-8 pb-24 md:pb-10"
+        className="max-w-[1400px] mx-auto h-[calc(100dvh-80px)] md:h-[calc(100vh-120px)] flex flex-col px-2 md:px-4 lg:px-0"
       >
         <header className="space-y-2 pt-4 md:pt-0">
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter uppercase">
             EXPERIMENT
           </h1>
-          <p className="text-slate-700 md:text-slate-800 font-bold text-base md:text-lg italic leading-tight">
+          <p className="text-slate-700 md:text-slate-800 font-bold text-base md:text-lg  leading-tight">
             Klik kartu buku untuk melihat progres penulisan mingguan.
           </p>
         </header>
