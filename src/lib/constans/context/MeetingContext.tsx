@@ -7,7 +7,9 @@ interface MeetingData {
   userName: string;
   isModerator: boolean;
   title: string;
-  discussionId: string | number;
+  discussionId?: string | number;
+  streamKey?: string;
+  type: 'discussion' | 'live';
 }
 
 interface MeetingContextType {
@@ -30,24 +32,31 @@ export const MeetingProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   const endMeeting = async () => {
-    if (activeMeeting?.isModerator && activeMeeting.discussionId) {
+    if (!activeMeeting) return;
+
+    // Logika penutupan meeting berdasarkan tipe
+    if (activeMeeting.isModerator) {
+      const token = localStorage.getItem('token');
       try {
-        const token = localStorage.getItem('token');
-        console.log("Mengirim request PATCH ke backend via Context...");
+        let endpoint = "";
 
-        const res = await fetch(`${API_BASE_URL}/meetings/discussions/${activeMeeting.discussionId}/end-meeting`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        if (activeMeeting.type === 'discussion' && activeMeeting.discussionId) {
+          endpoint = `${API_BASE_URL}/meetings/discussions/${activeMeeting.discussionId}/end-meeting`;
+        } else if (activeMeeting.type === 'live') {
+          endpoint = `${API_BASE_URL}/live-sessions/end-by-room/${activeMeeting.roomName}`;
+        }
 
-        if (res.ok) {
-          console.log("Status meeting di backend berhasil diubah.");
+        if (endpoint) {
+          await fetch(endpoint, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
         }
       } catch (err) {
-        console.error("Gagal update status meeting di backend:", err);
+        console.error("Gagal update status di backend:", err);
       }
     }
 

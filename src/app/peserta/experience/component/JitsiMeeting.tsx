@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Script from "next/script";
-import { API_BASE_URL } from "@/lib/constans/constans";
+import { Youtube, Radio } from "lucide-react"; // Tambahkan icon untuk UI
 
 declare global {
   interface Window {
@@ -13,6 +13,7 @@ interface JitsiMeetingProps {
   roomName: string;
   userName: string;
   isModerator: boolean;
+  streamKey?: string; // TAMBAHKAN INI: Untuk menyimpan key YouTube dari DB
   onLeave?: () => void;
 }
 
@@ -20,10 +21,12 @@ const JitsiMeeting = ({
   roomName,
   userName,
   isModerator,
+  streamKey,
   onLeave,
 }: JitsiMeetingProps) => {
   const jitsiContainerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<any>(null);
+  const [isStreaming, setIsStreaming] = useState(false); // State untuk UI tombol
 
   const startMeeting = () => {
     if (apiRef.current) {
@@ -68,6 +71,7 @@ const JitsiMeeting = ({
               "tileview",
               "mute-everyone",
               "security",
+              "livestreaming", // TAMBAHKAN INI: Tombol stream bawaan Jitsi
             ]
             : [
               "microphone",
@@ -93,17 +97,31 @@ const JitsiMeeting = ({
           if (onLeave) onLeave();
         }
       });
-
-      // Event listener lainnya tetap sama...
     }
   };
 
-  // TRICK: Jalankan startMeeting jika script sudah ada di window (kasus navigasi balik)
+  // --- LOGIC START STREAMING ---
+  const handleStartStreaming = () => {
+    if (apiRef.current && streamKey) {
+      // Perintah Jitsi untuk mulai streaming menggunakan key dari props
+      apiRef.current.executeCommand('startLiveStreaming', {
+        data: {
+          streamKey: streamKey, // Key otomatis dari DB
+        },
+        mode: 'stream'
+      });
+      setIsStreaming(true);
+      alert("Permintaan Live Streaming dikirim ke YouTube...");
+    } else {
+      alert("Stream Key tidak ditemukan atau API Jitsi belum siap.");
+    }
+  };
+
   useEffect(() => {
     if (window.JitsiMeetExternalAPI) {
       startMeeting();
     }
-  }, [roomName]); // Jalankan ulang jika roomName berubah
+  }, [roomName]);
 
   useEffect(() => {
     return () => {
@@ -115,17 +133,36 @@ const JitsiMeeting = ({
 
   return (
     <div className="w-full h-full bg-slate-900 overflow-hidden relative">
+      {/* TOMBOL GO LIVE KHUSUS ADMIN (Hanya muncul jika isModerator & ada streamKey) */}
+      {isModerator && streamKey && (
+        <div className="absolute top-4 left-4 z-[100] flex gap-2">
+          <button
+            onClick={handleStartStreaming}
+            disabled={isStreaming}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl border-2 border-slate-900 ${isStreaming
+                ? "bg-green-500 text-white cursor-not-allowed"
+                : "bg-[#c31a26] text-white hover:bg-slate-900 active:scale-95"
+              }`}
+          >
+            {isStreaming ? (
+              <><Radio size={14} className="animate-pulse" /> On Air to YouTube</>
+            ) : (
+              <><Youtube size={14} /> Start Live Stream</>
+            )}
+          </button>
+        </div>
+      )}
+
       <Script
         src="https://meet.jit.si/external_api.js"
         strategy="afterInteractive"
         onLoad={startMeeting}
       />
 
-      {/* Loading Indicator */}
       <div className="absolute inset-0 flex items-center justify-center bg-slate-800 text-white z-0">
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium">Menghubungkan ke Video...</p>
+          <p className="text-sm font-medium italic">Establishing Secure Connection...</p>
         </div>
       </div>
 

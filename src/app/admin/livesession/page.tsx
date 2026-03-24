@@ -35,7 +35,7 @@ export default function AdminManageLive() {
   const fetchSessions = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/admin/meetings/all`, {
+      const res = await fetch(`${API_BASE_URL}/live-session/all-live`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const result = await res.json();
@@ -56,7 +56,7 @@ export default function AdminManageLive() {
     if (!window.confirm("Akhiri sesi ini untuk semua peserta?")) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/admin/meetings/${id}/end`, {
+      const res = await fetch(`${API_BASE_URL}/live-session/end-live/${id}`, {
         method: 'PATCH',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -71,7 +71,7 @@ export default function AdminManageLive() {
     if (!window.confirm("Hapus data sesi ini secara permanen?")) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE_URL}/admin/meetings/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/live-session/delete/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -171,7 +171,7 @@ export default function AdminManageLive() {
                   {session.status === 'active' && (
                     <>
                       <button
-                        onClick={() => router.push(`/peserta/experience/component/${session.id}`)}
+                        onClick={() => router.push(`/admin/livesession/${session.id}`)}
                         className="p-4 bg-slate-900 text-white rounded-xl hover:bg-[#c31a26] transition-all group-hover:scale-105"
                         title="Masuk ke Ruangan"
                       >

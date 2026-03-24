@@ -121,7 +121,8 @@ export default function MeetingRoomPage() {
             userName: user.name || "Anonymous",
             isModerator: isModerator,
             title: meeting.title,
-            discussionId: meeting.Discussion.id
+            discussionId: meeting.Discussion.id,
+            type: 'discussion'
         });
     };
 
