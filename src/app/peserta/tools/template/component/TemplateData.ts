@@ -113,4 +113,4 @@ export const templates = [
   }
 ];
 
-export const categories = ["Semua", "Fiksi", "Non-Fiksi", "Sci-Fi", "Misteri", "Horor", "Romantis"];
+export const categories = ["Semua","Custom", "Fiksi", "Non-Fiksi", "Sci-Fi", "Misteri", "Horor", "Romantis"];
