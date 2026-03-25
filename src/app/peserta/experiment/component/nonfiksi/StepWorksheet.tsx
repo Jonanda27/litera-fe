@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ClipboardCheck, 
-  Plus, 
-  Trash2, 
-  Save, 
-  X, 
-  Target, 
-  MessageSquare, 
+import {
+  ClipboardCheck,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  Target,
+  MessageSquare,
   CheckSquare,
   HelpCircle,
   BookOpen
@@ -48,7 +48,7 @@ interface StepWorksheetProps {
 export default function StepWorksheet({ formData, onDataChange }: StepWorksheetProps) {
   const [worksheets, setWorksheets] = useState<WorksheetItem[]>(formData.worksheets || []);
   const [isAdding, setIsAdding] = useState(false);
-  
+
   const [newItem, setNewItem] = useState<Partial<WorksheetItem>>({
     questions: [
       { id: "q1", text: "", answerPlaceholder: "", isCustomSpace: true },
@@ -87,9 +87,9 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
   };
 
   return (
-    <div className="space-y-6 pb-6 text-slate-800">
+    <div className="space-y-6 pb-6 text-slate-800 px-2 md:px-0">
       {/* HEADER SECTION */}
-      <div className="flex justify-between items-center bg-gradient-to-r from-rose-600 to-pink-700 p-5 rounded-[2rem] shadow-lg">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-rose-600 to-pink-700 p-4 md:p-5 rounded-2xl md:rounded-[2rem] shadow-lg gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white">
             <ClipboardCheck size={20} />
@@ -101,56 +101,55 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
         </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${
-            isAdding ? "bg-white text-rose-600 shadow-rose-200" : "bg-slate-900 text-rose-400"
-          }`}
+          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${isAdding ? "bg-white text-rose-600 shadow-rose-200" : "bg-slate-900 text-rose-400"
+            }`}
         >
-          {isAdding ? <><X size={14}/> Batal</> : <><Plus size={14}/> Worksheet Baru</>}
+          {isAdding ? <><X size={14} /> Batal</> : <><Plus size={14} /> Worksheet Baru</>}
         </button>
       </div>
 
       <AnimatePresence>
         {isAdding && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
-            animate={{ opacity: 1, y: 0 }} 
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="bg-white border border-slate-200 rounded-[2.5rem] p-6 shadow-xl space-y-8 relative overflow-hidden"
+            className="bg-white border border-slate-200 rounded-2xl md:rounded-[2.5rem] p-4 md:p-6 shadow-xl space-y-6 md:space-y-8 relative overflow-hidden"
           >
             {/* INFO UTAMA & TUJUAN */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
               <div className="md:col-span-2 space-y-4">
                 <InputWrapper label="Judul Latihan">
-                  <input type="text" className="form-input-modal" placeholder="Contoh: Audit Keuangan Pribadi 30 Hari" 
-                    onChange={(e) => setNewItem({...newItem, title: e.target.value})}/>
+                  <input type="text" className="form-input-modal" placeholder="Contoh: Audit Keuangan Pribadi 30 Hari"
+                    onChange={(e) => setNewItem({ ...newItem, title: e.target.value })} />
                 </InputWrapper>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <InputWrapper label="Bab">
                     <input type="text" className="form-input-modal text-center" placeholder="01"
-                      onChange={(e) => setNewItem({...newItem, relatedChapter: e.target.value})}/>
+                      onChange={(e) => setNewItem({ ...newItem, relatedChapter: e.target.value })} />
                   </InputWrapper>
                   <div className="col-span-2">
                     <InputWrapper label="Judul Bab">
                       <input type="text" className="form-input-modal" placeholder="Contoh: Mindset Sehat"
-                        onChange={(e) => setNewItem({...newItem, chapterTitle: e.target.value})}/>
+                        onChange={(e) => setNewItem({ ...newItem, chapterTitle: e.target.value })} />
                     </InputWrapper>
                   </div>
                 </div>
               </div>
               <InputWrapper label="Tujuan Latihan">
                 <textarea className="form-textarea-modal h-[105px]" placeholder="Setelah mengisi ini, pembaca bisa..."
-                  onChange={(e) => setNewItem({...newItem, objective: e.target.value})}></textarea>
+                  onChange={(e) => setNewItem({ ...newItem, objective: e.target.value })}></textarea>
               </InputWrapper>
             </div>
 
             {/* INSTRUKSI & PERTANYAAN */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-50 pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 border-t border-slate-50 pt-6">
               <div className="space-y-6">
                 <InputWrapper label="Instruksi Pengerjaan">
                   <div className="relative">
                     <BookOpen size={14} className="absolute left-3 top-3 text-rose-300" />
                     <textarea className="form-textarea-modal pl-10 h-24" placeholder="Jelaskan langkah-langkah praktisnya..."
-                      onChange={(e) => setNewItem({...newItem, instruction: e.target.value})}></textarea>
+                      onChange={(e) => setNewItem({ ...newItem, instruction: e.target.value })}></textarea>
                   </div>
                 </InputWrapper>
 
@@ -164,15 +163,15 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
                           onChange={(e) => {
                             const updated = [...(newItem.questions || [])];
                             updated[idx].text = e.target.value;
-                            setNewItem({...newItem, questions: updated});
-                          }}/>
+                            setNewItem({ ...newItem, questions: updated });
+                          }} />
                       </div>
                       <input type="text" className="w-full bg-white p-2 rounded-lg text-[11px] outline-none border border-slate-200" placeholder="Placeholder jawaban (opsional)..."
                         onChange={(e) => {
                           const updated = [...(newItem.questions || [])];
                           updated[idx].answerPlaceholder = e.target.value;
-                          setNewItem({...newItem, questions: updated});
-                        }}/>
+                          setNewItem({ ...newItem, questions: updated });
+                        }} />
                     </div>
                   ))}
                 </div>
@@ -190,8 +189,8 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
                           onChange={(e) => {
                             const updated = [...(newItem.checklist || [])];
                             updated[idx].item = e.target.value;
-                            setNewItem({...newItem, checklist: updated});
-                          }}/>
+                            setNewItem({ ...newItem, checklist: updated });
+                          }} />
                       </div>
                     ))}
                   </div>
@@ -199,18 +198,18 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
 
                 <InputWrapper label="Refleksi Diri (Insight)">
                   <textarea className="form-textarea-modal h-20" placeholder="Pembaca diharapkan menyadari bahwa..."
-                    onChange={(e) => setNewItem({...newItem, reflection: e.target.value})}></textarea>
+                    onChange={(e) => setNewItem({ ...newItem, reflection: e.target.value })}></textarea>
                 </InputWrapper>
-                
+
                 <InputWrapper label="Contoh Jawaban (Panduan)">
                   <textarea className="form-textarea-modal h-20 border-emerald-100 bg-emerald-50/30" placeholder="Berikan satu contoh untuk memandu pembaca..."
-                    onChange={(e) => setNewItem({...newItem, sampleAnswer: e.target.value})}></textarea>
+                    onChange={(e) => setNewItem({ ...newItem, sampleAnswer: e.target.value })}></textarea>
                 </InputWrapper>
               </div>
             </div>
 
             <button onClick={handleSave} className="w-full py-4 bg-slate-900 text-rose-400 rounded-2xl text-[11px] font-black uppercase shadow-xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2">
-              <Save size={18}/> Simpan Worksheet Pembaca
+              <Save size={18} /> Simpan Worksheet Pembaca
             </button>
           </motion.div>
         )}
@@ -224,7 +223,7 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
           </div>
         )}
         {worksheets.map((item) => (
-          <motion.div layout key={item.id} className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-50 shadow-sm hover:shadow-xl hover:border-rose-200 transition-all group relative overflow-hidden">
+          <motion.div layout key={item.id} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border-2 border-slate-50 shadow-sm hover:shadow-xl hover:border-rose-200 transition-all group relative overflow-hidden">
             <div className="flex justify-between items-start mb-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -237,7 +236,7 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
                 <Target size={14} className="text-rose-500" />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50">
               <div className="flex items-center gap-2">
                 <HelpCircle size={12} className="text-slate-300" />
@@ -249,11 +248,11 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setWorksheets(worksheets.filter(w => w.id !== item.id))}
               className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg flex items-center justify-center text-xs"
             >
-              <Trash2 size={16}/>
+              <Trash2 size={16} />
             </button>
           </motion.div>
         ))}
@@ -261,40 +260,43 @@ export default function StepWorksheet({ formData, onDataChange }: StepWorksheetP
 
       <style jsx>{`
         .form-input-modal {
-          width: 100%;
-          padding: 10px 14px;
-          background-color: #f8fafc;
-          border: 1px solid #f1f5f9;
-          border-radius: 12px;
-          outline: none;
-          font-size: 13px;
-          font-weight: 600;
-          transition: all 0.2s;
-          color: #334155;
-        }
-        .form-input-modal:focus {
-          background-color: white;
-          border-color: #e11d48;
-          box-shadow: 0 4px 12px rgba(225, 29, 72, 0.05);
-        }
-        .form-textarea-modal {
-          width: 100%;
-          padding: 12px;
-          background-color: #f8fafc;
-          border: 1px solid #f1f5f9;
-          border-radius: 16px;
-          outline: none;
-          font-size: 13px;
-          font-weight: 500;
-          resize: none;
-          transition: all 0.2s;
-          color: #334155;
-          line-height: 1.5;
-        }
-        .form-textarea-modal:focus {
-          background-color: white;
-          border-color: #e11d48;
-        }
+        width: 100%;
+        padding: 10px 14px;
+        background-color: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 12px;
+        outline: none;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s;
+        color: #334155;
+      }
+      .form-input-modal:focus {
+        background-color: white;
+        border-color: #e11d48;
+        box-shadow: 0 4px 12px rgba(225, 29, 72, 0.05);
+      }
+      .form-textarea-modal {
+        width: 100%;
+        padding: 12px;
+        background-color: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 14px;
+        outline: none;
+        font-size: 13px;
+        font-weight: 500;
+        resize: none;
+        transition: all 0.2s;
+        color: #334155;
+        line-height: 1.5;
+      }
+      .form-textarea-modal:focus {
+        background-color: white;
+        border-color: #e11d48;
+      }
+      @media (min-width: 768px) {
+        .form-textarea-modal { border-radius: 16px; }
+      }
       `}</style>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useMeetingContext } from "./MeetingContext"; // Sesuaikan path jika perlu
-import JitsiMeeting from "@/app/peserta/experience/component/JitsiMeeting"; // Sesuaikan path jika perlu
+import WebRTCMeeting from "@/app/peserta/experience/component/WebRTCMeeting"; // Sesuaikan path jika perlu
 import { Maximize2, Minimize2, X, GripHorizontal } from "lucide-react"; // <-- Import GripHorizontal
 
 export default function GlobalJitsiWrapper() {
@@ -61,8 +61,8 @@ export default function GlobalJitsiWrapper() {
   return (
     <div
       className={`z-[9999] fixed ${isMinimized
-          ? "bottom-6 right-6 w-[350px] sm:w-[450px] aspect-video bg-slate-900 p-1.5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700"
-          : "inset-4 sm:inset-10 bg-slate-900 p-2 rounded-[32px] shadow-2xl border border-slate-700 flex flex-col"
+        ? "bottom-6 right-6 w-[350px] sm:w-[450px] aspect-video bg-slate-900 p-1.5 rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700"
+        : "inset-4 sm:inset-10 bg-slate-900 p-2 rounded-[32px] shadow-2xl border border-slate-700 flex flex-col"
         }`}
       style={{
         // Memindahkan elemen berdasarkan state position
@@ -108,11 +108,8 @@ export default function GlobalJitsiWrapper() {
         {/* OVERLAY PELINDUNG: Menutup iFrame selama proses drag agar mouse tidak terserap ke dalam Jitsi */}
         {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing" />}
 
-        <JitsiMeeting
-          roomName={activeMeeting.roomName}
-          userName={activeMeeting.userName}
-          isModerator={activeMeeting.isModerator}
-          onLeave={endMeeting}
+        <WebRTCMeeting
+          roomId={activeMeeting.roomName}
         />
       </div>
     </div>

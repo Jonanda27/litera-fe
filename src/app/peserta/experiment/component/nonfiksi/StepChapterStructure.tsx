@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import { 
-  Layout, 
-  Plus, 
-  Trash2, 
-  Save, 
-  X, 
-  GripVertical, 
+import {
+  Layout,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  GripVertical,
   CheckSquare,
   BookOpen,
   ArrowRightCircle,
@@ -86,8 +86,8 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       try {
         const token = localStorage.getItem("token");
         const res = await axios.get(`${API_BASE_URL}/books/chapter-structures/${bookId}`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -144,15 +144,15 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-     if (editingId) {
-  await axios.patch(`${API_BASE_URL}/books/chapter-structures/${editingId}`, payload, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-} else {
-  await axios.post(`${API_BASE_URL}/books/chapter-structures`, payload, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-}
+      if (editingId) {
+        await axios.patch(`${API_BASE_URL}/books/chapter-structures/${editingId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post(`${API_BASE_URL}/books/chapter-structures`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
 
       hasFetchedRef.current = null;
       setEditingId(null);
@@ -161,10 +161,10 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
       // Refresh data
       const res = await axios.get(`${API_BASE_URL}/books/chapter-structures/${bookId}`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setStructures(res.data.map((item: any) => ({ ...item, id: item.id.toString() })));
-      
+
     } catch (error) {
       alert("Gagal menyimpan ke database");
     } finally {
@@ -180,8 +180,8 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API_BASE_URL}/books/chapter-structures/${id}`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const updated = structures.filter((s) => s.id !== id);
       setStructures(updated);
       if (updated.length === 0) setIsAdding(true);
@@ -211,9 +211,9 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
   return (
     <div className="space-y-6 pb-10 text-slate-800 relative">
-      
+
       {/* HEADER SECTION */}
-      <div className="flex justify-between items-center bg-gradient-to-r from-blue-600 to-cyan-700 p-5 rounded-[2rem] shadow-lg border-b-4 border-blue-500/20">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-blue-600 to-cyan-700 p-4 md:p-5 rounded-2xl md:rounded-[2rem] shadow-lg border-b-4 border-blue-500/20 gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white">
             <Layout size={20} />
@@ -232,11 +232,10 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
             if (isAdding) resetForm();
             setIsAdding(!isAdding);
           }}
-          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${
-            isAdding ? "bg-rose-500 text-white shadow-rose-200" : "bg-white text-blue-700 hover:bg-blue-50"
-          }`}
+          className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${isAdding ? "bg-rose-500 text-white shadow-rose-200" : "bg-white text-blue-700 hover:bg-blue-50"
+            }`}
         >
-          {isAdding ? <><X size={14}/> Batal</> : <><Plus size={14}/> Struktur Baru</>}
+          {isAdding ? <><X size={14} /> Batal</> : <><Plus size={14} /> Struktur Baru</>}
         </button>
       </div>
 
@@ -244,34 +243,34 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       <AnimatePresence>
         {isAdding && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl space-y-8 relative overflow-hidden"
+            className="bg-white border border-slate-200 rounded-2xl md:rounded-[2.5rem] p-4 md:p-8 shadow-xl space-y-6 md:space-y-8 relative overflow-hidden"
           >
             <div className="flex items-center gap-2 text-blue-600 border-b border-slate-100 pb-4">
-              <Edit3 size={16}/>
+              <Edit3 size={16} />
               <h4 className="text-[10px] font-black uppercase tracking-widest">{editingId ? "Update Arsitektur Bab" : "Buat Arsitektur Bab Baru"}</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
               <InputWrapper label="Bab Ke-">
                 <input type="text" className="form-input-modal text-center font-black" placeholder="01"
-                  value={newItem.chapterNumber || ""} onChange={(e) => setNewItem({...newItem, chapterNumber: e.target.value})}/>
+                  value={newItem.chapterNumber || ""} onChange={(e) => setNewItem({ ...newItem, chapterNumber: e.target.value })} />
               </InputWrapper>
               <div className="md:col-span-3">
                 <InputWrapper label="Judul Bab Utama">
                   <input type="text" className="form-input-modal font-black text-blue-600 uppercase" placeholder="Contoh: Fondasi Berpikir Kritis"
-                    value={newItem.title || ""} onChange={(e) => setNewItem({...newItem, title: e.target.value})}/>
+                    value={newItem.title || ""} onChange={(e) => setNewItem({ ...newItem, title: e.target.value })} />
                 </InputWrapper>
               </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 space-y-6">
+            <div className="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-100 space-y-6">
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b pb-2 flex items-center gap-2">
-                <BookOpen size={14}/> I. Pembuka Bab
+                <BookOpen size={14} /> I. Pembuka Bab
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <InputWrapper label="Hook (Kisah/Fakta/Pertanyaan)">
                   <textarea className="form-textarea-modal h-24" placeholder="Tuliskan pembuka..."
-                    value={newItem.hook || ""} onChange={(e) => setNewItem({...newItem, hook: e.target.value})}></textarea>
+                    value={newItem.hook || ""} onChange={(e) => setNewItem({ ...newItem, hook: e.target.value })}></textarea>
                 </InputWrapper>
                 <div className="space-y-3">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Key Objectives:</label>
@@ -282,8 +281,8 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
                         value={lp} onChange={(e) => {
                           const updated = [...(newItem.learningPoints || [])];
                           updated[idx] = e.target.value;
-                          setNewItem({...newItem, learningPoints: updated});
-                        }}/>
+                          setNewItem({ ...newItem, learningPoints: updated });
+                        }} />
                     </div>
                   ))}
                 </div>
@@ -292,7 +291,7 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
             <div className="space-y-6">
               <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                <GripVertical size={14}/> II. Isi Inti (Sub-Bab)
+                <GripVertical size={14} /> II. Isi Inti (Sub-Bab)
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {newItem.subChapters?.map((sub, idx) => (
@@ -304,33 +303,33 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
                       value={sub.title} onChange={(e) => {
                         const updated = [...(newItem.subChapters || [])];
                         updated[idx].title = e.target.value;
-                        setNewItem({...newItem, subChapters: updated});
-                      }}/>
+                        setNewItem({ ...newItem, subChapters: updated });
+                      }} />
                     <div className="space-y-3">
                       <MiniInputModal label="Poin Utama" placeholder="Argumen utama..." value={sub.mainPoint}
                         onChange={(v) => {
                           const updated = [...(newItem.subChapters || [])];
                           updated[idx].mainPoint = v;
-                          setNewItem({...newItem, subChapters: updated});
-                        }}/>
+                          setNewItem({ ...newItem, subChapters: updated });
+                        }} />
                       <MiniInputModal label="Penjelasan" placeholder="Detail logika..." value={sub.explanation}
                         onChange={(v) => {
                           const updated = [...(newItem.subChapters || [])];
                           updated[idx].explanation = v;
-                          setNewItem({...newItem, subChapters: updated});
-                        }}/>
+                          setNewItem({ ...newItem, subChapters: updated });
+                        }} />
                       <MiniInputModal label="Contoh/Data" placeholder="Bukti pendukung..." value={sub.evidence}
                         onChange={(v) => {
                           const updated = [...(newItem.subChapters || [])];
                           updated[idx].evidence = v;
-                          setNewItem({...newItem, subChapters: updated});
-                        }}/>
+                          setNewItem({ ...newItem, subChapters: updated });
+                        }} />
                     </div>
                     {newItem.subChapters!.length > 1 && (
                       <button onClick={() => {
                         const updated = newItem.subChapters!.filter((_, i) => i !== idx);
-                        setNewItem({...newItem, subChapters: updated});
-                      }} className="absolute top-4 right-4 text-rose-300 hover:text-rose-500 transition-colors"><Trash2 size={14}/></button>
+                        setNewItem({ ...newItem, subChapters: updated });
+                      }} className="absolute top-4 right-4 text-rose-300 hover:text-rose-500 transition-colors"><Trash2 size={14} /></button>
                     )}
                   </div>
                 ))}
@@ -341,43 +340,43 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
               </div>
             </div>
 
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl space-y-8 text-white relative overflow-hidden">
+            <div className="bg-slate-900 p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] shadow-2xl space-y-8 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20" />
               <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] border-b border-white/10 pb-2 flex items-center gap-2">
-                <Save size={14}/> III. Penutup Bab
+                <Save size={14} /> III. Penutup Bab
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 relative z-10">
                 <div className="space-y-4">
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Ringkasan Utama</label>
                   {newItem.summaryPoints?.map((sp, idx) => (
-                    <input key={idx} type="text" className="bg-white/5 border border-white/10 p-3 rounded-xl w-full text-[11px] outline-none focus:border-blue-400" placeholder={`Poin #${idx+1}`}
+                    <input key={idx} type="text" className="bg-white/5 border border-white/10 p-3 rounded-xl w-full text-[11px] outline-none focus:border-blue-400" placeholder={`Poin #${idx + 1}`}
                       value={sp} onChange={(e) => {
                         const updated = [...(newItem.summaryPoints || [])];
                         updated[idx] = e.target.value;
-                        setNewItem({...newItem, summaryPoints: updated});
-                      }}/>
+                        setNewItem({ ...newItem, summaryPoints: updated });
+                      }} />
                   ))}
                 </div>
                 <div className="space-y-4">
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Tugas Pembaca</label>
                   {newItem.actions?.map((ac, idx) => (
-                    <input key={idx} type="text" className="bg-white/5 border border-white/10 p-3 rounded-xl w-full text-[11px] outline-none focus:border-blue-400" placeholder={`Tugas #${idx+1}`}
+                    <input key={idx} type="text" className="bg-white/5 border border-white/10 p-3 rounded-xl w-full text-[11px] outline-none focus:border-blue-400" placeholder={`Tugas #${idx + 1}`}
                       value={ac} onChange={(e) => {
                         const updated = [...(newItem.actions || [])];
                         updated[idx] = e.target.value;
-                        setNewItem({...newItem, actions: updated});
-                      }}/>
+                        setNewItem({ ...newItem, actions: updated });
+                      }} />
                   ))}
                 </div>
                 <InputWrapper label="Hook ke Bab Berikutnya">
                   <textarea className="bg-white/5 border border-white/10 p-4 rounded-[1.5rem] w-full text-[11px] outline-none focus:border-blue-400 h-[105px] resize-none" placeholder="Next preview..."
-                    value={newItem.nextPreview || ""} onChange={(e) => setNewItem({...newItem, nextPreview: e.target.value})}></textarea>
+                    value={newItem.nextPreview || ""} onChange={(e) => setNewItem({ ...newItem, nextPreview: e.target.value })}></textarea>
                 </InputWrapper>
               </div>
             </div>
 
             <button onClick={handleSave} disabled={isSaving} className="w-full py-5 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase shadow-xl hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-              {isSaving ? <RefreshCw size={18} className="animate-spin"/> : <Save size={18}/>} 
+              {isSaving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
               {editingId ? "Update Rencana Bab Ke Database" : "Simpan Arsitektur Bab"}
             </button>
           </motion.div>
@@ -395,7 +394,7 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
           <motion.div layout key={item.id} onClick={() => setSelectedStructure(item)}
             className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm hover:shadow-xl hover:border-blue-400 transition-all group relative overflow-hidden flex gap-6 items-center cursor-pointer"
           >
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 font-black text-xl shrink-0 border border-blue-100">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-blue-50 rounded-xl md:rounded-2xl flex items-center justify-center text-blue-600 font-black text-lg md:text-xl shrink-0 border border-blue-100">
               {item.chapterNumber || idx + 1}
             </div>
             <div className="flex-1 min-w-0">
@@ -403,13 +402,13 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
               <div className="flex gap-4">
                 <span className="text-[10px] font-black text-slate-400 uppercase">📦 {item.subChapters.length} Sub-Bab</span>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
-                  <ArrowRightCircle size={12}/> Next: {item.nextPreview ? "Yes" : "None"}
+                  <ArrowRightCircle size={12} /> Next: {item.nextPreview ? "Yes" : "None"}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={(e) => handleEdit(e, item)} className="p-2 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Edit3 size={16}/></button>
-              <button onClick={(e) => removeItem(e, item.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+              <button onClick={(e) => handleEdit(e, item)} className="p-2 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Edit3 size={16} /></button>
+              <button onClick={(e) => removeItem(e, item.id)} className="p-2 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
             </div>
           </motion.div>
         ))}
@@ -419,16 +418,16 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       <AnimatePresence>
         {selectedStructure && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setSelectedStructure(null)}
           >
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden text-slate-800 flex flex-col max-h-[90vh]"
+            <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+              className="bg-white w-full max-w-4xl rounded-t-3xl sm:rounded-[3rem] shadow-2xl overflow-hidden text-slate-800 flex flex-col max-h-[95vh] sm:max-h-[90vh]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
               <div className="bg-blue-700 p-8 text-white relative shrink-0">
-                <button onClick={() => setSelectedStructure(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"><X size={28}/></button>
+                <button onClick={() => setSelectedStructure(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"><X size={28} /></button>
                 <div className="flex items-center gap-3 mb-2">
                   <span className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center font-black text-xl">
                     {selectedStructure.chapterNumber}
@@ -440,21 +439,21 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
               {/* Modal Body */}
               <div className="p-8 overflow-y-auto space-y-10 custom-scrollbar text-black">
-                
+
                 {/* Pembuka Section */}
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2"><Target size={14}/> The Hook</h5>
+                    <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-2"><Target size={14} /> The Hook</h5>
                     <p className="bg-slate-50 p-6 rounded-3xl text-sm font-medium leading-relaxed text-slate-600 italic border border-slate-100">
                       "{selectedStructure.hook}"
                     </p>
                   </div>
                   <div className="space-y-4">
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><ListChecks size={14}/> Learning Objectives</h5>
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><ListChecks size={14} /> Learning Objectives</h5>
                     <div className="space-y-2">
                       {selectedStructure.learningPoints?.filter(p => p !== "").map((point, i) => (
                         <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-700 bg-blue-50/50 p-3 rounded-xl">
-                          <CheckSquare size={14} className="text-blue-400 shrink-0"/> {point}
+                          <CheckSquare size={14} className="text-blue-400 shrink-0" /> {point}
                         </div>
                       ))}
                     </div>
@@ -463,27 +462,27 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
                 {/* Sub-Chapters Detail Section */}
                 <div className="space-y-6">
-                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Info size={14}/> Detailed Body Map</h5>
+                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Info size={14} /> Detailed Body Map</h5>
                   <div className="grid gap-4">
                     {selectedStructure.subChapters?.map((sub, i) => (
                       <div key={i} className="p-6 border-2 border-slate-50 rounded-[2.5rem] bg-white hover:border-blue-100 transition-colors">
                         <div className="flex items-center gap-4 mb-4">
-                           <span className="text-xs font-black text-blue-600">#{i+1}</span>
-                           <h4 className="text-base font-black uppercase tracking-tight">{sub.title}</h4>
+                          <span className="text-xs font-black text-blue-600">#{i + 1}</span>
+                          <h4 className="text-base font-black uppercase tracking-tight">{sub.title}</h4>
                         </div>
                         <div className="grid md:grid-cols-3 gap-6">
-                           <div>
-                              <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Main Point</p>
-                              <p className="text-xs font-bold text-slate-800">{sub.mainPoint || "-"}</p>
-                           </div>
-                           <div>
-                              <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Explanation</p>
-                              <p className="text-xs font-medium text-slate-500 leading-relaxed">{sub.explanation || "-"}</p>
-                           </div>
-                           <div>
-                              <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Evidence/Example</p>
-                              <p className="text-xs font-medium italic text-blue-600">{sub.evidence || "-"}</p>
-                           </div>
+                          <div>
+                            <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Main Point</p>
+                            <p className="text-xs font-bold text-slate-800">{sub.mainPoint || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Explanation</p>
+                            <p className="text-xs font-medium text-slate-500 leading-relaxed">{sub.explanation || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Evidence/Example</p>
+                            <p className="text-xs font-medium italic text-blue-600">{sub.evidence || "-"}</p>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -492,39 +491,39 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
 
                 {/* Closing Section */}
                 <div className="bg-slate-900 rounded-[3rem] p-10 text-white grid md:grid-cols-3 gap-10">
-                   <div className="space-y-4">
-                      <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Summary Takeaway</h5>
-                      <ul className="space-y-3">
-                         {selectedStructure.summaryPoints?.filter(p => p !== "").map((p, i) => (
-                           <li key={i} className="text-xs font-medium opacity-80 flex gap-2">
-                             <span className="text-blue-500">•</span> {p}
-                           </li>
-                         ))}
-                      </ul>
-                   </div>
-                   <div className="space-y-4">
-                      <h5 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Action Items</h5>
-                      <ul className="space-y-3">
-                         {selectedStructure.actions?.filter(p => p !== "").map((p, i) => (
-                           <li key={i} className="text-xs font-bold flex gap-2">
-                             <span className="text-emerald-500">✓</span> {p}
-                           </li>
-                         ))}
-                      </ul>
-                   </div>
-                   <div className="space-y-4">
-                      <h5 className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Next Preview</h5>
-                      <p className="text-xs italic leading-relaxed opacity-70">
-                         {selectedStructure.nextPreview || "No preview set."}
-                      </p>
-                      <div className="pt-2">
-                         <div className="w-10 h-1 bg-orange-400/30 rounded-full" />
-                      </div>
-                   </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Summary Takeaway</h5>
+                    <ul className="space-y-3">
+                      {selectedStructure.summaryPoints?.filter(p => p !== "").map((p, i) => (
+                        <li key={i} className="text-xs font-medium opacity-80 flex gap-2">
+                          <span className="text-blue-500">•</span> {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Action Items</h5>
+                    <ul className="space-y-3">
+                      {selectedStructure.actions?.filter(p => p !== "").map((p, i) => (
+                        <li key={i} className="text-xs font-bold flex gap-2">
+                          <span className="text-emerald-500">✓</span> {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="space-y-4">
+                    <h5 className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Next Preview</h5>
+                    <p className="text-xs italic leading-relaxed opacity-70">
+                      {selectedStructure.nextPreview || "No preview set."}
+                    </p>
+                    <div className="pt-2">
+                      <div className="w-10 h-1 bg-orange-400/30 rounded-full" />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-6 flex justify-end">
-                   <button onClick={() => setSelectedStructure(null)} className="px-10 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all">Close Blueprint</button>
+                  <button onClick={() => setSelectedStructure(null)} className="px-10 py-4 bg-slate-100 text-slate-500 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-200 transition-all">Close Blueprint</button>
                 </div>
               </div>
             </motion.div>
@@ -533,12 +532,19 @@ export default function StepChapterStructure({ formData, onDataChange }: StepStr
       </AnimatePresence>
 
       <style jsx>{`
-        .form-input-modal { width: 100%; padding: 12px 16px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; outline: none; font-size: 13px; font-weight: 700; transition: all 0.2s; color: #334155; }
+        .form-input-modal { width: 100%; padding: 10px 14px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 12px; outline: none; font-size: 12px; font-weight: 700; transition: all 0.2s; color: #334155; }
         .form-input-modal:focus { background-color: white; border-color: #2563eb; }
-        .form-textarea-modal { width: 100%; padding: 16px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 20px; outline: none; font-size: 13px; font-weight: 500; resize: none; transition: all 0.2s; color: #334155; line-height: 1.6; }
+        .form-textarea-modal { width: 100%; padding: 14px; background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 16px; outline: none; font-size: 12px; font-weight: 500; resize: none; transition: all 0.2s; color: #334155; line-height: 1.6; }
         .form-textarea-modal:focus { background-color: white; border-color: #2563eb; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        
+        /* Media query untuk layar laptop */
+        @media (min-width: 768px) {
+          .form-input-modal { padding: 12px 16px; font-size: 13px; border-radius: 16px; }
+          .form-textarea-modal { padding: 16px; font-size: 13px; border-radius: 20px; }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       `}</style>
     </div>
@@ -558,8 +564,8 @@ function MiniInputModal({ label, placeholder, value, onChange }: { label: string
   return (
     <div className="space-y-1">
       <label className="text-[9px] font-black text-blue-400 uppercase tracking-wider ml-1">{label}</label>
-      <input type="text" className="w-full bg-white border border-blue-100 p-2 rounded-xl text-xs font-bold outline-none focus:border-blue-400 transition-all" 
-        placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}/>
+      <input type="text" className="w-full bg-white border border-blue-100 p-2 rounded-xl text-xs font-bold outline-none focus:border-blue-400 transition-all"
+        placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }

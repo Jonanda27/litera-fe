@@ -40,12 +40,12 @@ export default function StepGlossary({
   onDataChange,
 }: StepGlossaryProps) {
   const [items, setItems] = useState<GlossaryItem[]>(formData.glossary || []);
-  
+
   /** * FIX: Menggunakan tipe data <boolean> eksplisit untuk menghindari error 
    * "Argument of type 'false' is not assignable to parameter of type 'SetStateAction<true>'"
    */
   const [isAdding, setIsAdding] = useState<boolean>(items.length === 0);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -75,12 +75,12 @@ export default function StepGlossary({
       setIsLoading(true);
       try {
         const token = localStorage.getItem("token");
-       const res = await axios.get(
-  `${API_BASE_URL}/books/glossary/${bookId}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  }
-);
+        const res = await axios.get(
+          `${API_BASE_URL}/books/glossary/${bookId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         if (res.data && res.data.length > 0) {
           hasFetchedRef.current = bookId;
@@ -134,30 +134,30 @@ export default function StepGlossary({
       const token = localStorage.getItem("token");
       const payload = { ...newItem, bookId };
 
-     if (editingId) {
-  // UPDATE API
-  await axios.patch(
-    `${API_BASE_URL}/books/glossary/${editingId}`,
-    payload,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-} else {
-  // CREATE API
-  await axios.post(`${API_BASE_URL}/books/glossary`, payload, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
+      if (editingId) {
+        // UPDATE API
+        await axios.patch(
+          `${API_BASE_URL}/books/glossary/${editingId}`,
+          payload,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      } else {
+        // CREATE API
+        await axios.post(`${API_BASE_URL}/books/glossary`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
 
       // Reset status fetch agar data terbaru ditarik kembali
-      hasFetchedRef.current = null; 
+      hasFetchedRef.current = null;
       setEditingId(null);
       setIsAdding(false);
       resetForm();
-      
+
       const res = await axios.get(
-  `${API_BASE_URL}/books/glossary/${bookId}`,
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+        `${API_BASE_URL}/books/glossary/${bookId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setItems(
         res.data.map((item: any) => ({ ...item, id: item.id.toString() })),
       );
@@ -175,13 +175,13 @@ export default function StepGlossary({
 
     try {
       const token = localStorage.getItem("token");
-    await axios.delete(`${API_BASE_URL}/books/glossary/${id}`, {
-  headers: { Authorization: `Bearer ${token}` },
-});
-      
+      await axios.delete(`${API_BASE_URL}/books/glossary/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       const updatedItems = items.filter((i) => i.id !== id);
       setItems(updatedItems);
-      
+
       // Jika data menjadi kosong setelah dihapus, tampilkan form otomatis
       if (updatedItems.length === 0) setIsAdding(true);
       if (selectedItem?.id === id) setSelectedItem(null);
@@ -213,9 +213,9 @@ export default function StepGlossary({
   };
 
   return (
-    <div className="space-y-8 pb-10 text-slate-800 relative">
+    <div className="px-1 md:px-0space-y-8 pb-10 text-slate-800 relative">
       {/* HEADER SECTION */}
-      <div className="flex justify-between items-center bg-gradient-to-r from-blue-700 to-indigo-800 p-6 rounded-[2.5rem] shadow-lg border-b-4 border-blue-900/20">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-blue-700 to-indigo-800 p-5 md:p-6 rounded-2xl md:rounded-[2.5rem] shadow-lg border-b-4 border-blue-900/20 gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-2xl text-white shadow-inner">
             <BookOpen size={24} />
@@ -240,11 +240,10 @@ export default function StepGlossary({
             if (isAdding) resetForm();
             setIsAdding(!isAdding);
           }}
-          className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${
-            isAdding
+          className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase transition-all shadow-md active:scale-95 flex items-center gap-2 ${isAdding
               ? "bg-rose-500 text-white"
               : "bg-white text-indigo-700 hover:bg-blue-50"
-          }`}
+            }`}
         >
           {isAdding ? (
             <>
@@ -267,7 +266,7 @@ export default function StepGlossary({
             exit={{ height: 0, opacity: 0, y: -20 }}
             className="overflow-hidden"
           >
-            <div className="bg-white border-4 border-blue-50 rounded-[3rem] p-8 shadow-2xl space-y-8">
+            <div className="bg-white border-4 border-blue-50 rounded-2xl md:rounded-[3rem] p-4 md:p-8 shadow-2xl space-y-6 md:space-y-8">
               <div className="flex items-center gap-2 text-blue-600">
                 <Edit3 size={18} />
                 <h4 className="font-black uppercase tracking-widest text-xs">
@@ -293,7 +292,7 @@ export default function StepGlossary({
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                       Kategori
                     </label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
                       {categories.map((cat) => (
                         <button
                           key={cat}
@@ -301,11 +300,10 @@ export default function StepGlossary({
                           onClick={() =>
                             setNewItem({ ...newItem, category: cat })
                           }
-                          className={`py-3 px-4 rounded-xl text-[9px] font-black uppercase border-2 transition-all text-left ${
-                            newItem.category === cat
+                          className={`py-3 px-4 rounded-xl text-[9px] font-black uppercase border-2 transition-all text-left ${newItem.category === cat
                               ? "bg-blue-600 border-blue-600 text-white shadow-md"
                               : "bg-white border-slate-100 text-slate-400 hover:border-blue-200"
-                          }`}
+                            }`}
                         >
                           {newItem.category === cat ? "● " : "○ "} {cat}
                         </button>
@@ -363,11 +361,11 @@ export default function StepGlossary({
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-6 rounded-[2.5rem] border-2 border-slate-100 space-y-4">
+              <div className="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border-2 border-slate-100 space-y-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
                   Sinonim / Istilah Terkait
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   {[0, 1, 2].map((idx) => (
                     <input
                       key={idx}
@@ -407,7 +405,7 @@ export default function StepGlossary({
       </AnimatePresence>
 
       {/* GRID DAFTAR ISTILAH (CARD VIEW) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {items.map((item) => (
           <motion.div
             layout
@@ -460,17 +458,17 @@ export default function StepGlossary({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setSelectedItem(null)}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden text-black"
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="bg-white w-full max-w-2xl rounded-t-2xl sm:rounded-[3rem] shadow-2xl overflow-hidden text-black max-h-[95vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="bg-blue-700 p-8 text-white relative">
+              <div className="bg-blue-700 p-6 md:p-8 text-white relative shrink-0">
                 <button
                   onClick={() => setSelectedItem(null)}
                   className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors"
@@ -484,7 +482,7 @@ export default function StepGlossary({
                   {selectedItem.term}
                 </h2>
               </div>
-              <div className="p-8 space-y-8">
+              <div className="p-5 md:p-8 space-y-6 md:space-y-8 overflow-y-auto custom-scrollbar">
                 <div className="space-y-3">
                   <h5 className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">
                     <Info size={14} /> Definisi Lengkap

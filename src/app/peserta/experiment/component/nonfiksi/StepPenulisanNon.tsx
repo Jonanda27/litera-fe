@@ -281,11 +281,11 @@ export default function StepPenulisanNonFiction({
 
   return (
     <div
-      className={`space-y-6 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-4 md:p-12 overflow-y-auto text-black" : ""}`}
+      className={`space-y-6 px-2 md:px-0 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-2 md:p-12 overflow-y-auto text-black" : ""}`}
     >
       {/* HEADER: CUSTOM DROPDOWN (WARNA PUTIH/ABU NETRAL) */}
       {!isZenMode && (
-        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
+        <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
           <div className="flex-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block pl-1">
               Navigasi Bab
@@ -336,9 +336,9 @@ export default function StepPenulisanNonFiction({
                                 setIsDropdownOpen(false);
                               }}
                               className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${selectedChapter?.chapterNumber ===
-                                  ch.chapterNumber
-                                  ? "bg-slate-100 text-slate-900"
-                                  : "hover:bg-slate-50 text-slate-600"
+                                ch.chapterNumber
+                                ? "bg-slate-100 text-slate-900"
+                                : "hover:bg-slate-50 text-slate-600"
                                 }`}
                             >
                               <span
@@ -371,8 +371,8 @@ export default function StepPenulisanNonFiction({
           <div className="flex items-center gap-4">
             <div
               className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all ${saveStatus === "Saved"
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-                  : "bg-slate-50 border-slate-200 text-slate-500"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                : "bg-slate-50 border-slate-200 text-slate-500"
                 }`}
             >
               {saveStatus === "Saved" ? (
@@ -439,7 +439,7 @@ export default function StepPenulisanNonFiction({
         ) : (
           <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
             {/* TOOLBAR */}
-            <div className="w-full bg-slate-50 px-6 py-4 border-b-2 border-slate-100 flex flex-wrap items-center gap-4 sticky top-0 z-50 shadow-sm text-black">
+            <div className="w-full bg-slate-50 px-3 md:px-6 py-3 md:py-4 border-b-2 border-slate-100 flex flex-nowrap md:flex-wrap items-center gap-2 md:gap-4 sticky top-0 z-50 shadow-sm text-black overflow-x-auto custom-scrollbar whitespace-nowrap">
               {/* Bold, Italic, Underline */}
               <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black">
                 <button
@@ -584,15 +584,18 @@ export default function StepPenulisanNonFiction({
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     className="bg-white shadow-2xl outline-none text-black prose prose-slate a4-page-div"
                     style={{
-                      width: "210mm",
-                      height: "297mm",
-                      padding: "2.54cm",
+                      width: "100%",
+                      maxWidth: "210mm",
+                      minHeight: "297mm",
+                      height: "auto",
+                      padding: "clamp(1rem, 5vw, 2.54cm)",
                       fontSize: selectedFontSize,
                       fontFamily: selectedFontFamily,
                       lineHeight: "1.8",
                       overflow: "hidden",
                       boxSizing: "border-box",
-                      wordBreak: "break-word"
+                      wordBreak: "break-word",
+                      backgroundColor: "white"
                     }}
                   />
                 </div>
@@ -610,7 +613,7 @@ export default function StepPenulisanNonFiction({
 
         {/* STATS FOOTER */}
         {!isZenMode && (
-          <div className="mt-8 bg-white p-8 rounded-[2.5rem] text-slate-800 flex justify-between items-center shadow-2xl border border-slate-200">
+          <div className="mt-6 md:mt-8 bg-white p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] text-slate-800 flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl border border-slate-200">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
                 Total Kata Bab {selectedChapter?.chapterNumber || ""}
@@ -667,6 +670,20 @@ export default function StepPenulisanNonFiction({
           background: #94a3b8;
           border-radius: 10px;
         }
+        @media (max-width: 1024px) {
+        .absolute.-left-16 {
+          display: none;
+        }
+        
+        .a4-page-div img {
+          max-width: 100%;
+          height: auto;
+        }
+      }
+
+      .custom-scrollbar::-webkit-scrollbar {
+        height: 4px;
+      }
       `}</style>
     </div>
   );
