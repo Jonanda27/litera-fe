@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:4000"); // sesuaikan backend kamu
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const socket = io(API_BASE_URL); // sesuaikan backend kamu
 
 export default function MeetingPage() {
   const { id } = useParams();
@@ -120,6 +121,11 @@ export default function MeetingPage() {
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
       ],
     });
 
