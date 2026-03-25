@@ -15,19 +15,23 @@ import {
   MessageCircle,
   Video,
   Radio,
-  ArrowLeft, // Tambahan icon ArrowLeft
+  ArrowLeft,
+  Image as ImageIcon,
+  Loader2, // Icon untuk loading
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import DiscussionCards from "@/components/experience/DiscussionCards";
-import { API_BASE_URL } from "../../../lib/constans/constans";
-import { SOCKET_API_BASE_URL } from "../../../lib/constans/constans";
+import {
+  API_BASE_URL,
+  SOCKET_API_BASE_URL,
+} from "../../../lib/constans/constans";
 
 interface Message {
   id: string;
   text: string;
+  image?: string;
   sender: string;
   timestamp: string;
   isMe: boolean;
@@ -59,6 +63,11 @@ export default function Experience() {
   } | null>(null);
   const [currentDiscussionId, setCurrentDiscussionId] = useState<string>("");
 
+  // --- STATE FITUR GAMBAR ---
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false); // State untuk loading kirim
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // --- STATE FITUR RUANGAN ---
   const [allDiscussions, setAllDiscussions] = useState<DiscussionRoom[]>([]);
   const [myDiscussions, setMyDiscussions] = useState<DiscussionRoom[]>([]);
@@ -68,7 +77,6 @@ export default function Experience() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [pendingRoom, setPendingRoom] = useState<DiscussionRoom | null>(null);
-
   const [joinedRoomIds, setJoinedRoomIds] = useState<string[]>([]);
   const [isLoadingSync, setIsLoadingSync] = useState(true);
 
@@ -77,11 +85,7 @@ export default function Experience() {
   const [meetings, setMeetings] = useState([]);
   const [isCreateMeetingModalOpen, setIsCreateMeetingModalOpen] =
     useState(false);
-
-  // --- STATE UI RESPONSIVE ---
   const [isMobileMembersOpen, setIsMobileMembersOpen] = useState(false);
-
-  // --- STATE FORM MEETING ---
   const [meetingTitle, setMeetingTitle] = useState("");
   const [meetingDesc, setMeetingDesc] = useState("");
   const [isMeetingLoading, setIsMeetingLoading] = useState(false);
@@ -159,10 +163,7 @@ export default function Experience() {
 
   useEffect(() => {
     if (currentDiscussionId) {
-      setUnreadCounts((prev) => ({
-        ...prev,
-        [currentDiscussionId]: 0,
-      }));
+      setUnreadCounts((prev) => ({ ...prev, [currentDiscussionId]: 0 }));
     }
   }, [currentDiscussionId]);
 
@@ -196,6 +197,7 @@ export default function Experience() {
             {
               id: data.id.toString(),
               text: data.text,
+              image: data.image,
               sender: data.sender,
               timestamp: data.timestamp,
               isMe: Number(data.senderId) === currentUser.id,
@@ -235,6 +237,7 @@ export default function Experience() {
             result.data.map((m: any) => ({
               id: m.id.toString(),
               text: m.message,
+              image: m.imageUrl,
               sender: m.sender?.nama || "User",
               timestamp: new Date(m.createdAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -252,10 +255,57 @@ export default function Experience() {
     loadChatHistory();
   }, [currentDiscussionId]);
 
+  // Handle auto-scroll to bottom
   useEffect(() => {
-    if (scrollRef.current)
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current) {
+      const timeoutId = setTimeout(() => {
+        scrollRef.current!.scrollTop = scrollRef.current!.scrollHeight;
+      }, 100); // Sedikit delay agar gambar yang dirender sempat mengambil space
+      return () => clearTimeout(timeoutId);
+    }
   }, [messages]);
+
+  // --- HELPERS GAMBAR ---
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validasi Ukuran (Maks 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Ukuran gambar terlalu besar! Maksimal 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = ""; // Reset agar bisa pilih file yang sama
+  };
+
+  // --- HELPER LINK CLICKABLE ---
+  const renderMessageText = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-bold text-blue-200 hover:text-white break-all transition-colors"
+            onClick={(e) => e.stopPropagation()} // Agar tidak trigger preview message
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   // 3. Handlers
   const handleRoomClick = (room: DiscussionRoom) => {
@@ -274,7 +324,6 @@ export default function Experience() {
         },
         body: JSON.stringify({ discussionId: pendingRoom.id }),
       });
-
       if (res.ok) {
         const id = pendingRoom.id.toString();
         setJoinedRoomIds((prev) => [...prev, id]);
@@ -318,9 +367,7 @@ export default function Experience() {
     e.preventDefault();
     if (!meetingTitle.trim()) return;
     setIsMeetingLoading(true);
-
     const token = localStorage.getItem("token");
-
     try {
       const response = await fetch(
         `${API_BASE_URL}/meetings/create-meeting/${currentDiscussionId}/start-meeting`,
@@ -336,9 +383,7 @@ export default function Experience() {
           }),
         },
       );
-
       const result = await response.json();
-
       if (response.ok) {
         setIsCreateMeetingModalOpen(false);
         setMeetingTitle("");
@@ -349,16 +394,21 @@ export default function Experience() {
         alert("Gagal membuat meeting: " + result.message);
       }
     } catch (error) {
-      console.error("Error:", error);
       alert("Terjadi kesalahan koneksi ke server.");
     } finally {
       setIsMeetingLoading(false);
     }
   };
 
-  const sendMessage = (e: React.FormEvent) => {
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !socket || !currentUser) return;
+    if (
+      isSending ||
+      (!inputMessage.trim() && !selectedImage) ||
+      !socket ||
+      !currentUser
+    )
+      return;
 
     if (!joinedRoomIds.includes(currentDiscussionId)) {
       const room = allDiscussions.find(
@@ -369,12 +419,21 @@ export default function Experience() {
       return;
     }
 
-    socket.emit("send_message", {
-      room: currentDiscussionId,
-      senderId: currentUser.id,
-      text: inputMessage,
-    });
-    setInputMessage("");
+    setIsSending(true);
+    try {
+      socket.emit("send_message", {
+        room: currentDiscussionId,
+        senderId: currentUser.id,
+        text: inputMessage,
+        image: selectedImage,
+      });
+      setInputMessage("");
+      setSelectedImage(null);
+    } catch (err) {
+      console.error("Gagal mengirim:", err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const triggerJoinModal = () => {
@@ -386,7 +445,6 @@ export default function Experience() {
   };
 
   const activeList = viewMode === "all" ? allDiscussions : myDiscussions;
-
   const currentRoomData = allDiscussions.find(
     (d) => d.id.toString() === currentDiscussionId,
   );
@@ -409,7 +467,6 @@ export default function Experience() {
   return (
     <Sidebar>
       <div className="max-w-[1400px] mx-auto h-[calc(100dvh-80px)] md:h-[calc(100vh-120px)] flex flex-col px-2 md:px-4 lg:px-0">
-        {/* Header Section */}
         <div className="flex justify-between items-end mb-3 md:mb-6 flex-shrink-0 pt-4 md:pt-0 px-2 md:px-0">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-slate-900 uppercase tracking-tighter">
@@ -422,7 +479,7 @@ export default function Experience() {
         </div>
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 bg-white rounded-2xl md:rounded-[2.5rem] border shadow-xl overflow-hidden min-h-0 relative">
-          {/* 1. Sidebar Kiri (Daftar Diskusi) */}
+          {/* 1. Sidebar Kiri (List Diskusi) */}
           <div
             className={`${currentDiscussionId ? "hidden md:flex" : "flex"} col-span-12 md:col-span-4 lg:col-span-3 border-r flex-col bg-slate-50/50 z-10`}
           >
@@ -437,7 +494,6 @@ export default function Experience() {
                 <Plus size={14} className="md:w-4 md:h-4" />
               </button>
             </div>
-
             <div className="flex p-2 gap-1 bg-white border-b shrink-0">
               <button
                 onClick={() => setViewMode("all")}
@@ -453,7 +509,6 @@ export default function Experience() {
                 Diikuti
               </button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-2.5 md:p-3 space-y-2 custom-scrollbar">
               {activeList.map((room) => {
                 const roomId = room.id.toString();
@@ -501,7 +556,6 @@ export default function Experience() {
                     >
                       <ArrowLeft size={18} />
                     </button>
-
                     <div className="w-9 h-9 md:w-10 md:h-10 bg-[#c31a26] rounded-xl flex items-center justify-center text-white font-black shadow-md uppercase text-sm md:text-base shrink-0">
                       {allDiscussions
                         .find((d) => d.id.toString() === currentDiscussionId)
@@ -513,7 +567,6 @@ export default function Experience() {
                       )?.name || "Diskusi"}
                     </h3>
                   </div>
-
                   <button
                     onClick={() => setIsMobileMembersOpen(true)}
                     className="lg:hidden flex items-center gap-1.5 p-2 md:px-3 bg-blue-50 text-[#1e4e8c] rounded-xl hover:bg-blue-100 transition-colors"
@@ -528,7 +581,7 @@ export default function Experience() {
                 <div className="flex-1 overflow-hidden relative bg-[#f8fafc] flex flex-col min-h-0">
                   <div
                     ref={scrollRef}
-                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth"
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 scroll-smooth custom-scrollbar"
                   >
                     {messages.map((msg) => (
                       <div
@@ -543,9 +596,22 @@ export default function Experience() {
                               {msg.sender}
                             </p>
                           )}
-                          <p className="font-medium leading-relaxed text-sm">
-                            {msg.text}
-                          </p>
+
+                          {msg.image && (
+                            <div className="mb-2 overflow-hidden rounded-lg border border-white/20 bg-black/5">
+                              <img
+                                src={msg.image}
+                                alt="Sent image"
+                                className="max-w-full h-auto cursor-zoom-in hover:scale-[1.02] transition-transform"
+                                loading="lazy"
+                                onClick={() => window.open(msg.image, "_blank")}
+                              />
+                            </div>
+                          )}
+
+                          <div className="font-medium leading-relaxed text-sm break-words">
+                            {renderMessageText(msg.text)}
+                          </div>
                           <p
                             className={`text-[8px] md:text-[9px] font-bold mt-2 text-right ${msg.isMe ? "text-white/60" : "text-slate-400"}`}
                           >
@@ -558,22 +624,80 @@ export default function Experience() {
                 </div>
 
                 <div className="p-3 md:p-4 bg-white border-t shrink-0">
+                  <AnimatePresence>
+                    {selectedImage && (
+                      <motion.div
+                        initial={{ y: 10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 10, opacity: 0 }}
+                        className="mb-3 relative w-24 h-24 group"
+                      >
+                        <img
+                          src={selectedImage}
+                          className="w-full h-full object-cover rounded-xl border-2 border-[#1e4e8c]"
+                        />
+                        <button
+                          disabled={isSending}
+                          onClick={() => setSelectedImage(null)}
+                          className="absolute -top-2 -right-2 bg-red-600 text-white p-1 rounded-full shadow-lg hover:scale-110 transition-all"
+                        >
+                          <X size={12} />
+                        </button>
+                        {isSending && (
+                          <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                            <Loader2
+                              className="text-white animate-spin"
+                              size={20}
+                            />
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {joinedRoomIds.includes(currentDiscussionId) ? (
                     <form
                       onSubmit={sendMessage}
                       className="flex items-center gap-2 md:gap-3 bg-slate-50 rounded-xl md:rounded-2xl p-1.5 px-3 md:px-4 border border-slate-200 focus-within:border-[#1e4e8c] focus-within:bg-white transition-all shadow-inner"
                     >
+                      <button
+                        type="button"
+                        disabled={isSending}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-slate-400 hover:text-[#1e4e8c] disabled:opacity-50 transition-colors"
+                      >
+                        <ImageIcon size={20} />
+                      </button>
                       <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                      />
+                      <input
+                        disabled={isSending}
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
-                        placeholder="Ketik pesan..."
-                        className="w-full bg-transparent border-none py-2 md:py-3 text-xs md:text-sm outline-none font-medium text-slate-800"
+                        placeholder={
+                          isSending
+                            ? "Mengirim..."
+                            : "Ketik pesan atau lampirkan link..."
+                        }
+                        className="w-full bg-transparent border-none py-2 md:py-3 text-xs md:text-sm outline-none font-medium text-slate-800 disabled:opacity-50"
                       />
                       <button
                         type="submit"
-                        className="bg-[#c31a26] text-white p-2.5 md:p-3 rounded-lg md:rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all shrink-0"
+                        disabled={
+                          isSending || (!inputMessage.trim() && !selectedImage)
+                        }
+                        className="bg-[#c31a26] text-white p-2.5 md:p-3 rounded-lg md:rounded-xl shadow-md hover:shadow-lg active:scale-95 disabled:bg-slate-300 disabled:shadow-none transition-all shrink-0"
                       >
-                        <Send size={16} className="md:w-5 md:h-5" />
+                        {isSending ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Send size={16} className="md:w-5 md:h-5" />
+                        )}
                       </button>
                     </form>
                   ) : (
@@ -603,18 +727,15 @@ export default function Experience() {
             )}
           </div>
 
-          {/* 3. Sidebar Kanan (Anggota & Meeting) */}
+          {/* 3. Sidebar Kanan (Info Members & Meeting) */}
           {isMobileMembersOpen && (
             <div
               className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[40] lg:hidden transition-opacity"
               onClick={() => setIsMobileMembersOpen(false)}
             />
           )}
-
           <div
-            className={`fixed inset-y-0 right-0 z-[50] w-[85%] sm:w-[380px] bg-white flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out 
-            lg:static lg:w-auto lg:transform-none lg:shadow-none lg:flex lg:col-span-3 lg:bg-slate-50/30 min-h-0 lg:border-l
-            ${isMobileMembersOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+            className={`fixed inset-y-0 right-0 z-[50] w-[85%] sm:w-[380px] bg-white flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:transform-none lg:shadow-none lg:flex lg:col-span-3 lg:bg-slate-50/30 min-h-0 lg:border-l ${isMobileMembersOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
           >
             <div className="lg:hidden p-4 md:p-5 border-b bg-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
@@ -632,7 +753,6 @@ export default function Experience() {
                 <X size={18} />
               </button>
             </div>
-
             {currentDiscussionId ? (
               <>
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -679,12 +799,8 @@ export default function Experience() {
                     })}
                   </div>
                 </div>
-
-                {/* --- BAGIAN YANG DIPERBAIKI: KEATASIN DISCUSSION CARD --- */}
                 <div className="shrink-0 bg-slate-50/50 border-t border-slate-100 flex flex-col min-h-0">
                   <div className="px-4 py-3 md:px-5 md:py-4">
-                    {" "}
-                    {/* Padding dikurangi */}
                     {hasActiveMeeting ? (
                       <button
                         onClick={() =>
@@ -709,8 +825,6 @@ export default function Experience() {
                       </div>
                     )}
                   </div>
-
-                  {/* DiscussionCards: Tinggi disesuaikan agar area ini naik ke atas */}
                   <div className="flex-1 max-h-[250px] md:max-h-[300px] overflow-hidden bg-white/50">
                     {filteredMeetings.length > 0 ? (
                       <DiscussionCards items={filteredMeetings} />
@@ -736,7 +850,7 @@ export default function Experience() {
         </div>
       </div>
 
-      {/* MODAL - TETAP SAMA */}
+      {/* MODALS SECTION */}
       <AnimatePresence>
         {isCreateMeetingModalOpen && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

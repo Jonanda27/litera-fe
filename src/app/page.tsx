@@ -66,10 +66,10 @@ export default function Home() {
         {isMobileMenuOpen && (
           <div className="lg:hidden absolute top-full left-0 right-0 bg-white border-b border-slate-100 shadow-xl py-4 px-6 flex flex-col gap-4">
             <Link href="/" className="text-slate-600 hover:text-red-600 font-medium py-2">Beranda</Link>
-            <Link href="/exercise" className="text-slate-600 hover:text-red-600 font-medium py-2">Latihan</Link>
-            <Link href="/livesession" className="text-slate-600 hover:text-red-600 font-medium py-2">Live Session</Link>
-            <Link href="/experiment" className="text-slate-600 hover:text-red-600 font-medium py-2">Eksperimen</Link>
-            <Link href="/experience" className="text-slate-600 hover:text-red-600 font-medium py-2">Pengalaman</Link>
+            <Link href="" className="text-slate-600 hover:text-red-600 font-medium py-2">Latihan</Link>
+            <Link href="" className="text-slate-600 hover:text-red-600 font-medium py-2">Live Session</Link>
+            <Link href="" className="text-slate-600 hover:text-red-600 font-medium py-2">Eksperimen</Link>
+            <Link href="" className="text-slate-600 hover:text-red-600 font-medium py-2">Pengalaman</Link>
             
             <div className="h-px bg-slate-100 my-2"></div>
             
