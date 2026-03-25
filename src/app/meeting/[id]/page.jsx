@@ -26,7 +26,6 @@ export default function MeetingPage() {
     return () => {
       // cleanup saat keluar halaman
       Object.values(peersRef.current).forEach(pc => pc.close());
-      socket.disconnect();
     };
   }, []);
 
