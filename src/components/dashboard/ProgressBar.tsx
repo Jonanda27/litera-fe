@@ -37,7 +37,7 @@ export function ProgressBar({ progress }: { progress: number }) {
             className="text-white font-black text-[10px] sm:text-xs md:text-sm uppercase tracking-wider whitespace-nowrap px-2 md:px-4"
           >
             {safeProgress}%
-            <span className="hidden sm:inline"> PROGRES</span>
+            <span className="hidden sm:inline"> PROGRESS</span>
           </motion.span>
         )}
       </motion.div>

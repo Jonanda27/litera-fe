@@ -23,7 +23,7 @@ export function CertLevelBar({ level, progress, barColor }: CertLevelBarProps) {
       <div className="relative flex-1 bg-slate-100 h-12 rounded-2xl overflow-hidden border-2 border-slate-50 shadow-inner group">
         {/* Track Label */}
         <div className="absolute inset-0 flex items-center justify-between px-6 z-20 pointer-events-none">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Progress</span>
+          <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Progress</span>
           <span className="text-sm font-black text-slate-800 ">{safeProgress}%</span>
         </div>
 
@@ -38,13 +38,7 @@ export function CertLevelBar({ level, progress, barColor }: CertLevelBarProps) {
           <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-black/10" />
           
           {/* Text Inside Bar (Only if space allows) */}
-          {safeProgress >= 30 && (
-            <div className="absolute inset-0 flex items-center pl-6">
-               <span className="text-white font-black text-[10px] uppercase  tracking-widest opacity-80">
-                 Completed
-               </span>
-            </div>
-          )}
+          
         </motion.div>
 
         {/* Subtle Scanline Effect */}

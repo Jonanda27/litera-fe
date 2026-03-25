@@ -69,7 +69,7 @@ export default function Sidebar({ children }: SidebarProps) {
       { path: '/sertifikat', label: 'Sertifikasi' },
       { path: '/tools', label: 'Tools Pendukung' },
       { path: '/riwayat', label: 'Riwayat Kegiatan' },
-      { path: 'https://theleaders.id/', label: 'E-book', isExternal: true },
+      { path: '/e-book', label: 'E-book'},
       { path: '/pengaturan', label: 'Pengaturan' },
       { path: '/mentor', label: 'Kontak Mentor Kamu' },
     ];

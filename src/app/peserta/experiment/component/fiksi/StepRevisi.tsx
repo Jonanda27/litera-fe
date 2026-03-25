@@ -14,6 +14,10 @@ import {
   X,
   Sparkles,
   BookText,
+  AlertTriangle,
+  SearchCheck,
+  Loader2,
+  Type,
 } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
 
@@ -42,11 +46,9 @@ export default function StepRevisi({
   const [isZenMode, setIsZenMode] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Safe");
 
-  // State untuk Pemilihan Bab
   const [outlines, setOutlines] = useState<any[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<any>(null);
 
-  // State Naskah & Detail Karakter
   const [savedPages, setSavedPages] = useState<any[]>([]);
   const [mainChapterPages, setMainChapterPages] = useState<any[]>([]);
   const [pageCount, setPageCount] = useState(1);
@@ -54,13 +56,15 @@ export default function StepRevisi({
   const [selectedFontSize, setSelectedFontSize] = useState("12pt");
   const [selectedChar, setSelectedChar] = useState<any | null>(null);
 
+  const [isScanningConsistency, setIsScanningConsistency] = useState(false);
+  const [consistencyReports, setConsistencyReports] = useState<any[]>([]);
+
   const [selectedVersionId, setSelectedVersionId] = useState<string | number>(
     "sekarang",
   );
 
   const editorRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Mengisi HTML ke dalam editor setelah loading selesai
   useEffect(() => {
     if (!loading && savedPages.length > 0) {
       setTimeout(() => {
@@ -73,7 +77,6 @@ export default function StepRevisi({
     }
   }, [savedPages, loading, isZenMode, pageCount]);
 
-  // --- FETCH DAFTAR BAB DARI OUTLINE ---
   useEffect(() => {
     const fetchOutlines = async () => {
       try {
@@ -81,11 +84,11 @@ export default function StepRevisi({
         if (!token || !formData.bookId) return;
 
         const res = await fetch(
-  `${API_BASE_URL}/books/outlines/${formData.bookId}`,
-  {
-    headers: { Authorization: `Bearer ${token}` },
-  },
-);
+          `${API_BASE_URL}/books/outlines/${formData.bookId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         const data = await res.json();
         setOutlines(data);
 
@@ -107,10 +110,10 @@ export default function StepRevisi({
       setLoading(true);
       setSaveStatus("Loading...");
 
-     const resContent = await fetch(
-  `${API_BASE_URL}/books/get-chapter?bookId=${formData.bookId}&outlineId=${selectedChapter.id}`,
-  { headers: { Authorization: `Bearer ${token}` } },
-);
+      const resContent = await fetch(
+        `${API_BASE_URL}/books/get-chapter?bookId=${formData.bookId}&outlineId=${selectedChapter.id}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       const contentResult = await resContent.json();
 
       let pagesData: any[] = [];
@@ -129,20 +132,18 @@ export default function StepRevisi({
         setMainChapterPages([{ page: 1, content: "" }]);
       }
 
-      // Ambil Karakter
       const resChars = await fetch(
-  `${API_BASE_URL}/books/characters/${formData.bookId}`,
-  { headers: { Authorization: `Bearer ${token}` } },
-);
+        `${API_BASE_URL}/books/characters/${formData.bookId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       const charResult = await resChars.json();
       if (charResult) setCharacters(charResult);
 
       if (pagesData.length > 0) {
         const commentsPromises = pagesData.map((p: any) =>
-         fetch(
-  `${API_BASE_URL}/books/get-comments?chapterId=${p.id}`,
-  { headers: { Authorization: `Bearer ${token}` } },
-).then((r) => r.json()),
+          fetch(`${API_BASE_URL}/books/get-comments?chapterId=${p.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((r) => r.json()),
         );
         const commentsResults = await Promise.all(commentsPromises);
         let allComments: any[] = [];
@@ -157,10 +158,10 @@ export default function StepRevisi({
         setLocalComments(allComments);
 
         const firstPageId = pagesData[0].id;
-       const resVersions = await fetch(
-  `${API_BASE_URL}/books/get-versions?chapterId=${firstPageId}`,
-  { headers: { Authorization: `Bearer ${token}` } },
-);
+        const resVersions = await fetch(
+          `${API_BASE_URL}/books/get-versions?chapterId=${firstPageId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         const versionResult = await resVersions.json();
         if (versionResult.data) setLocalVersions(versionResult.data);
       }
@@ -176,6 +177,51 @@ export default function StepRevisi({
   useEffect(() => {
     fetchData();
   }, [formData.bookId, selectedChapter]);
+
+  const handleAIConsistencyCheck = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || characters.length === 0) return;
+
+    const fullText = editorRefs.current
+      .map((ref) => ref?.innerText || "")
+      .join("\n");
+
+    if (fullText.trim().length < 50) {
+      alert("Naskah terlalu pendek untuk dianalisis.");
+      return;
+    }
+
+    try {
+      setIsScanningConsistency(true);
+      setActiveFeature("konsistensi");
+
+      const response = await fetch(
+        `${API_BASE_URL}/ai/check-character-consistency`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            text: fullText,
+            characterDatabase: characters,
+          }),
+        },
+      );
+
+      const result = await response.json();
+      if (result.success) {
+        setConsistencyReports(result.data);
+      } else {
+        console.error("AI Analysis failed");
+      }
+    } catch (error) {
+      console.error("Error AI Scan:", error);
+    } finally {
+      setIsScanningConsistency(false);
+    }
+  };
 
   const handleSelectVersion = (version: any) => {
     if (version === "sekarang") {
@@ -209,19 +255,16 @@ export default function StepRevisi({
       return;
     }
 
-   try {
-  setSaveStatus("Archiving...");
-  const res = await fetch(
-    `${API_BASE_URL}/books/save-chapter-version`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ chapterId: firstPageId }),
-    },
-  );
+    try {
+      setSaveStatus("Archiving...");
+      const res = await fetch(`${API_BASE_URL}/books/save-chapter-version`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ chapterId: firstPageId }),
+      });
 
       if (res.ok) {
         alert("Versi baru berhasil diarsipkan!");
@@ -271,7 +314,7 @@ export default function StepRevisi({
       const activeHtmlContent =
         editorRefs.current[currentPage - 1]?.innerHTML || "";
 
-    const res = await fetch(`${API_BASE_URL}/books/save-comment`, {
+      const res = await fetch(`${API_BASE_URL}/books/save-comment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -333,21 +376,19 @@ export default function StepRevisi({
 
     try {
       setSaveStatus("Deleting...");
-     const res = await fetch(`${API_BASE_URL}/books/delete-comment`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            commentId: comment.id,
-            chapterId: comment.chapterId,
-            highlight_id: comment.highlight_id,
-            currentContent: cleanedHtml,
-          }),
+      const res = await fetch(`${API_BASE_URL}/books/delete-comment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          commentId: comment.id,
+          chapterId: comment.chapterId,
+          highlight_id: comment.highlight_id,
+          currentContent: cleanedHtml,
+        }),
+      });
 
       if (res.ok) fetchData();
     } catch (error) {
@@ -362,13 +403,138 @@ export default function StepRevisi({
         className={`${isVertical ? "space-y-4 px-2" : "flex gap-5 overflow-x-auto pb-6 custom-scrollbar-hide snap-x snap-mandatory scroll-smooth"}`}
         id={!isVertical ? "carousel-container" : ""}
       >
-        {/* RENDER: KOMENTAR */}
+        {activeFeature === "konsistensi" && (
+          <div className={`${isVertical ? "w-full" : "flex gap-4 w-full"}`}>
+            {isScanningConsistency ? (
+              <div className="flex flex-col items-center justify-center p-12 w-full bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200">
+                <Loader2
+                  className="animate-spin text-rose-500 mb-4"
+                  size={32}
+                />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Editor AI sedang membedah naskah & ejaan...
+                </p>
+              </div>
+            ) : consistencyReports.length > 0 ? (
+              consistencyReports.map((report, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`${
+                    isVertical
+                      ? "w-full mb-6"
+                      : "min-w-[320px] flex-shrink-0 snap-start"
+                  } p-6 border-2 rounded-[2rem] shadow-sm relative group overflow-hidden ${
+                    report.type === "typo"
+                      ? "bg-blue-50 border-blue-100"
+                      : "bg-rose-50 border-rose-100"
+                  }`}
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                    {report.type === "typo" ? (
+                      <BookText size={60} className="text-blue-600" />
+                    ) : (
+                      <AlertTriangle size={60} className="text-rose-600" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 mb-4 relative z-10">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${
+                        report.type === "typo" ? "bg-blue-600" : "bg-rose-600"
+                      }`}
+                    >
+                      {report.type === "typo" ? (
+                        <Type size={20} />
+                      ) : (
+                        <User size={20} />
+                      )}
+                    </div>
+                    <div>
+                      <h6
+                        className={`font-black text-xs uppercase ${
+                          report.type === "typo"
+                            ? "text-blue-700"
+                            : "text-rose-700"
+                        }`}
+                      >
+                        {report.name}
+                      </h6>
+                      <p
+                        className={`text-[8px] font-bold uppercase tracking-widest ${
+                          report.type === "typo"
+                            ? "text-blue-400"
+                            : "text-rose-400"
+                        }`}
+                      >
+                        {report.type === "typo"
+                          ? "Saran Ejaan & Typo"
+                          : "Inkonsistensi Tokoh"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 relative z-10">
+                    <div className="bg-white/60 p-3 rounded-xl border border-white/50 shadow-sm">
+                      <span
+                        className={`text-[8px] font-black uppercase block mb-1 ${
+                          report.type === "typo"
+                            ? "text-blue-400"
+                            : "text-rose-400"
+                        }`}
+                      >
+                        Temuan Editor:
+                      </span>
+                      <p className="text-[11px] text-slate-700 font-medium leading-relaxed italic">
+                        "{report.issue}"
+                      </p>
+                    </div>
+
+                    <div
+                      className={`p-3 rounded-xl border shadow-sm ${
+                        report.type === "typo"
+                          ? "bg-blue-600 text-white border-blue-700"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                      }`}
+                    >
+                      <span
+                        className={`text-[8px] font-black uppercase block mb-1 ${
+                          report.type === "typo"
+                            ? "text-blue-200"
+                            : "text-emerald-500"
+                        }`}
+                      >
+                        Saran Perbaikan:
+                      </span>
+                      <p className="text-[11px] font-bold leading-relaxed">
+                        {report.fix_suggestion}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center p-12 w-full bg-slate-50 rounded-[2.5rem] text-slate-400 border-2 border-dashed border-slate-200">
+                <CheckCircle2 className="text-emerald-500 mb-4" size={40} />
+                <p className="text-[10px] font-black uppercase tracking-widest">
+                  Naskah Luar Biasa!
+                </p>
+                <p className="text-[9px] font-bold text-slate-400 mt-1 text-center max-w-[250px]">
+                  Tidak ditemukan inkonsistensi tokoh maupun kesalahan ejaan
+                  (typo) dalam bab ini.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {activeFeature === "komentar" &&
           localComments.map((comment) => (
             <motion.div
               whileHover={{ y: -5 }}
               key={comment.id}
-              className={`${isVertical ? "w-full" : "min-w-[calc(33.333%-14px)] flex-shrink-0 snap-start"} group relative bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-orange-400 p-5 rounded-[2rem] transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer`}
+              className={`${isVertical ? "w-full mb-4" : "min-w-[calc(33.333%-14px)] flex-shrink-0 snap-start"} group relative bg-slate-50 hover:bg-white border-2 border-slate-100 hover:border-orange-400 p-5 rounded-[2rem] transition-all duration-300 shadow-sm hover:shadow-xl cursor-pointer`}
               onClick={() => scrollToHighlight(comment.highlight_id)}
             >
               <div className="flex justify-between items-start mb-3">
@@ -394,7 +560,7 @@ export default function StepRevisi({
                 </button>
               </div>
               <div className="relative pl-4 border-l-2 border-slate-200 mb-3 text-black">
-                <p className="text-[11px] leading-relaxed font-bold italic line-clamp-2">
+                <p className="text-[11px] leading-relaxed font-bold line-clamp-2">
                   "{comment.selected_text}"
                 </p>
               </div>
@@ -408,7 +574,6 @@ export default function StepRevisi({
             </motion.div>
           ))}
 
-        {/* RENDER: VERSI */}
         {activeFeature === "versi" && (
           <>
             <div
@@ -448,7 +613,7 @@ export default function StepRevisi({
               >
                 <div className="flex justify-between items-center mb-4 text-slate-400 group-hover:text-orange-500 transition-colors">
                   <span className="text-[18px]">📜</span>
-                  <span className="text-[8px] font-black uppercase tracking-widest italic">
+                  <span className="text-[8px] font-black uppercase tracking-widest ">
                     {new Date(v.createdAt).toLocaleDateString("id-ID")}
                   </span>
                 </div>
@@ -463,7 +628,6 @@ export default function StepRevisi({
           </>
         )}
 
-        {/* RENDER: QC TOKOH - INTEGRATED CARD STYLE */}
         {activeFeature === "qc" &&
           characters.map((char) => (
             <motion.div
@@ -522,7 +686,6 @@ export default function StepRevisi({
     <div
       className={`space-y-8 transition-all duration-500 overflow-x-hidden ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-0 flex flex-col h-screen overflow-hidden text-black" : ""}`}
     >
-      {/* MODAL DETAIL KARAKTER */}
       <AnimatePresence>
         {selectedChar && (
           <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -554,7 +717,7 @@ export default function StepRevisi({
                   <h3 className="text-xl font-black uppercase leading-tight">
                     {selectedChar.fullName}
                   </h3>
-                  <p className="text-xs font-bold text-violet-200 uppercase tracking-widest mt-1 italic">
+                  <p className="text-xs font-bold text-violet-200 uppercase tracking-widest mt-1 ">
                     "{selectedChar.nickname}"
                   </p>
                   <span className="mt-4 px-4 py-1 bg-white/10 rounded-full text-[10px] font-black uppercase">
@@ -584,7 +747,7 @@ export default function StepRevisi({
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b pb-1">
                         Biografi & Masa Lalu
                       </h4>
-                      <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
+                      <p className="text-sm font-medium text-slate-600 leading-relaxed ">
                         {selectedChar.past || "Belum ada riwayat masa lalu..."}
                       </p>
                     </section>
@@ -657,7 +820,6 @@ export default function StepRevisi({
         )}
       </AnimatePresence>
 
-      {/* MODAL INPUT KOMENTAR */}
       <AnimatePresence>
         {showCommentInput && (
           <motion.div
@@ -679,7 +841,7 @@ export default function StepRevisi({
                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">
                   Teks Terpilih:
                 </p>
-                <p className="text-xs italic text-slate-700 line-clamp-2">
+                <p className="text-xs  text-slate-700 line-clamp-2">
                   "{selectedText}"
                 </p>
               </div>
@@ -734,7 +896,6 @@ export default function StepRevisi({
         )}
       </AnimatePresence>
 
-      {/* HEADER: CHAPTER SELECTOR */}
       {!isZenMode && (
         <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
           <div className="flex-1">
@@ -770,27 +931,40 @@ export default function StepRevisi({
           </div>
 
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleAIConsistencyCheck}
+              disabled={isScanningConsistency || !selectedChapter}
+              className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 border-2 ${
+                isScanningConsistency
+                  ? "bg-slate-100 text-slate-400 border-slate-200"
+                  : "bg-white text-black border-black hover:bg-black hover:text-white shadow-slate-200"
+              }`}
+            >
+              {isScanningConsistency ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <SearchCheck size={16} />
+              )}
+              {isScanningConsistency ? "Scanning AI..." : "Scan Tokoh AI"}
+            </button>
+
             <div className="flex flex-col items-end">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                 Status Mode
               </span>
-              <span className="text-[11px] font-bold text-slate-800 mt-1 uppercase italic">
+              <span className="text-[11px] font-bold text-slate-800 mt-1 uppercase ">
                 Reviewing Bab {selectedChapter?.chapter_number || "?"}
               </span>
-            </div>
-            <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm">
-              <BookOpen size={20} />
             </div>
           </div>
         </div>
       )}
 
-      {/* HEADER & TOOLBAR CONTROLS */}
       <div
         className={`${isZenMode ? "px-12 py-6 border-b bg-white" : "flex justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto"} flex justify-between items-center gap-4 flex-wrap`}
       >
         <div className="flex items-center gap-4">
-          <h4 className="font-black uppercase tracking-tighter text-black italic text-lg">
+          <h4 className="font-black uppercase tracking-tighter text-black  text-lg">
             {isZenMode ? "📝 Mode Fokus" : ""}
           </h4>
         </div>
@@ -816,7 +990,6 @@ export default function StepRevisi({
       <div
         className={`${isZenMode ? "flex flex-1 overflow-hidden" : "space-y-6 relative"}`}
       >
-        {/* TAB NAVIGATION */}
         {!isZenMode ? (
           <div className="max-w-[1200px] mx-auto flex border-2 border-slate-100 bg-white p-2 gap-2 rounded-2xl shadow-sm relative z-30">
             {[
@@ -827,6 +1000,7 @@ export default function StepRevisi({
               },
               { id: "versi", label: "Versi", icon: "📜" },
               { id: "qc", label: "QC Tokoh", icon: "👤" },
+              { id: "konsistensi", label: "Cek AI", icon: "🤖" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -840,12 +1014,12 @@ export default function StepRevisi({
             ))}
           </div>
         ) : (
-          /* Mini-Sidebar Tabs di Zen Mode */
           <div className="w-16 bg-white border-r flex flex-col items-center py-6 gap-6 z-20">
             {[
               { id: "komentar", icon: "💬" },
               { id: "versi", icon: "📜" },
               { id: "qc", icon: "👤" },
+              { id: "konsistensi", icon: "🤖" },
             ].map((item) => (
               <button
                 key={item.id}
@@ -877,7 +1051,9 @@ export default function StepRevisi({
                           ? "💬"
                           : activeFeature === "versi"
                             ? "📜"
-                            : "👤"}
+                            : activeFeature === "qc"
+                              ? "👤"
+                              : "🤖"}
                       </span>
                       <div>
                         <h5 className="font-black text-[12px] uppercase text-slate-800 tracking-[0.15em]">
@@ -885,7 +1061,9 @@ export default function StepRevisi({
                             ? "Daftar Catatan Revisi"
                             : activeFeature === "versi"
                               ? "Riwayat Versi"
-                              : "Database Karakter"}
+                              : activeFeature === "qc"
+                                ? "Database Karakter"
+                                : "Analisis Konsistensi AI"}
                         </h5>
                         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
                           Review & Sync Panel
@@ -911,7 +1089,6 @@ export default function StepRevisi({
           )}
         </AnimatePresence>
 
-        {/* AREA KERTAS (TAMPILAN UTAMA) */}
         <div
           className={`flex-1 overflow-y-auto bg-slate-400 p-8 ${isZenMode ? "scrollbar-thin scrollbar-thumb-slate-500" : ""}`}
         >
@@ -926,7 +1103,7 @@ export default function StepRevisi({
                 <h3 className="text-xl font-black uppercase tracking-tighter">
                   Review Terkunci
                 </h3>
-                <p className="font-bold italic mt-2">
+                <p className="font-bold  mt-2">
                   Silahkan pilih bab pada dropdown navigasi untuk meninjau
                   revisi.
                 </p>
@@ -976,7 +1153,6 @@ export default function StepRevisi({
           </div>
         </div>
 
-        {/* SIDEBAR (Hanya tampil di Zen Mode) */}
         <AnimatePresence>
           {isZenMode && activeFeature && (
             <motion.div
@@ -992,7 +1168,9 @@ export default function StepRevisi({
                       ? "Catatan Revisi"
                       : activeFeature === "versi"
                         ? "Versi Naskah"
-                        : "Database Tokoh"}
+                        : activeFeature === "qc"
+                          ? "Database Tokoh"
+                          : "Analisis AI"}
                   </h5>
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
                     Panel Navigasi Zen
