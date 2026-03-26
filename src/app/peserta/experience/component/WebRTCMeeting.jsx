@@ -18,6 +18,18 @@ export default function WebRTCMeeting({ roomId }) {
         return () => {
             Object.values(peersRef.current).forEach(pc => pc.close());
 
+            if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+
+            localStreamRef.current = null;
+
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = null;
+            }
+
             socket.off("video_room_users");
             socket.off("video_user_joined");
             socket.off("webrtc_offer");
