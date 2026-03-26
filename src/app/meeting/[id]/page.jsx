@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import io from "socket.io-client";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-const socket = io(API_BASE_URL); // sesuaikan backend kamu
+import { socket } from "@/lib/sockets/socket"
 
 export default function MeetingPage() {
   const { id } = useParams();
