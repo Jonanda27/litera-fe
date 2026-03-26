@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Sidebar from "@/components/Sidebar";
-import { Bot, User, ArrowLeft, MessageSquare, ChevronRight, BookOpen, HelpCircle, Sparkles } from "lucide-react";
+import { Bot, User, ArrowLeft, MessageSquare, ChevronRight, BookOpen, HelpCircle, Sparkles, ChevronLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useRouter } from "next/navigation";
 import { FAQ_DATA, FAQItem } from "./Data/faqData";
@@ -78,12 +78,15 @@ export default function JurnalFAQPage() {
           {/* Header Internal */}
           <div className="p-6 flex items-center justify-between border-b border-slate-50">
             <div className="flex items-center gap-4">
+              {/* Button Kembali */}
               <button 
                 onClick={() => router.back()} 
-                className="p-2.5 hover:bg-slate-100 rounded-xl transition-colors text-slate-500 md:hidden"
+                className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all text-slate-600 border border-slate-100 active:scale-95 group"
+                title="Kembali"
               >
-                <ArrowLeft size={20} />
+                <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
               </button>
+              
               <div>
                 <h1 className="text-lg font-black text-slate-800 tracking-tight">ASISTEN LITERA</h1>
               </div>
@@ -120,7 +123,7 @@ export default function JurnalFAQPage() {
                     {msg.role === "user" ? <User size={22} /> : <Bot size={22} />}
                   </div>
 
-                  {/* Card Jawaban AI Sekarang Berwarna Slate-50 Agar Kelihatan Cardnya */}
+                  {/* Card Jawaban AI */}
                   <div className={`max-w-[80%] p-6 md:p-7 rounded-[2rem] border ${
                     msg.role === "user" 
                       ? "bg-slate-800 text-white rounded-tr-none shadow-xl border-slate-700" 

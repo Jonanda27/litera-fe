@@ -24,6 +24,7 @@ import StepPlotBoard from "./fiksi/StepPlotBoard";
 import StepPenulisan from "./fiksi/StepPenulisan";
 import StepRevisi from "./fiksi/StepRevisi";
 import StepFinalisasi from "./fiksi/StepFinalisasi";
+import StepCover from "./fiksi/StepCover";
 
 // Import Steps (Nonfiksi)
 import StepRisetNonFiksi from "./nonfiksi/StepRisetNonFiksi";
@@ -41,15 +42,16 @@ import { API_BASE_URL } from "@/lib/constans/constans";
 const FICTION_STEPS = [
   { id: 1, title: "Ide Cepat" },
   { id: 2, title: "Papan Visi" },
-  { id: 3, title: "Riset" },
-  { id: 4, title: "Outline" },
-  { id: 5, title: "Karakter" },
-  { id: 6, title: "Peta Dunia" },
-  { id: 7, title: "Kronologi Cerita" },
-  { id: 8, title: "Papan PLot" },
-  { id: 9, title: "Draf Penulisan" },
-  { id: 10, title: "Revisi Total" },
-  { id: 11, title: "Finalisasi" },
+  { id: 3, title: "Cover Buku" },
+  { id: 4, title: "Riset" },
+  { id: 5, title: "Outline" },
+  { id: 6, title: "Karakter" },
+  { id: 7, title: "Peta Dunia" },
+  { id: 8, title: "Kronologi Cerita" },
+  { id: 9, title: "Papan PLot" },
+  { id: 10, title: "Draf Penulisan" },
+  { id: 11, title: "Revisi Total" },
+  { id: 12, title: "Finalisasi" },
 ];
 
 const NON_FICTION_STEPS = [
@@ -149,27 +151,34 @@ const AddProjectModal = ({
     setFormData((p: any) => ({ ...p, [field]: value }));
 
   const handleNextStep = async () => {
-    const paper = document.getElementById("paper-revisi");
-    const isBeforeFinalStep =
-      (category === "Fiksi" && currentStep === 14) ||
-      (category === "Non-Fiksi" && currentStep === 8);
+  // Ambil elemen kertas dari Step Revisi (Step 10 untuk Fiksi, Step 8 untuk Non-Fiksi)
+  const paper = document.getElementById("paper-revisi");
+  
+  // Tentukan kapan harus mengambil screenshot: 
+  // Fiksi: Saat di step 10 (Revisi) mau ke 11 (Finalisasi)
+  // Non-Fiksi: Saat di step 8 (Editing) mau ke 9 (Finalisasi)
+  const isTimetoCapture =
+    (category === "Fiksi" && currentStep === 11) || 
+    (category === "Non-Fiksi" && currentStep === 8);
 
-    if (paper && isBeforeFinalStep) {
-      try {
-        const dataUrl = await toPng(paper, {
-          pixelRatio: 3,
-          backgroundColor: "#ffffff",
-        });
-        setPreviewImage(dataUrl);
-      } catch (err) {
-        console.error("Gagal mengambil preview naskah:", err);
-      }
+  if (paper && isTimetoCapture) {
+    try {
+      // Set loading state secara visual jika perlu
+      const dataUrl = await toPng(paper, {
+        pixelRatio: 2, // 2 sudah cukup bagus dan lebih cepat daripada 3
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
+      setPreviewImage(dataUrl);
+    } catch (err) {
+      console.error("Gagal mengambil preview naskah:", err);
     }
+  }
 
-    if (currentStep < totalSteps) {
-      setCurrentStep((p) => p + 1);
-    }
-  };
+  if (currentStep < totalSteps) {
+    setCurrentStep((p) => p + 1);
+  }
+};
 
   const handlePrevStep = () => {
     if (currentStep > 1) setCurrentStep((p) => p - 1);
@@ -259,27 +268,29 @@ const AddProjectModal = ({
           return (
             <StepPapanVisi formData={formData} onDataChange={setFormData} />
           );
-        case 3:
-          return <StepRiset formData={formData} onDataChange={setFormData} />;
+          case 3:
+  return <StepCover formData={formData} onDataChange={setFormData} />;
         case 4:
-          return <StepOutline formData={formData} onDataChange={setFormData} />;
+          return <StepRiset formData={formData} onDataChange={setFormData} />;
         case 5:
+          return <StepOutline formData={formData} onDataChange={setFormData} />;
+        case 6:
           return (
             <StepCharacter formData={formData} onDataChange={setFormData} />
           );
-        case 6:
+        case 7:
           return (
             <StepWorldBuilding formData={formData} onDataChange={setFormData} />
           );
-        case 7:
+        case 8:
           return (
             <StepTimeline formData={formData} onDataChange={setFormData} />
           );
-        case 8:
+        case 9:
           return (
             <StepPlotBoard formData={formData} onDataChange={setFormData} />
           );
-        case 9:
+        case 10:
           return (
             <StepPenulisan
               isZenMode={isZenMode}
@@ -288,25 +299,8 @@ const AddProjectModal = ({
               handleInputChange={handleInputChange}
             />
           );
-        case 10:
-          return (
-            <StepRevisi
-              comments={[]}
-              versions={[]}
-              formData={formData}
-              handleInputChange={handleInputChange}
-            />
-          );
         case 11:
           return (
-            <StepFinalisasi
-              previewImage={previewImage}
-              previewConfig={previewConfig}
-              setPreviewConfig={setPreviewConfig}
-            />
-          );
-        case 14:
-          return (
             <StepRevisi
               comments={[]}
               versions={[]}
@@ -314,7 +308,7 @@ const AddProjectModal = ({
               handleInputChange={handleInputChange}
             />
           );
-        case 15:
+        case 12:
           return (
             <StepFinalisasi
               previewImage={previewImage}
