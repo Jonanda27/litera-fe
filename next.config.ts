@@ -1,14 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Matikan Strict Mode untuk mencegah double-render saat development
-  reactStrictMode: false, 
-  
+  // Wajib untuk Docker agar build efisien
+  output: 'standalone',
+
+  reactStrictMode: false,
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-        pathname: '**',
+        hostname: 'i.pravatar.cc',
+        port: '',
+        pathname: '/**',
       },
     ],
   },
