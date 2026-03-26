@@ -340,6 +340,14 @@ export default function Experience() {
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoomName.trim()) return;
+    
+    // Cegah eksekusi jika sudah punya grup
+    if (hasCreatedRoom) {
+      alert("Anda sudah memiliki satu grup diskusi.");
+      setIsCreateModalOpen(false);
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${SOCKET_URL}/api/books/discussions/create`, {
@@ -357,6 +365,8 @@ export default function Experience() {
         await fetchAllDiscussions();
         await fetchMyJoinedDiscussions();
         setCurrentDiscussionId(result.data.id.toString());
+      } else {
+        alert(result.message || "Gagal membuat ruangan");
       }
     } catch (err) {
       alert("Gagal membuat ruangan");
@@ -399,6 +409,11 @@ export default function Experience() {
       setIsMeetingLoading(false);
     }
   };
+
+  const hasCreatedRoom = allDiscussions.some(
+    (room) => currentUser && Number(room.owner_id) === currentUser.id
+  );
+
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,13 +498,20 @@ export default function Experience() {
           <div
             className={`${currentDiscussionId ? "hidden md:flex" : "flex"} col-span-12 md:col-span-4 lg:col-span-3 border-r flex-col bg-slate-50/50 z-10`}
           >
-            <div className="p-4 md:p-5 border-b bg-white flex justify-between items-center shrink-0">
+           <div className="p-4 md:p-5 border-b bg-white flex justify-between items-center shrink-0">
               <h3 className="font-black text-slate-800 text-[10px] md:text-[11px] uppercase tracking-widest">
                 Explore Chat
               </h3>
+              {/* Tombol dinonaktifkan jika sudah membuat grup */}
               <button
+                disabled={hasCreatedRoom}
                 onClick={() => setIsCreateModalOpen(true)}
-                className="p-2 md:p-2.5 bg-[#c31a26] text-white rounded-xl hover:scale-110 transition-all shadow-lg"
+                className={`p-2 md:p-2.5 rounded-xl transition-all shadow-lg ${
+                  hasCreatedRoom 
+                    ? "bg-slate-300 cursor-not-allowed opacity-50" 
+                    : "bg-[#c31a26] text-white hover:scale-110"
+                }`}
+                title={hasCreatedRoom ? "Anda sudah memiliki grup" : "Buat grup baru"}
               >
                 <Plus size={14} className="md:w-4 md:h-4" />
               </button>

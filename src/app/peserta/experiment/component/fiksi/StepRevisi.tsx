@@ -1092,8 +1092,10 @@ export default function StepRevisi({
         <div
           className={`flex-1 overflow-y-auto bg-slate-400 p-8 ${isZenMode ? "scrollbar-thin scrollbar-thumb-slate-500" : ""}`}
         >
+          {/* PENTING: ID "paper-revisi" ditambahkan di pembungkus ini agar toPng bisa mengambil semua halaman sekaligus */}
           <div
-            className={`mx-auto flex flex-col items-center gap-8 ${isZenMode ? "max-w-[1000px]" : "w-full"}`}
+            id="paper-revisi"
+            className={`mx-auto flex flex-col items-center gap-8 bg-slate-400 ${isZenMode ? "max-w-[1000px]" : "w-full"}`}
           >
             {!selectedChapter ? (
               <div className="bg-white/80 backdrop-blur-md border-4 border-dashed border-white rounded-[3rem] p-20 flex flex-col items-center justify-center text-slate-500 shadow-2xl">

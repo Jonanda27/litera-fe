@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { motion } from "framer-motion";
-import { Plus } from "lucide-react"; // Import icon plus
+// Lucide tetap diimport untuk fallback jika diperlukan, tapi kita gunakan Flaticon di UI
+import { Plus } from "lucide-react"; 
 
 import AddProjectModal from "./component/AddProjectModal";
 import ExpProjectCard from "./component/ExpProjectCard";
@@ -117,7 +118,12 @@ export default function ExperimentPage() {
         <section className="space-y-4 pt-2 md:pt-4 min-h-[300px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-10 h-10 border-4 border-slate-200 border-t-[#1E4E8C] rounded-full animate-spin mb-4"></div>
+              {/* Flaticon: Animated Loading / Bookshelf */}
+              <img 
+                src="https://cdn-icons-png.flaticon.com/512/5903/5903572.png" 
+                alt="Loading Projects" 
+                className="w-16 h-16 animate-bounce mb-4"
+              />
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                 Menyiapkan Rak Buku...
               </p>
@@ -136,7 +142,13 @@ export default function ExperimentPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl md:rounded-[3rem] p-10 md:p-20 text-center">
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl md:rounded-[3rem] p-10 md:p-20 text-center flex flex-col items-center">
+              {/* Flaticon: Empty Box / Open Book */}
+              <img 
+                src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" 
+                alt="No Projects" 
+                className="w-20 h-20 opacity-20 mb-4 grayscale"
+              />
               <p className="text-slate-400 font-bold italic">
                 Belum ada proyek penulisan.
               </p>
@@ -148,9 +160,16 @@ export default function ExperimentPage() {
         <div className="hidden md:flex justify-end pr-4">
           <button
             onClick={() => handleOpenModal(null)}
-            className="text-[#1E4E8C] font-black text-sm italic hover:underline uppercase transition-all"
+            className="flex items-center gap-2 text-[#1E4E8C] font-black text-sm italic hover:underline uppercase transition-all"
           >
-            + Tambah Proyek Baru
+            {/* Flaticon: Plus Icon Blue */}
+            <img 
+              src="https://cdn-icons-png.flaticon.com/512/1004/1004733.png" 
+              alt="Add" 
+              className="w-4 h-4"
+              style={{ filter: "invert(21%) sepia(82%) saturate(1370%) hue-rotate(195deg) brightness(91%) contrast(92%)" }}
+            />
+            Tambah Proyek Baru
           </button>
         </div>
 
@@ -160,7 +179,12 @@ export default function ExperimentPage() {
           onClick={() => handleOpenModal(null)}
           className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-[#1E4E8C] text-white rounded-full flex items-center justify-center shadow-2xl z-50 border-2 border-white"
         >
-          <Plus size={28} />
+          {/* Flaticon: Plus Icon White */}
+          <img 
+            src="https://cdn-icons-png.flaticon.com/512/1004/1004733.png" 
+            alt="Plus" 
+            className="w-7 h-7 invert"
+          />
         </motion.button>
 
         <ModalInputTitle
