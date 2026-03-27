@@ -14,11 +14,19 @@ import {
   Upload,
   ImageIcon,
   Plus,
-  Image as LucideImage
+  Image as LucideImage,
+  Palette
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { categories, templates } from "./component/TemplateData";
 import { useRouter } from "next/navigation";
+
+// Daftar pilihan warna cepat (Preset)
+const PRESET_COLORS = [
+  "#000000", "#FFFFFF", "#334155", "#64748b", 
+  "#ef4444", "#f59e0b", "#10b981", "#3b82f6", 
+  "#6366f1", "#a855f7", "#ec4899", "#78350f"
+];
 
 export default function TemplatePage() {
   const router = useRouter();
@@ -38,11 +46,18 @@ export default function TemplatePage() {
   const backFileInputRef = useRef<HTMLInputElement>(null);
   const editorFileInputRef = useRef<HTMLInputElement>(null);
 
+  // State Editor Teks
   const [editTitle, setEditTitle] = useState("");
   const [editSubtitle, setEditSubtitle] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
   const [editSynopsis, setEditSynopsis] = useState("");
   
+  // State Warna (Baru)
+  const [titleColor, setTitleColor] = useState("#000000");
+  const [subtitleColor, setSubtitleColor] = useState("#475569");
+  const [authorColor, setAuthorColor] = useState("#000000");
+  const [synopsisColor, setSynopsisColor] = useState("#FFFFFF");
+
   const [customFrontImg, setCustomFrontImg] = useState<string | null>(null);
   const [customBackImg, setCustomBackImg] = useState<string | null>(null);
 
@@ -76,9 +91,7 @@ export default function TemplatePage() {
       synopsis: "Tuliskan sinopsis buku anda...",
       category: "Custom",
       bgImage: customFrontImg || "https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=800",
-      titleColor: "text-slate-900",
-      authorColor: "text-slate-700",
-      isCustom: true // Penanda bahwa ini template buatan user
+      isCustom: true 
     };
 
     setSelectedTemplate(customTemplate);
@@ -86,6 +99,13 @@ export default function TemplatePage() {
     setEditSubtitle(customTemplate.subtitle);
     setEditAuthor(customTemplate.author);
     setEditSynopsis(customTemplate.synopsis);
+    
+    // Default color untuk custom upload
+    setTitleColor("#0f172a");
+    setSubtitleColor("#475569");
+    setAuthorColor("#0f172a");
+    setSynopsisColor("#0f172a");
+
     setIsUploadModalOpen(false);
     setActiveTab("front");
   };
@@ -98,6 +118,14 @@ export default function TemplatePage() {
     setEditSubtitle(template.subtitle);
     setEditAuthor(template.author);
     setEditSynopsis(template.synopsis || "");
+
+    // Mengambil inisial warna dari template jika ada (convert tailwind class ke hex simple)
+    // Untuk aplikasi produksi, sebaiknya template data langsung menyediakan hex code
+    setTitleColor(template.titleColor?.includes('white') ? "#FFFFFF" : "#0f172a");
+    setSubtitleColor(template.authorColor?.includes('white') ? "#e2e8f0" : "#475569");
+    setAuthorColor(template.authorColor?.includes('white') ? "#FFFFFF" : "#0f172a");
+    setSynopsisColor("#FFFFFF");
+
     setActiveTab("front");
     setIsSuccess(false);
   };
@@ -302,16 +330,41 @@ export default function TemplatePage() {
                         {activeTab === 'front' ? (
                           <div className="relative z-10 h-full flex flex-col justify-between py-12 px-8 text-center bg-black/5">
                             <div className="mt-8">
-                              <h2 className={`${selectedTemplate.titleColor} font-black text-4xl uppercase leading-[0.9] tracking-tighter drop-shadow-sm`}>{editTitle}</h2>
-                              <div className="w-16 h-1 bg-current opacity-30 mx-auto my-6"></div>
-                              <p className={`${selectedTemplate.authorColor} text-[11px] font-medium opacity-90 px-4 drop-shadow-sm`}>{editSubtitle}</p>
+                              <h2 
+                                style={{ color: titleColor }}
+                                className="font-black text-4xl uppercase leading-[0.9] tracking-tighter drop-shadow-sm"
+                              >
+                                {editTitle}
+                              </h2>
+                              <div className="w-16 h-1 opacity-30 mx-auto my-6" style={{ backgroundColor: titleColor }}></div>
+                              <p 
+                                style={{ color: subtitleColor }}
+                                className="text-[11px] font-medium opacity-90 px-4 drop-shadow-sm"
+                              >
+                                {editSubtitle}
+                              </p>
                             </div>
-                            <p className={`${selectedTemplate.authorColor} font-bold text-[11px] tracking-[0.4em] uppercase drop-shadow-sm`}>{editAuthor}</p>
+                            <p 
+                              style={{ color: authorColor }}
+                              className="font-bold text-[11px] tracking-[0.4em] uppercase drop-shadow-sm"
+                            >
+                              {editAuthor}
+                            </p>
                           </div>
                         ) : (
                           <div className="relative z-10 h-full flex flex-col items-center justify-center p-12 text-center bg-black/10">
-                            <h4 className={`${selectedTemplate.isCustom ? 'text-slate-900' : 'text-white/40'} font-black text-[9px] uppercase tracking-[0.4em] mb-6`}>Sinopsis</h4>
-                            <p className={`${selectedTemplate.isCustom ? 'text-slate-800' : 'text-white'} text-sm font-medium leading-relaxed italic opacity-90 drop-shadow-sm`}>{editSynopsis}</p>
+                            <h4 
+                              style={{ color: synopsisColor, opacity: 0.4 }}
+                              className="font-black text-[9px] uppercase tracking-[0.4em] mb-6"
+                            >
+                              Sinopsis
+                            </h4>
+                            <p 
+                              style={{ color: synopsisColor }}
+                              className="text-sm font-medium leading-relaxed italic opacity-90 drop-shadow-sm"
+                            >
+                              {editSynopsis}
+                            </p>
                           </div>
                         )}
                       </motion.div>
@@ -325,7 +378,7 @@ export default function TemplatePage() {
                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Konfigurasi Desain</h3>
                   </div>
 
-                  {/* TOMBOL GANTI GAMBAR HANYA MUNCUL JIKA TEMPLATE CUSTOM */}
+                  {/* GANTI GAMBAR CUSTOM */}
                   {selectedTemplate.isCustom && (
                     <div className="mb-8">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Latar Belakang ({activeTab === 'front' ? 'Depan' : 'Belakang'})</label>
@@ -351,17 +404,29 @@ export default function TemplatePage() {
                     </div>
                   </div>
 
-                  <div className="flex-grow space-y-6">
+                  <div className="flex-grow space-y-8">
                     {activeTab === 'front' ? (
-                      <div className="space-y-4">
-                        <EditorInput label="Judul Utama" value={editTitle} onChange={(e:any) => setEditTitle(e.target.value)} icon={<Type size={14}/>} />
-                        <EditorInput label="Sub-Judul" value={editSubtitle} onChange={(e:any) => setEditSubtitle(e.target.value)} icon={<AlignLeft size={14}/>}/>
-                        <EditorInput label="Nama Penulis" value={editAuthor} onChange={(e:any) => setEditAuthor(e.target.value)} icon={<Type size={14}/>}/>
+                      <div className="space-y-6">
+                        <div className="space-y-4">
+                          <EditorInput label="Judul Utama" value={editTitle} onChange={(e:any) => setEditTitle(e.target.value)} icon={<Type size={14}/>} />
+                          <ColorPicker label="Warna Judul" selected={titleColor} onChange={setTitleColor} />
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <EditorInput label="Sub-Judul" value={editSubtitle} onChange={(e:any) => setEditSubtitle(e.target.value)} icon={<AlignLeft size={14}/>}/>
+                          <ColorPicker label="Warna Sub-Judul" selected={subtitleColor} onChange={setSubtitleColor} />
+                        </div>
+
+                        <div className="space-y-4">
+                          <EditorInput label="Nama Penulis" value={editAuthor} onChange={(e:any) => setEditAuthor(e.target.value)} icon={<Type size={14}/>}/>
+                          <ColorPicker label="Warna Penulis" selected={authorColor} onChange={setAuthorColor} />
+                        </div>
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-1 block">Ringkasan (Sinopsis)</label>
-                        <textarea value={editSynopsis} onChange={(e) => setEditSynopsis(e.target.value)} rows={10} className="w-full p-5 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-slate-900 font-medium text-sm text-slate-700 resize-none transition-all" placeholder="Tulis sinopsis..." />
+                        <textarea value={editSynopsis} onChange={(e) => setEditSynopsis(e.target.value)} rows={8} className="w-full p-5 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-slate-900 font-medium text-sm text-slate-700 resize-none transition-all" placeholder="Tulis sinopsis..." />
+                        <ColorPicker label="Warna Teks Sinopsis" selected={synopsisColor} onChange={setSynopsisColor} />
                       </div>
                     )}
                   </div>
@@ -399,6 +464,7 @@ export default function TemplatePage() {
   );
 }
 
+// Sub-komponen Input Teks
 function EditorInput({ label, value, onChange, icon }: any) {
   return (
     <div className="space-y-1.5">
@@ -411,6 +477,38 @@ function EditorInput({ label, value, onChange, icon }: any) {
         onChange={onChange}
         className="w-full p-4 rounded-xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-slate-900 font-bold text-slate-900 transition-all text-xs uppercase"
       />
+    </div>
+  );
+}
+
+// Sub-komponen Color Picker (Baru)
+function ColorPicker({ label, selected, onChange }: { label: string, selected: string, onChange: (val: string) => void }) {
+  return (
+    <div className="space-y-2.5 px-1">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
+          <Palette size={12} /> {label}
+        </label>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: selected }}></div>
+          <input 
+            type="color" 
+            value={selected} 
+            onChange={(e) => onChange(e.target.value)} 
+            className="w-6 h-6 border-0 p-0 bg-transparent cursor-pointer overflow-hidden" 
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {PRESET_COLORS.map((color) => (
+          <button
+            key={color}
+            onClick={() => onChange(color)}
+            className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 ${selected === color ? 'border-slate-900 scale-110 shadow-sm' : 'border-transparent'}`}
+            style={{ backgroundColor: color }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
