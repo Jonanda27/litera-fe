@@ -18,6 +18,18 @@ export default function WebRTCMeeting({ roomId }) {
         return () => {
             Object.values(peersRef.current).forEach(pc => pc.close());
 
+            if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(track => {
+                    track.stop();
+                });
+            }
+
+            localStreamRef.current = null;
+
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = null;
+            }
+
             socket.off("video_room_users");
             socket.off("video_user_joined");
             socket.off("webrtc_offer");
@@ -61,13 +73,13 @@ export default function WebRTCMeeting({ roomId }) {
             await new Promise(resolve => setTimeout(resolve, 300));
 
             initSocket();
-            socket.emit("join_video_room", roomId);
-
             console.log("✅ Camera & Mic ON");
         } catch (err) {
             console.error("❌ Error:", err);
         }
     };
+
+
 
     // ==============================
     // SOCKET EVENTS
@@ -75,6 +87,7 @@ export default function WebRTCMeeting({ roomId }) {
     const initSocket = () => {
 
         // user yang sudah ada di room
+        socket.emit("join_video_room", roomId);
         socket.on("video_room_users", (users) => {
             users.forEach(({ socketId }) => {
                 if (socketId !== socket.id) {
@@ -127,6 +140,12 @@ export default function WebRTCMeeting({ roomId }) {
 
             setRemoteStreams(prev => prev.filter(s => s.id !== socketId));
         });
+
+        socket.on("video_user_joined", (socketId) => {
+            console.log("👤 user baru join:", socketId);
+
+            createPeerConnection(socketId, true);
+        });
     };
 
     // ==============================
@@ -136,7 +155,6 @@ export default function WebRTCMeeting({ roomId }) {
         if (peersRef.current[targetSocketId]) return peersRef.current[targetSocketId];
 
         const pc = new RTCPeerConnection({
-            iceTransportPolicy: "relay",
             iceServers: [
                 { urls: "stun:stun.l.google.com:19302" },
                 {
@@ -149,12 +167,6 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetSocketId] = pc;
 
-        // kirim stream
-        if (!localStreamRef.current) {
-            console.log("⏳ Stream belum ready, skip dulu...");
-            return;
-        }
-
         console.log("📤 Kirim tracks:", localStreamRef.current.getTracks());
 
         localStreamRef.current.getTracks().forEach(track => {
@@ -163,20 +175,24 @@ export default function WebRTCMeeting({ roomId }) {
 
         // terima stream
         pc.ontrack = (event) => {
-            let stream;
+            console.log("🔥 TRACK MASUK DARI:", targetSocketId);
+            console.log("STREAM:", event.streams);
 
             if (event.streams && event.streams[0]) {
-                stream = event.streams[0];
+                // normal
             } else {
-                stream = new MediaStream();
-                stream.addTrack(event.track);
+                const newStream = new MediaStream();
+                newStream.addTrack(event.track);
             }
 
             setRemoteStreams(prev => {
                 const exists = prev.find(s => s.id === targetSocketId);
                 if (exists) return prev;
 
-                return [...prev, { id: targetSocketId, stream }];
+                return [
+                    ...prev,
+                    { id: targetSocketId, stream: event.streams[0] }
+                ];
             });
         };
 
