@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+// Import Lucide untuk ikon loading yang lebih bagus
+import { Loader2, CheckCircle2, Rocket } from "lucide-react"; 
 import {
   KeyboardSensor,
   PointerSensor,
@@ -12,7 +14,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { toPng } from "html-to-image";
 
-// Import Steps (Fiksi)
+// Import Steps...
 import StepIdeCepat from "./fiksi/StepIdeCepat";
 import StepPapanVisi from "./fiksi/StepPapanVisi";
 import StepRiset from "./fiksi/StepRiset";
@@ -26,7 +28,6 @@ import StepRevisi from "./fiksi/StepRevisi";
 import StepFinalisasi from "./fiksi/StepFinalisasi";
 import StepCover from "./fiksi/StepCover";
 
-// Import Steps (Nonfiksi)
 import StepRisetNonFiksi from "./nonfiksi/StepRisetNonFiksi";
 import StepDaftarIstilah from "./nonfiksi/StepDaftarIstilah";
 import StepDaftarPustaka from "./nonfiksi/StepDaftarPustaka";
@@ -38,7 +39,7 @@ import StepPenulisanNonFiction from "./nonfiksi/StepPenulisanNon";
 
 import { API_BASE_URL } from "@/lib/constans/constans";
 
-// KONFIGURASI LANGKAH
+// KONFIGURASI LANGKAH...
 const FICTION_STEPS = [
   { id: 1, title: "Ide Cepat" },
   { id: 2, title: "Papan Visi" },
@@ -85,9 +86,15 @@ const AddProjectModal = ({
     category === "Non-Fiksi" ? NON_FICTION_STEPS : FICTION_STEPS;
   const totalSteps = activeSteps.length;
 
+  const finalisasiRef = useRef<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isZenMode, setIsZenMode] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  // STATE BARU: Untuk Overlay Proses
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processStatus, setProcessStatus] = useState("Menyiapkan dokumen...");
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewConfig, setPreviewConfig] = useState({
@@ -105,10 +112,7 @@ const AddProjectModal = ({
 
   useEffect(() => {
     const fetchBookDetail = async () => {
-      if (isOpen) {
-        setCurrentStep(1);
-      }
-
+      if (isOpen) setCurrentStep(1);
       if (isOpen && selectedId) {
         setLoadingDetail(true);
         try {
@@ -117,10 +121,9 @@ const AddProjectModal = ({
             `${API_BASE_URL}/books/${selectedId}`,
             {
               headers: { Authorization: `Bearer ${token}` },
-            }
+            },
           );
           const bookData = response.data.data;
-
           setFormData({
             ...bookData,
             id: selectedId,
@@ -136,65 +139,93 @@ const AddProjectModal = ({
         setFormData({ title: "", id: null, bookId: null });
       }
     };
-
     fetchBookDetail();
   }, [isOpen, selectedId]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
-  const handleInputChange = (field: string, value: any) =>
-    setFormData((p: any) => ({ ...p, [field]: value }));
+  // Fungsi Helper untuk Capture Image sebelum pindah step (jika diperlukan)
+  const captureRevisiImage = async () => {
+    const paper = document.getElementById("paper-revisi");
+    if (paper) {
+      try {
+        const dataUrl = await toPng(paper, {
+          pixelRatio: 2,
+          backgroundColor: "#ffffff",
+          cacheBust: true,
+        });
+        setPreviewImage(dataUrl);
+      } catch (err) {
+        console.error("Gagal mengambil preview:", err);
+      }
+    }
+  };
 
   const handleNextStep = async () => {
-  // Ambil elemen kertas dari Step Revisi (Step 10 untuk Fiksi, Step 8 untuk Non-Fiksi)
-  const paper = document.getElementById("paper-revisi");
-  
-  // Tentukan kapan harus mengambil screenshot: 
-  // Fiksi: Saat di step 10 (Revisi) mau ke 11 (Finalisasi)
-  // Non-Fiksi: Saat di step 8 (Editing) mau ke 9 (Finalisasi)
-  const isTimetoCapture =
-    (category === "Fiksi" && currentStep === 11) || 
-    (category === "Non-Fiksi" && currentStep === 8);
-
-  if (paper && isTimetoCapture) {
-    try {
-      // Set loading state secara visual jika perlu
-      const dataUrl = await toPng(paper, {
-        pixelRatio: 2, // 2 sudah cukup bagus dan lebih cepat daripada 3
-        backgroundColor: "#ffffff",
-        cacheBust: true,
-      });
-      setPreviewImage(dataUrl);
-    } catch (err) {
-      console.error("Gagal mengambil preview naskah:", err);
+    const isTimetoCapture =
+      (category === "Fiksi" && currentStep === 11) ||
+      (category === "Non-Fiksi" && currentStep === 8);
+    
+    if (isTimetoCapture) {
+      await captureRevisiImage();
     }
-  }
-
-  if (currentStep < totalSteps) {
-    setCurrentStep((p) => p + 1);
-  }
-};
+    
+    if (currentStep < totalSteps) setCurrentStep((p) => p + 1);
+  };
 
   const handlePrevStep = () => {
     if (currentStep > 1) setCurrentStep((p) => p - 1);
   };
 
+  // Fungsi baru untuk navigasi langsung
+  const goToStep = async (stepId: number) => {
+    // Jika kita meninggalkan step revisi, coba capture dulu
+    const isTimetoCapture =
+      (category === "Fiksi" && currentStep === 11) ||
+      (category === "Non-Fiksi" && currentStep === 8);
+    
+    if (isTimetoCapture) {
+      await captureRevisiImage();
+    }
+    setCurrentStep(stepId);
+  };
+
+  const handleConfirmFinish = async () => {
+    setShowConfirmModal(false);
+    setIsProcessing(true); // Mulai loading overlay
+    setProcessStatus("Sedang men-generate PDF...");
+    
+    if (finalisasiRef.current) {
+      try {
+        setProcessStatus("Menyimpan ke server database...");
+        const isSaved = await finalisasiRef.current.saveToDB();
+        
+        if (isSaved) {
+          setProcessStatus("Berhasil! Mengalihkan halaman...");
+          // Berikan delay sedikit agar user bisa melihat status sukses
+          setTimeout(() => {
+            setIsProcessing(false);
+            onSave(formData);
+          }, 1500);
+        } else {
+            throw new Error("Save failed");
+        }
+      } catch (e) {
+        console.error("Gagal menyimpan PDF otomatis ke DB");
+        setIsProcessing(false);
+        alert("Terjadi kesalahan saat menyimpan PDF.");
+      }
+    } else {
+      setIsProcessing(false);
+      onSave(formData);
+    }
+  };
+
   const renderStepContent = () => {
-    if (loadingDetail) {
+    if (loadingDetail)
       return (
-        <div className="flex flex-col items-center justify-center p-10 md:p-20 space-y-4">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest text-center">
-            Memuat Detail Proyek...
-          </p>
+        <div className="p-20 text-center font-black text-slate-400 uppercase text-xs">
+          Memuat Detail...
         </div>
       );
-    }
 
     if (category === "Non-Fiksi") {
       switch (currentStep) {
@@ -238,15 +269,19 @@ const AddProjectModal = ({
               isZenMode={isZenMode}
               setIsZenMode={setIsZenMode}
               formData={formData}
-              handleInputChange={handleInputChange}
+              handleInputChange={(f: string, v: any) =>
+                setFormData((p: any) => ({ ...p, [f]: v }))
+              }
             />
           );
         case 9:
           return (
             <StepFinalisasi
+              ref={finalisasiRef}
               previewImage={previewImage}
               previewConfig={previewConfig}
               setPreviewConfig={setPreviewConfig}
+              formData={formData}
             />
           );
         default:
@@ -268,8 +303,8 @@ const AddProjectModal = ({
           return (
             <StepPapanVisi formData={formData} onDataChange={setFormData} />
           );
-          case 3:
-  return <StepCover formData={formData} onDataChange={setFormData} />;
+        case 3:
+          return <StepCover formData={formData} onDataChange={setFormData} />;
         case 4:
           return <StepRiset formData={formData} onDataChange={setFormData} />;
         case 5:
@@ -296,7 +331,9 @@ const AddProjectModal = ({
               isZenMode={isZenMode}
               setIsZenMode={setIsZenMode}
               formData={formData}
-              handleInputChange={handleInputChange}
+              handleInputChange={(f: string, v: any) =>
+                setFormData((p: any) => ({ ...p, [f]: v }))
+              }
             />
           );
         case 11:
@@ -305,21 +342,25 @@ const AddProjectModal = ({
               comments={[]}
               versions={[]}
               formData={formData}
-              handleInputChange={handleInputChange}
+              handleInputChange={(f: string, v: any) =>
+                setFormData((p: any) => ({ ...p, [f]: v }))
+              }
             />
           );
         case 12:
           return (
             <StepFinalisasi
+              ref={finalisasiRef}
               previewImage={previewImage}
               previewConfig={previewConfig}
               setPreviewConfig={setPreviewConfig}
+              formData={formData}
             />
           );
         default:
           return (
-            <div className="p-10 text-center font-bold text-slate-400 uppercase text-xs md:text-sm">
-              Tahap {activeSteps[currentStep - 1]?.title} (Under Development)
+            <div className="p-10 text-center font-bold text-slate-400 uppercase text-xs">
+              Under Development
             </div>
           );
       }
@@ -330,79 +371,111 @@ const AddProjectModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-2 md:p-4 backdrop-blur-sm text-black">
+      
+      {/* OVERLAY PROSES (Muncul saat generate PDF) */}
+      <AnimatePresence>
+        {isProcessing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-xl flex flex-col items-center justify-center"
+          >
+            <div className="relative">
+                <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                    className={`w-24 h-24 border-t-4 border-b-4 rounded-full ${category === "Non-Fiksi" ? "border-amber-600" : "border-violet-600"}`}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    {processStatus.includes("Berhasil") ? (
+                        <CheckCircle2 size={40} className="text-green-500" />
+                    ) : (
+                        <Rocket size={40} className={category === "Non-Fiksi" ? "text-amber-600" : "text-violet-600"} />
+                    )}
+                </div>
+            </div>
+            
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 text-center"
+            >
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-2">
+                    {processStatus.includes("Berhasil") ? "Hampir Selesai!" : "Memproses Karya Anda"}
+                </h2>
+                <div className="flex items-center gap-2 justify-center text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">
+                    {!processStatus.includes("Berhasil") && <Loader2 size={12} className="animate-spin" />}
+                    {processStatus}
+                </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className={`bg-white w-full max-w-5xl ${
-          isZenMode
-            ? "h-screen max-h-screen rounded-none"
-            : "max-h-[92vh] md:max-h-[95vh] rounded-2xl md:rounded-[2.5rem]"
-        } overflow-hidden shadow-2xl flex flex-col transition-all duration-500`}
+        className={`bg-white w-full max-w-5xl ${isZenMode ? "h-screen rounded-none" : "max-h-[95vh] rounded-[2.5rem]"} overflow-hidden shadow-2xl flex flex-col`}
       >
-        {/* HEADER */}
         {!isZenMode && (
-          <div className="p-4 md:p-6 border-b bg-slate-50 shrink-0">
-            <div className="flex justify-between items-start md:items-center mb-4 md:mb-6">
-              <div className="pr-4">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[8px] md:text-[9px] font-black uppercase ${
-                      category === "Non-Fiksi"
-                        ? "bg-amber-100 text-amber-600"
-                        : "bg-violet-100 text-violet-600"
-                    }`}
-                  >
-                    {category}
-                  </span>
-                  <h2 className="text-base md:text-xl font-black text-slate-900 uppercase tracking-tight line-clamp-1">
-                    {loadingDetail ? "..." : formData.title || "Proyek Baru"}
-                  </h2>
-                </div>
-                <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  Tahap {currentStep}{" "}
-                  <span className="hidden sm:inline">dari {totalSteps}</span>:{" "}
-                  {activeSteps[currentStep - 1]?.title}
-                </p>
+          <div className="p-6 border-b bg-slate-50 shrink-0">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <span
+                  className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${category === "Non-Fiksi" ? "bg-amber-100 text-amber-600" : "bg-violet-100 text-violet-600"}`}
+                >
+                  {category}
+                </span>
+                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                  {loadingDetail ? "..." : formData.title || "Proyek Baru"}
+                </h2>
               </div>
               <button
                 onClick={onClose}
-                className="w-8 h-8 md:w-10 md:h-10 shrink-0 flex items-center justify-center bg-slate-200 rounded-full text-slate-600 hover:bg-rose-500 hover:text-white transition-all text-xs"
+                className="w-10 h-10 flex items-center justify-center bg-slate-200 rounded-full hover:bg-rose-500 hover:text-white transition-all"
               >
                 ✕
               </button>
             </div>
 
-            {/* PROGRESS BAR */}
-            <div className="flex gap-0.5 md:gap-1.5">
+            {/* PROGRESS BAR YANG BISA DIKLIK */}
+            <div className="flex gap-1.5">
               {activeSteps.map((step) => (
-                <div
+                <button
                   key={step.id}
-                  className={`h-1 md:h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                    currentStep >= step.id
-                      ? category === "Non-Fiksi"
-                        ? "bg-amber-500"
-                        : "bg-violet-600"
-                      : "bg-slate-200"
+                  onClick={() => goToStep(step.id)}
+                  title={step.title} // Menunjukkan nama langkah saat mouse di-hover
+                  className={`h-1.5 flex-1 rounded-full transition-all duration-300 hover:opacity-70 ${
+                    currentStep === step.id 
+                      ? (category === "Non-Fiksi" ? "bg-amber-500 ring-2 ring-amber-200 ring-offset-1" : "bg-violet-600 ring-2 ring-violet-200 ring-offset-1") 
+                      : currentStep > step.id 
+                        ? (category === "Non-Fiksi" ? "bg-amber-400" : "bg-violet-400")
+                        : "bg-slate-200"
                   }`}
                 />
               ))}
             </div>
+            
+            {/* LABEL LANGKAH AKTIF (Opsional: Agar user tahu posisi saat ini) */}
+            <div className="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex justify-between px-1">
+              <span>Langkah {currentStep} dari {totalSteps}</span>
+              <span className={category === "Non-Fiksi" ? "text-amber-600" : "text-violet-600"}>
+                {activeSteps.find(s => s.id === currentStep)?.title}
+              </span>
+            </div>
           </div>
         )}
 
-        {/* CONTENT AREA */}
         <div
-          className={`flex-1 overflow-y-auto ${
-            isZenMode ? "p-0" : "p-4 md:p-8"
-          } bg-white custom-scrollbar`}
+          className={`flex-1 overflow-y-auto ${isZenMode ? "p-0" : "p-8"} bg-white custom-scrollbar`}
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentStep + category + loadingDetail}
+              key={currentStep + category}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
               className="h-full"
             >
               {renderStepContent()}
@@ -410,57 +483,75 @@ const AddProjectModal = ({
           </AnimatePresence>
         </div>
 
-        {/* FOOTER NAVIGATION - PERBAIKAN KHUSUS MOBILE */}
         {!isZenMode && (
-          <div className="p-4 md:p-6 border-t bg-slate-50 flex justify-between items-center shrink-0">
-            {/* Tombol Kembali */}
+          <div className="p-6 border-t bg-slate-50 flex justify-between items-center shrink-0">
             <button
               onClick={handlePrevStep}
               disabled={currentStep === 1 || loadingDetail}
-              className={`font-black uppercase flex items-center gap-1 md:gap-2 transition-all shrink-0 ${
-                currentStep === 1 || loadingDetail
-                  ? "opacity-0 pointer-events-none"
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
+              className={`font-black uppercase flex items-center gap-2 ${currentStep === 1 ? "opacity-0" : "text-slate-400 hover:text-slate-600"}`}
             >
-              <span className="text-xs md:text-sm">←</span>
-              <span className="text-[10px] md:text-xs">Kembali</span>
+              ← Kembali
             </button>
-
-            {/* Bagian Kanan Footer */}
-            <div className="flex items-center gap-2">
-              {/* Teks Langkah disembunyikan di layar kecil (mobile) agar tombol tidak terdorong */}
-              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest hidden lg:block">
-                Langkah {currentStep} / {totalSteps}
-              </span>
-
-              <button
-                onClick={
-                  currentStep === totalSteps
-                    ? () => onSave(formData)
-                    : handleNextStep
-                }
-                disabled={loadingDetail}
-                className={`px-4 md:px-10 py-2.5 md:py-4 text-white font-black rounded-full shadow-lg uppercase text-[10px] md:text-xs active:scale-95 transition-all whitespace-nowrap shrink-0 ${
-                  loadingDetail
-                    ? "bg-slate-300 cursor-not-allowed"
-                    : category === "Non-Fiksi"
-                    ? "bg-amber-600 hover:bg-amber-700"
-                    : "bg-violet-600 hover:bg-violet-700"
-                }`}
-              >
-                {currentStep === totalSteps ? (
-                  "Selesaikan Proyek"
-                ) : (
-                  <span className="flex items-center gap-1">
-                    Selanjutnya <span className="text-xs md:text-sm">→</span>
-                  </span>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={
+                currentStep === totalSteps
+                  ? () => setShowConfirmModal(true)
+                  : handleNextStep
+              }
+              className={`px-10 py-4 text-white font-black rounded-full uppercase text-xs ${category === "Non-Fiksi" ? "bg-amber-600" : "bg-violet-600"}`}
+            >
+              {currentStep === totalSteps
+                ? "Selesaikan Proyek"
+                : "Selanjutnya →"}
+            </button>
           </div>
         )}
       </motion.div>
+
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white p-8 rounded-[2rem] shadow-2xl max-w-md w-full text-center"
+            >
+              <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">
+                🚀
+              </div>
+              <h3 className="text-xl font-black text-slate-900 uppercase mb-2">
+                Publikasikan Proyek?
+              </h3>
+              <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+                Menyelesaikan proyek akan menyimpan draf PDF secara otomatis dan
+                mempublikasikannya ke profil Anda.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleConfirmFinish}
+                  className={`w-full py-4 text-white font-black rounded-2xl uppercase text-xs ${category === "Non-Fiksi" ? "bg-amber-600" : "bg-violet-600"}`}
+                >
+                  Ya, Publish & Simpan PDF
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="w-full py-4 text-slate-400 font-black rounded-2xl uppercase text-xs"
+                >
+                  Batal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
