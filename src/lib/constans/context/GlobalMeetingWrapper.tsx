@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useMeetingContext } from "./MeetingContext"; // Sesuaikan path jika perlu
-import WebRTCMeeting from "@/app/peserta/experience/component/WebRTCMeeting"; // Sesuaikan path jika perlu
+import LiveKitMeeting from "./LiveKitMeeting";
 import { Maximize2, Minimize2, X, GripHorizontal } from "lucide-react"; // <-- Import GripHorizontal
 
-export default function GlobalJitsiWrapper() {
+export default function GlobalMeetingWrapper() {
   const { activeMeeting, isMinimized, toggleMinimize, endMeeting } = useMeetingContext();
 
   // --- STATE UNTUK FITUR DRAG ---
@@ -108,8 +108,7 @@ export default function GlobalJitsiWrapper() {
         {/* OVERLAY PELINDUNG: Menutup iFrame selama proses drag agar mouse tidak terserap ke dalam Jitsi */}
         {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing" />}
 
-        <WebRTCMeeting
-          roomId={activeMeeting.roomName}
+        <LiveKitMeeting
         />
       </div>
     </div>

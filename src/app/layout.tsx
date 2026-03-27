@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { MeetingProvider } from "@/lib/constans/context/MeetingContext";
-import GlobalJitsiWrapper from "@/lib/constans/context/GlobalJitsiWrapper";
+import GlobalMeetingWrapper from "@/lib/constans/context/GlobalMeetingWrapper";
 
 // IMPORT PROVIDER DAN WRAPPER
 // Ingat: Sesuaikan path "@/" di bawah ini dengan lokasi folder tempat kamu menyimpan file-nya!
@@ -23,9 +23,9 @@ export default function RootLayout({
         {/* Bungkus seluruh aplikasi dengan MeetingProvider */}
         <MeetingProvider>
           {children}
-          
+
           {/* Komponen ini akan standby di background dan muncul saat meeting aktif */}
-          <GlobalJitsiWrapper />
+          <GlobalMeetingWrapper />
         </MeetingProvider>
       </body>
     </html>
