@@ -65,21 +65,16 @@ export default function EbookPage() {
 
   const handlePreview = (pdfUrl: string) => {
     if (!pdfUrl) return alert("File PDF tidak ditemukan");
-    // Pastikan URL preview menggunakan alamat server statis (tanpa /api)
     const fullUrl = `${API_BASE_URL.replace('/api', '')}${pdfUrl}`;
     setSelectedPdf(fullUrl);
   };
 
-  // --- FUNGSI DOWNLOAD PDF (DIPERBAIKI) ---
   const handleDownload = async (book: Book) => {
     if (!book.pdf_url) return alert("Link unduhan tidak tersedia.");
     
     setIsDownloadingId(book.id);
     try {
       const token = localStorage.getItem("token");
-      
-      // PERBAIKAN URL: Pastikan menunjuk ke folder statis backend, bukan route API
-      // Contoh: http://localhost:4000/uploads/pdf/file.pdf
       const baseUrl = API_BASE_URL.replace('/api', '');
       const fullUrl = `${baseUrl}${book.pdf_url}`;
 
@@ -89,7 +84,6 @@ export default function EbookPage() {
             'Accept': 'application/pdf'
         },
         responseType: 'blob',
-        // Tambahkan timeout agar tidak menggantung jika server lambat
         timeout: 30000 
       });
 
@@ -105,8 +99,7 @@ export default function EbookPage() {
       window.URL.revokeObjectURL(url);
     } catch (error: any) {
       console.error("Download Error:", error);
-      // Jika Network Error terjadi, biasanya karena CORS di backend belum mengizinkan akses ke file statis
-      alert("Gagal mengunduh. Pastikan koneksi stabil atau periksa konfigurasi CORS server.");
+      alert("Gagal mengunduh. Pastikan koneksi stabil.");
     } finally {
       setIsDownloadingId(null);
     }
@@ -148,7 +141,7 @@ export default function EbookPage() {
                 whileHover={{ scale: 1.1, backgroundColor: "#fff" }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.back()}
-                className="p-4 bg-white border-2 border-slate-200 rounded-3xl text-slate-800 shadow-md transition-all"
+                className="p-4 bg-white border-2 border-slate-200 rounded-3xl text-slate-800 shadow-[0_4px_10px_rgba(0,0,0,0.05)] transition-all"
               >
                 <ArrowLeft size={22} />
               </motion.button>
@@ -268,7 +261,11 @@ export default function EbookPage() {
                     </div>
 
                     <div className="px-2 space-y-5 flex-1 flex flex-col">
-                      <h3 className="text-2xl font-black text-slate-900 leading-[1.1] tracking-tighter line-clamp-2 min-h-[4.4rem] uppercase">
+                      {/* SOLUSI JUDUL PANJANG: line-clamp-2 & overflow-hidden & height minimum */}
+                      <h3 
+                        className="text-2xl font-black text-slate-900 leading-[1.1] tracking-tighter uppercase line-clamp-2 overflow-hidden break-words min-h-[2.2em]"
+                        title={book.title} // Munculkan tooltip saat hover teks
+                      >
                         {book.title}
                       </h3>
                       
@@ -309,7 +306,6 @@ export default function EbookPage() {
         )}
       </div>
 
-      {/* --- MODAL PREVIEW (REDUCED SIZE - CONSISTENT) --- */}
       <AnimatePresence>
         {selectedPdf && (
           <motion.div 
