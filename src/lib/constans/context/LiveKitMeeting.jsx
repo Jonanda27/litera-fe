@@ -1,61 +1,103 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react"; // Import useState
-import { Room, RemoteParticipant, LocalParticipant, Track, RoomEvent, ParticipantEvent, TrackEvent } from "livekit-client";
+import { Room, RoomEvent, ParticipantEvent, TrackEvent } from "livekit-client";
 import { useMeetingContext } from "./MeetingContext";
 import { API_BASE_URL } from "../constans";
 
 // --- Komponen Pembantu: VideoTile ---
 function VideoTile({ participant, track, isLocal }) {
     const videoRef = useRef(null);
-    const [isMuted, setIsMuted] = useState(false); // State untuk status mute
+    const [showVideo, setShowVideo] = useState(false); // State untuk mengontrol apakah video harus ditampilkan
+    const [isMuted, setIsMuted] = useState(false); // Untuk status mute audio
 
     useEffect(() => {
-        if (videoRef.current && track) {
-            // Attach track ke elemen video
-            const videoElement = track.attach();
+        if (!track) {
+            // Jika tidak ada track, pastikan video disembunyikan
+            setShowVideo(false);
+            if (videoRef.current) {
+                // Hapus semua elemen anak jika track tidak ada
+                while (videoRef.current.firstChild) {
+                    videoRef.current.removeChild(videoRef.current.firstChild);
+                }
+            }
+            return;
+        }
+
+        let videoElement;
+        try {
+            videoElement = track.attach();
+            // Penting: Hapus elemen lama sebelum menambahkan yang baru
             if (videoRef.current.firstChild) {
                 videoRef.current.removeChild(videoRef.current.firstChild);
             }
             videoRef.current.appendChild(videoElement);
 
-            // Update status mute (hanya untuk audio track jika ada)
+            // Terapkan gaya ke elemen video
+            videoElement.style.width = "100%";
+            videoElement.style.height = "100%";
+            videoElement.style.objectFit = "cover";
+            videoElement.style.borderRadius = "inherit"; // Agar mengikuti border-radius parent
+
+            setShowVideo(true); // Tampilkan video setelah berhasil dilampirkan
+
+            // Listener untuk status mute audio (jika ini track audio atau video dengan audio)
             const handleMute = () => {
-                setIsMuted(!track.isMuted);
+                setIsMuted(track.isMuted);
             };
             track.on(TrackEvent.Muted, handleMute);
             track.on(TrackEvent.Unmuted, handleMute);
             setIsMuted(track.isMuted); // Set initial state
 
-            return () => {
-                track.detach(videoElement);
-                track.off(TrackEvent.Muted, handleMute);
-                track.off(TrackEvent.Unmuted, handleMute);
-            };
+            // Log untuk debugging
+            console.log(`VideoTile ${participant.identity} (Track ${track.kind}): isEnabled=${track.isEnabled}, isMuted=${track.isMuted}, isAttached=${!!videoElement}`);
+
+        } catch (e) {
+            console.error(`Error attaching track for ${participant.identity}:`, e);
+            setShowVideo(false); // Sembunyikan jika gagal attach
         }
-    }, [track]);
 
-    if (!track) return null;
 
-    // Tambahkan indikator visual untuk nama dan status mute
+        return () => {
+            if (videoElement) {
+                track.detach(videoElement); // Lepaskan elemen video saat cleanup
+            }
+            if (videoRef.current) {
+                // Hapus semua elemen anak saat cleanup
+                while (videoRef.current.firstChild) {
+                    videoRef.current.removeChild(videoRef.current.firstChild);
+                }
+            }
+            const handleMute = () => {
+                setIsMuted(track.isMuted);
+            };
+            track.off(TrackEvent.Muted, handleMute);
+            track.off(TrackEvent.Unmuted, handleMute);
+            setShowVideo(false);
+        };
+    }, [track, participant.identity]); // Dependensi: track dan identity peserta
+
+    // Kondisi untuk menampilkan overlay "Kamera Mati"
+    const isCameraOff = track && track.kind === 'video' && (!track.isEnabled || !showVideo);
+    // Kita cek track.isEnabled LANGSUNG dari objek track, dan juga state showVideo
+
     return (
         <div
             className={`relative flex-1 min-w-[200px] max-w-[calc(50%-8px)] sm:max-w-[calc(33.333%-8px)] md:max-w-[calc(25%-8px)] aspect-video rounded-lg overflow-hidden border-2 
                         ${isLocal ? "border-blue-500" : "border-gray-700"} bg-gray-800`}
-            style={{ flexBasis: "auto" }} // Memungkinkan flexbox untuk mengatur ukuran
+            style={{ flexBasis: "auto" }}
         >
             <div ref={videoRef} className="w-full h-full">
-                {/* Video akan dilampirkan di sini */}
+                {/* Elemen video akan dilampirkan di sini secara langsung oleh JS */}
+                {isCameraOff && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800/90 text-gray-300 text-lg z-10">
+                        Kamera Mati
+                    </div>
+                )}
             </div>
-            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">
-                {participant.identity} {isMuted ? "🔇" : "🎤"}
+            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md z-20">
+                {participant.identity} {isMuted && track.kind === 'audio' ? "🔇" : (track.kind === 'video' && !isCameraOff) ? "📹" : "🎤"}
             </div>
-            {/* Overlay jika kamera mati */}
-            {!track.isMuted && track.kind === 'video' && !track.isEnabled && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-white text-lg">
-                    Kamera Mati
-                </div>
-            )}
         </div>
     );
 }

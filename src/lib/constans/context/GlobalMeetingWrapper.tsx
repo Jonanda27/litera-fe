@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useMeetingContext } from "./MeetingContext"; // Sesuaikan path jika perlu
-import LiveKitMeeting from "./LiveKitMeeting";
+import WebRTCMeeting from "@/app/peserta/experience/component/WebRTCMeeting";
 import { Maximize2, Minimize2, X, GripHorizontal } from "lucide-react"; // <-- Import GripHorizontal
 
 export default function GlobalMeetingWrapper() {
@@ -56,7 +56,13 @@ export default function GlobalMeetingWrapper() {
     };
   };
 
-  if (!activeMeeting) return null; // Sembunyikan jika tidak ada meeting aktif
+  if (!activeMeeting) {
+    return (
+      <div style={{ display: "none" }}>
+        <WebRTCMeeting roomId={null} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -108,7 +114,8 @@ export default function GlobalMeetingWrapper() {
         {/* OVERLAY PELINDUNG: Menutup iFrame selama proses drag agar mouse tidak terserap ke dalam Jitsi */}
         {isDragging && <div className="absolute inset-0 z-50 bg-transparent cursor-grabbing" />}
 
-        <LiveKitMeeting
+        <WebRTCMeeting
+          roomId={activeMeeting.roomName}
         />
       </div>
     </div>

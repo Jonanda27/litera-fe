@@ -4,5 +4,4 @@ const URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const socket = io(URL, {
     transports: ["websocket"],
-    autoConnect: true,
 });
