@@ -9,6 +9,13 @@ interface SidebarProps {
   children: React.ReactNode;
 }
 
+// Definisi tipe data untuk menu agar TypeScript tidak komplain
+interface MenuItem {
+  path: string;
+  label: string;
+  isPending?: boolean;
+}
+
 export default function Sidebar({ children }: SidebarProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -49,8 +56,7 @@ export default function Sidebar({ children }: SidebarProps) {
   }, []);
 
   // Logika Filter Menu Berdasarkan Role
-  const getMenuItems = () => {
-    // Jika role adalah admin, tampilkan menu terbatas
+  const getMenuItems = (): MenuItem[] => {
     if (rolePrefix === 'admin') {
       return [
         { path: '/dashboard', label: 'Dashboard' },
@@ -60,7 +66,6 @@ export default function Sidebar({ children }: SidebarProps) {
       ];
     }
 
-    // Menu Default untuk Peserta dan Mentor
     return [
       { path: '/dashboard', label: 'Dashboard' },
       { path: '/exercise', label: 'Exercise' },
@@ -69,10 +74,11 @@ export default function Sidebar({ children }: SidebarProps) {
       { path: '/livesession', label: 'Live Session' },
       { path: '/sertifikat', label: 'Sertifikasi' },
       { path: '/tools', label: 'Tools Pendukung' },
-      { path: '/riwayat', label: 'Riwayat Kegiatan' },
       { path: '/e-book', label: 'E-book' },
-      { path: '/pengaturan', label: 'Pengaturan' },
-      { path: '/mentor', label: 'Kontak Mentor Kamu' },
+      // Menu yang tetap muncul tapi belum aktif (mencegah error console)
+      { path: '/riwayat', label: 'Riwayat Kegiatan', isPending: true },
+      { path: '/pengaturan', label: 'Pengaturan', isPending: true },
+      { path: '/mentor', label: 'Kontak Mentor Kamu', isPending: true },
     ];
   };
 
@@ -90,22 +96,22 @@ export default function Sidebar({ children }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed left-0 top-20 h-[calc(100vh-80px)] bg-[#C31A26] transition-all duration-300 z-40 ${sidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full lg:w-0 lg:translate-x-0'
-          }`}
+        className={`fixed left-0 top-20 h-[calc(100vh-80px)] bg-[#C31A26] transition-all duration-300 z-40 ${
+          sidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full lg:w-0 lg:translate-x-0'
+        }`}
       >
         <div className="py-8 px-4 flex flex-col gap-2 overflow-y-auto h-full">
           {menuItems.map((item) => {
-            if (item.isExternal) {
+            // Jika menu ditandai isPending, tampilkan sebagai div (bukan Link)
+            if (item.isPending) {
               return (
-                <a
+                <div
                   key={item.path}
-                  href={item.path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm text-white hover:bg-white/10 flex items-center justify-between"
+                  className="px-4 py-3 md:py-2 rounded-lg font-bold text-sm text-white/40 cursor-not-allowed flex items-center justify-between"
+                  title="Segera Hadir"
                 >
                   {item.label}
-                </a>
+                </div>
               );
             }
 
@@ -117,10 +123,11 @@ export default function Sidebar({ children }: SidebarProps) {
                 key={fullHref}
                 href={fullHref}
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm ${isActive
-                  ? 'bg-white text-[#C31A26]'
-                  : 'text-white hover:bg-white/10'
-                  }`}
+                className={`px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm ${
+                  isActive
+                    ? 'bg-white text-[#C31A26]'
+                    : 'text-white hover:bg-white/10'
+                }`}
               >
                 {item.label}
               </Link>
@@ -131,19 +138,31 @@ export default function Sidebar({ children }: SidebarProps) {
 
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`fixed top-24 bg-white border border-slate-200 rounded-r-lg p-2 z-50 shadow-md transition-all duration-300 ${sidebarOpen
-          ? 'left-64'
-          : 'left-0'
-          }`}
+        className={`fixed top-24 bg-white border border-slate-200 rounded-r-lg p-2 z-50 shadow-md transition-all duration-300 ${
+          sidebarOpen ? 'left-64' : 'left-0'
+        }`}
       >
-        <svg className={`w-4 h-4 text-slate-600 transition-transform ${sidebarOpen ? 'rotate-0 lg:rotate-0' : 'rotate-180 lg:rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarOpen ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
+        <svg
+          className={`w-4 h-4 text-slate-600 transition-transform ${
+            sidebarOpen ? 'rotate-0' : 'rotate-180'
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d={sidebarOpen ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"}
+          />
         </svg>
       </button>
 
       <div
-        className={`pt-20 transition-all duration-300 min-h-screen ${sidebarOpen && !isMobile ? 'lg:ml-64' : 'ml-0'
-          }`}
+        className={`pt-20 transition-all duration-300 min-h-screen ${
+          sidebarOpen && !isMobile ? 'lg:ml-64' : 'ml-0'
+        }`}
       >
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-10">
           {children}
