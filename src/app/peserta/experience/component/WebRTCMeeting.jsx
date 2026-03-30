@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { socket } from "@/lib/sockets/socket";
+import { socket } from "@/lib/sockets/socket"
 
 export default function WebRTCMeeting({ roomId }) {
     console.log("ROOM ID:", roomId);
     const localVideoRef = useRef(null);
     const localStreamRef = useRef(null);
-    const screenStreamRef = useRef(null);
+    const screenStreamRef = useRef(null); // Ref khusus untuk screen share
     const peersRef = useRef({});
     const videoRefs = useRef({});
     const audioAnalyzersRef = useRef({});
@@ -15,16 +15,10 @@ export default function WebRTCMeeting({ roomId }) {
     const [remoteStreams, setRemoteStreams] = useState([]);
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCamOn, setIsCamOn] = useState(true);
-    const [isScreenSharing, setIsScreenSharing] = useState(false);
+    const [isScreenSharing, setIsScreenSharing] = useState(false); // State screen share
 
     const [speakingUsers, setSpeakingUsers] = useState({});
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
-
-    // BARU: State untuk Nama User dan Notifikasi
-    const [userName, setUserName] = useState("User-" + Math.floor(Math.random() * 1000));
-    const [isEditingName, setIsEditingName] = useState(false);
-    const [notification, setNotification] = useState("");
-    const [remoteNames, setRemoteNames] = useState({}); // Menyimpan nama user lain {socketId: "Nama"}
 
     useEffect(() => {
         start();
@@ -46,7 +40,6 @@ export default function WebRTCMeeting({ roomId }) {
             socket.off("webrtc_answer");
             socket.off("webrtc_ice_candidate");
             socket.off("video_user_left");
-            socket.off("name_update"); // Clean up listener baru
         };
     }, []);
 
@@ -62,18 +55,9 @@ export default function WebRTCMeeting({ roomId }) {
         });
     }, [remoteStreams]);
 
-    // BARU: Fungsi untuk menampilkan notifikasi sementara
-    const showNotification = (msg) => {
-        setNotification(msg);
-        setTimeout(() => setNotification(""), 3000);
-    };
-
-    // BARU: Fungsi kirim nama ke orang lain
-    const updateMyName = (newName) => {
-        setUserName(newName);
-        socket.emit("update_name", { roomId, name: newName });
-    };
-
+    // ==============================
+    // LOGIKA DETEKSI SUARA
+    // ==============================
     const monitorStream = (stream, socketId = null) => {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -124,42 +108,62 @@ export default function WebRTCMeeting({ roomId }) {
         } catch (err) { console.error("❌ Error:", err); }
     };
 
+    // ==============================
+    // FITUR SHARE SCREEN (NEW)
+    // ==============================
     const toggleScreenShare = async () => {
         try {
             if (!isScreenSharing) {
+                // Mulai Share Screen
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 screenStreamRef.current = screenStream;
                 const screenTrack = screenStream.getVideoTracks()[0];
 
+                // Ganti track video di semua Peer Connections
                 Object.values(peersRef.current).forEach(pc => {
                     const senders = pc.getSenders();
                     const videoSender = senders.find(s => s.track.kind === "video");
                     if (videoSender) videoSender.replaceTrack(screenTrack);
                 });
 
+                // Update tampilan lokal
                 if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
+
+                // Handle jika user klik "Stop Sharing" bawaan browser
                 screenTrack.onended = () => stopScreenSharing();
+
                 setIsScreenSharing(true);
             } else {
                 stopScreenSharing();
             }
-        } catch (err) { console.error("Error screen sharing:", err); }
+        } catch (err) {
+            console.error("Error screen sharing:", err);
+        }
     };
 
     const stopScreenSharing = () => {
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach(track => track.stop());
         }
+
         const videoTrack = localStreamRef.current.getVideoTracks()[0];
+
+        // Kembalikan ke kamera di semua Peer Connections
         Object.values(peersRef.current).forEach(pc => {
             const senders = pc.getSenders();
             const videoSender = senders.find(s => s.track.kind === "video");
             if (videoSender) videoSender.replaceTrack(videoTrack);
         });
+
+        // Kembalikan tampilan lokal ke kamera
         if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+        
         setIsScreenSharing(false);
     };
 
+    // ==============================
+    // KONTROL MEDIA
+    // ==============================
     const toggleMic = () => {
         if (localStreamRef.current) {
             const audioTrack = localStreamRef.current.getAudioTracks()[0];
@@ -181,31 +185,17 @@ export default function WebRTCMeeting({ roomId }) {
         }
     };
 
+    // ==============================
+    // SOCKET & WEBRTC LOGIC
+    // ==============================
     const initSocket = () => {
-        // Kirim nama awal saat join
-        socket.emit("join_video_room", { roomId, name: userName });
-
+        socket.emit("join_video_room", roomId);
         socket.on("video_room_users", (users) => {
-            users.forEach(({ socketId, name }) => {
-                if (socketId !== socket.id) {
-                    if (name) setRemoteNames(prev => ({ ...prev, [socketId]: name }));
-                    createPeerConnection(socketId, true);
-                }
+            users.forEach(({ socketId }) => {
+                if (socketId !== socket.id) createPeerConnection(socketId, true);
             });
         });
-
-        socket.on("video_user_joined", ({ socketId, name }) => {
-            // BARU: Notifikasi user join
-            showNotification(`${name || socketId.slice(0, 5)} telah bergabung`);
-            if (name) setRemoteNames(prev => ({ ...prev, [socketId]: name }));
-            createPeerConnection(socketId, true);
-        });
-
-        // BARU: Listener update nama dari user lain
-        socket.on("name_update", ({ socketId, name }) => {
-            setRemoteNames(prev => ({ ...prev, [socketId]: name }));
-        });
-
+        socket.on("video_user_joined", (socketId) => createPeerConnection(socketId, true));
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             const pc = await createPeerConnection(senderId, false);
             await pc.setRemoteDescription(offer);
@@ -213,30 +203,19 @@ export default function WebRTCMeeting({ roomId }) {
             await pc.setLocalDescription(answer);
             socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
         });
-
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             const pc = peersRef.current[senderId];
             if (pc) await pc.setRemoteDescription(answer);
         });
-
         socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
             const pc = peersRef.current[senderId];
             if (pc) await pc.addIceCandidate(candidate);
         });
-
         socket.on("video_user_left", (socketId) => {
-            const leaverName = remoteNames[socketId] || "Seseorang";
-            showNotification(`${leaverName} meninggalkan ruangan`);
-            
             const pc = peersRef.current[socketId];
             if (pc) { pc.close(); delete peersRef.current[socketId]; }
             if (audioAnalyzersRef.current[socketId]) { audioAnalyzersRef.current[socketId].stop(); delete audioAnalyzersRef.current[socketId]; }
             setRemoteStreams(prev => prev.filter(s => s.id !== socketId));
-            setRemoteNames(prev => {
-                const newNames = { ...prev };
-                delete newNames[socketId];
-                return newNames;
-            });
         });
     };
 
@@ -247,6 +226,7 @@ export default function WebRTCMeeting({ roomId }) {
         });
         peersRef.current[targetSocketId] = pc;
 
+        // Gunakan stream yang sedang aktif (screen atau camera)
         const currentStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
         localStreamRef.current.getAudioTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         currentStream.getVideoTracks().forEach(track => pc.addTrack(track, currentStream));
@@ -278,14 +258,7 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     return (
-        <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col font-sans">
-            {/* BARU: UI NOTIFIKASI */}
-            {notification && (
-                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] bg-blue-600 text-white px-6 py-2 rounded-full shadow-2xl animate-bounce">
-                    {notification}
-                </div>
-            )}
-
+        <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col">
             <div className="flex-1 overflow-y-auto p-6 flex flex-wrap content-start justify-start gap-4 pb-32">
                 {/* VIDEO LOKAL */}
                 <div className="relative w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]">
@@ -298,26 +271,12 @@ export default function WebRTCMeeting({ roomId }) {
                             ${isLocalSpeaking && isMicOn ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' : 'border-transparent'}`}
                     />
                     <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs flex items-center gap-2">
-                        {/* BARU: Edit Nama UI */}
-                        {isEditingName ? (
-                            <input 
-                                autoFocus
-                                className="bg-transparent border-b border-white outline-none w-24"
-                                value={userName}
-                                onChange={(e) => setUserName(e.target.value)}
-                                onBlur={() => { setIsEditingName(false); updateMyName(userName); }}
-                                onKeyDown={(e) => { if(e.key === 'Enter') { setIsEditingName(false); updateMyName(userName); }}}
-                            />
-                        ) : (
-                            <span className="font-semibold flex items-center gap-1 cursor-pointer hover:text-blue-300" onClick={() => setIsEditingName(true)}>
-                                {userName} (Anda) ✏️
-                            </span>
-                        )}
+                        <span className="font-semibold">{isScreenSharing ? "Anda (Sharing Layar)" : "Anda (Host)"}</span>
                         {!isMicOn && <span className="text-red-400">🔇</span>}
                     </div>
                     {!isCamOn && !isScreenSharing && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900 rounded-2xl">
-                            <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center text-2xl">👤</div>
+                            <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center">👤</div>
                         </div>
                     )}
                 </div>
@@ -333,8 +292,7 @@ export default function WebRTCMeeting({ roomId }) {
                                 ${speakingUsers[user.id] ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' : 'border-transparent'}`}
                         />
                         <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs flex items-center gap-2">
-                            {/* BARU: Menampilkan nama remote */}
-                            <span>{remoteNames[user.id] || `Peserta ${user.id.slice(0, 4)}`}</span>
+                            <span>Peserta: {user.id.slice(0, 6)}</span>
                             {speakingUsers[user.id] && <span className="animate-pulse">🔊</span>}
                         </div>
                     </div>
@@ -352,6 +310,7 @@ export default function WebRTCMeeting({ roomId }) {
                         <span className="text-xl">{isCamOn ? "📹" : "🚫"}</span>
                     </button>
 
+                    {/* TOMBOL SHARE SCREEN (NEW) */}
                     <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full transition-all active:scale-90 ${isScreenSharing ? 'bg-green-600 hover:bg-green-700 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'bg-neutral-700 hover:bg-neutral-600'}`}>
                         <span className="text-xl">🖥️</span>
                     </button>
