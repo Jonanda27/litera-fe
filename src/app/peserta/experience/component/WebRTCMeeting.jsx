@@ -12,6 +12,9 @@ export default function WebRTCMeeting({ roomId }) {
     const screenStreamRef = useRef(null);
     const peersRef = useRef({});
     const videoRefs = useRef({});
+    
+    // Antrian untuk mencegah tabrakan sinyal WebRTC
+    const makingOffer = useRef({}); 
 
     const [remoteStreams, setRemoteStreams] = useState([]);
     const [isMicOn, setIsMicOn] = useState(true);
@@ -25,7 +28,7 @@ export default function WebRTCMeeting({ roomId }) {
     const [participantsList, setParticipantsList] = useState([]); 
     const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
 
-    // --- SINKRONISASI VIDEO ---
+    // --- FUNGSI SINKRONISASI VIDEO ---
     const syncAllVideos = useCallback(() => {
         if (localVideoRef.current && localStreamRef.current) {
             const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
@@ -52,14 +55,12 @@ export default function WebRTCMeeting({ roomId }) {
         if (!userName.trim()) return;
         
         try {
-            // Ambil media DULU sebelum join room
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
             setIsJoined(true);
             initSocket();
         } catch (err) { 
             console.error("❌ Media Error:", err); 
-            // Tetap join meski kamera gagal (sebagai viewer)
             setIsJoined(true);
             initSocket();
         }
@@ -83,11 +84,9 @@ export default function WebRTCMeeting({ roomId }) {
         socket.emit("join_video_room", { roomId, name: userName });
         
         socket.on("video_room_users", (users) => {
-            // Pastikan users adalah array object {id, name}
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
             setParticipantsList(normalizedUsers);
 
-            // Kita yang baru masuk membuat Peer untuk semua orang yang sudah ada
             normalizedUsers.forEach((user) => { 
                 if (user.id !== socket.id) {
                     createPeerConnection(user.id, true); 
@@ -101,12 +100,14 @@ export default function WebRTCMeeting({ roomId }) {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
             });
-            // Kita diam saja, biarkan user baru yang memanggil createPeerConnection(isInitiator: true)
         });
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
                 const pc = await createPeerConnection(senderId, false);
+                // Hanya proses jika state stabil untuk menghindari InvalidStateError
+                if (pc.signalingState !== "stable") return;
+
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
@@ -117,14 +118,18 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             try {
                 const pc = peersRef.current[senderId];
-                if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                if (pc && pc.signalingState === "have-local-offer") {
+                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+                }
             } catch (err) { console.error("Error handle answer:", err); }
         });
 
         socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
             try {
                 const pc = peersRef.current[senderId];
-                if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                if (pc && candidate) {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                }
             } catch (err) { console.error("Error add ICE:", err); }
         });
 
@@ -133,6 +138,7 @@ export default function WebRTCMeeting({ roomId }) {
             if (peersRef.current[id]) { 
                 peersRef.current[id].close(); 
                 delete peersRef.current[id]; 
+                delete makingOffer.current[id];
             }
             setRemoteStreams(prev => prev.filter(s => s.id !== id));
             if (pinnedId === id) setPinnedId(null);
@@ -151,16 +157,13 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetId] = pc;
 
-        // Tambahkan track dari kamera lokal ke koneksi Peer
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => {
                 pc.addTrack(track, localStreamRef.current);
             });
         }
 
-        // Event saat stream orang lain masuk
         pc.ontrack = (event) => {
-            console.log("Receiving remote track from:", targetId);
             setRemoteStreams(prev => {
                 if (prev.find(s => s.id === targetId)) return prev;
                 return [...prev, { id: targetId, stream: event.streams[0] }];
@@ -173,16 +176,21 @@ export default function WebRTCMeeting({ roomId }) {
             }
         };
 
-        // Otomatisasi Negosiasi (Kunci Utama Video Muncul)
-        if (isInitiator) {
-            pc.onnegotiationneeded = async () => {
-                try {
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
-                } catch (err) { console.error("Negotiation error:", err); }
-            };
-        }
+        pc.onnegotiationneeded = async () => {
+            if (!isInitiator) return;
+            try {
+                makingOffer.current[targetId] = true;
+                const offer = await pc.createOffer();
+                if (pc.signalingState !== "stable") return;
+                
+                await pc.setLocalDescription(offer);
+                socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
+            } catch (err) { 
+                console.error("Negotiation error:", err); 
+            } finally {
+                makingOffer.current[targetId] = false;
+            }
+        };
 
         return pc;
     };
@@ -292,36 +300,27 @@ export default function WebRTCMeeting({ roomId }) {
         );
     };
 
-    // --- LOBBY SCREEN ---
     if (!isJoined) {
         return (
-            <div className="w-full h-[100dvh] bg-black flex items-center justify-center p-6">
+            <div className="w-full h-[100dvh] bg-black flex items-center justify-center p-6 text-white">
                 <div className="w-full max-w-md bg-neutral-900 p-8 rounded-3xl border border-white/10 shadow-2xl">
-                    <div className="text-center mb-8">
-                        <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-4">👋</div>
-                        <h1 className="text-2xl font-bold text-white mb-2">Selamat Datang</h1>
-                        <p className="text-white/50 text-sm">Masukkan nama Anda untuk bergabung</p>
-                    </div>
+                    <h1 className="text-2xl font-bold mb-6 text-center">Bergabung ke Meeting</h1>
                     <form onSubmit={handleJoin} className="space-y-6">
                         <input 
-                            autoFocus
                             type="text" 
                             value={userName}
                             onChange={(e) => setUserName(e.target.value)}
-                            placeholder="Contoh: Budi Santoso"
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-600 outline-none"
+                            placeholder="Nama Anda"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-600"
                             required
                         />
-                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98]">
-                            Bergabung Sekarang
-                        </button>
+                        <button type="submit" className="w-full bg-blue-600 py-4 rounded-xl font-bold">Masuk</button>
                     </form>
                 </div>
             </div>
         );
     }
 
-    // --- MEETING UI ---
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative text-white">
             <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
@@ -376,14 +375,19 @@ export default function WebRTCMeeting({ roomId }) {
                             <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-blue-500/30">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">Anda</div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-white text-sm font-medium truncate">{userName} (Host)</p>
+                                    <p className="text-white text-sm font-medium truncate">{userName} (Anda)</p>
                                     <p className="text-xs text-white/40">ID: {socket.id?.slice(0, 8)}</p>
                                 </div>
-                                <div className="flex gap-2"><span>{isMicOn ? "🎤" : "🔇"}</span><span>{isCamOn ? "📹" : "🚫"}</span></div>
+                                <div className="flex gap-2 text-xs">
+                                    <span>{isMicOn ? "🎤" : "🔇"}</span>
+                                    <span>{isCamOn ? "📹" : "🚫"}</span>
+                                </div>
                             </div>
                             {participantsList.filter(p => p.id !== socket.id).map((p) => (
                                 <div key={p.id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl">
-                                    <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">{p.name?.charAt(0)}</div>
+                                    <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">
+                                        {p.name?.charAt(0).toUpperCase() || "U"}
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-white text-sm font-medium truncate">{p.name}</p>
                                         <p className="text-xs text-white/40">ID: {p.id.slice(0, 8)}</p>
@@ -396,7 +400,7 @@ export default function WebRTCMeeting({ roomId }) {
                 )}
             </div>
 
-            {/* MODAL LAYOUT */}
+            {/* MODAL LAYOUT (IKON TITIK 3) */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsLayoutModalOpen(false)} />
@@ -418,28 +422,31 @@ export default function WebRTCMeeting({ roomId }) {
             )}
 
             {/* CONTROL BAR */}
-            <div className="fixed bottom-0 left-0 right-0 h-20 sm:h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-center z-[9999] pb-4 px-2">
-                <div className="flex items-center gap-2 sm:gap-4 bg-neutral-900/95 backdrop-blur-2xl p-2 sm:p-3 md:p-4 px-4 sm:px-8 rounded-full border border-white/10 shadow-2xl max-w-full overflow-x-auto">
-                    <button onClick={toggleMic} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+            <div className="fixed bottom-0 left-0 right-0 h-24 flex items-center justify-center p-4 z-[9999]">
+                <div className="bg-neutral-900/95 backdrop-blur-2xl p-4 px-8 rounded-full flex items-center gap-4 border border-white/10 shadow-2xl max-w-full overflow-x-auto">
+                    <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
                         {isMicOn ? "🎤" : "🔇"}
                     </button>
-                    <button onClick={toggleCamera} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+                    <button onClick={toggleCamera} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
                         {isCamOn ? "📹" : "🚫"}
                     </button>
-                    <button onClick={toggleScreenShare} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
+                    <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
                         {isScreenSharing ? "❌" : "🖥️"}
                     </button>
-                    <div className="w-[1px] h-6 sm:h-8 bg-white/10 mx-1 shrink-0" />
-                    <button onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800'}`}>
+                    <div className="w-[1px] h-8 bg-white/10 mx-1 shrink-0" />
+                    <button onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800'}`}>
                         👥
                     </button>
-                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0 text-white">⋮</button>
-                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95 text-xs sm:text-base shrink-0">
+                    
+                    {/* IKON TITIK TIGA */}
+                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0 text-white">⋮</button>
+                    
+                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95 text-base shrink-0">
                         <span>📞</span><span className="hidden sm:inline">Keluar</span>
                     </button>
                 </div>
             </div>
-
+            
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
