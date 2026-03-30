@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useMeetingContext } from "./MeetingContext"; // Sesuaikan path jika perlu
 import WebRTCMeeting from "@/app/peserta/experience/component/WebRTCMeeting";
-import { Maximize2, Minimize2, X, GripHorizontal } from "lucide-react"; // <-- Import GripHorizontal
+import { Maximize2, Minimize2, X, GripHorizontal } from "lucide-react";
 
 export default function GlobalMeetingWrapper() {
   const { activeMeeting, isMinimized, toggleMinimize, endMeeting } = useMeetingContext();
@@ -59,7 +59,10 @@ export default function GlobalMeetingWrapper() {
   if (!activeMeeting) {
     return (
       <div style={{ display: "none" }}>
-        <WebRTCMeeting roomId={null} />
+        <WebRTCMeeting
+          roomId={null}
+          onMeetingEnd={endMeeting}
+        />
       </div>
     );
   }
@@ -116,6 +119,7 @@ export default function GlobalMeetingWrapper() {
 
         <WebRTCMeeting
           roomId={activeMeeting.roomName}
+          onMeetingEnd={endMeeting}
         />
       </div>
     </div>
