@@ -243,7 +243,7 @@ export default function WebRTCMeeting({ roomId }) {
                     }}
                     autoPlay
                     playsInline
-                    className="w-[300px] rounded-xl border border-blue-500"
+                    className="w-[300px]  h-[200px] rounded-xl border border-blue-500"
                 />
             ))}
 
