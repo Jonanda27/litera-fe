@@ -27,13 +27,8 @@ export default function WebRTCMeeting({ roomId }) {
     const [isEditingName, setIsEditingName] = useState(false);
     const [participantNames, setParticipantNames] = useState({}); 
 
-    // Initialize Camera & Mic
     useEffect(() => {
-        const init = async () => {
-            await start();
-        };
-        init();
-
+        start();
         return () => {
             Object.values(peersRef.current).forEach(pc => pc.close());
             if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
@@ -48,33 +43,30 @@ export default function WebRTCMeeting({ roomId }) {
         };
     }, []);
 
-    // FUNGSI SINKRONISASI VIDEO (KRUSIAL)
-    // Berjalan setiap kali ada perubahan UI agar stream tidak terputus
+    // PERBAIKAN: Menambahkan isLayoutModalOpen & isCamOn ke dependency 
+    // agar stream dipastikan tetap nempel saat modal dibuka atau kamera diubah
     useEffect(() => {
         const syncStreams = () => {
-            // Sinkronisasi Video Lokal
-            if (localVideoRef.current && localStreamRef.current) {
+            // Sync Local Video
+            if (localVideoRef.current) {
                 const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
                 if (localVideoRef.current.srcObject !== targetStream) {
                     localVideoRef.current.srcObject = targetStream;
-                    localVideoRef.current.play().catch(() => {});
                 }
             }
-            
-            // Sinkronisasi Video Remote
+            // Sync Remote Videos
             remoteStreams.forEach(user => {
                 const videoEl = videoRefs.current[user.id];
                 if (videoEl && user.stream && videoEl.srcObject !== user.stream) {
                     videoEl.srcObject = user.stream;
-                    videoEl.play().catch(() => {});
                 }
             });
         };
 
-        // Delay kecil untuk memastikan DOM sudah stabil setelah render
-        const timer = setTimeout(syncStreams, 100);
-        return () => clearTimeout(timer);
-    }, [remoteStreams, pinnedId, isScreenSharing, layoutType, isLayoutModalOpen, isCamOn, isMicOn]);
+        // Jalankan sinkronisasi segera setelah render
+        const timeoutId = setTimeout(syncStreams, 50);
+        return () => clearTimeout(timeoutId);
+    }, [remoteStreams, pinnedId, isScreenSharing, layoutType, isLayoutModalOpen, isCamOn]);
 
     const participants = useMemo(() => {
         const all = [{ id: 'local', isLocal: true, stream: localStreamRef.current }, ...remoteStreams.map(s => ({ ...s, isLocal: false }))];
@@ -137,9 +129,7 @@ export default function WebRTCMeeting({ roomId }) {
             iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }],
         });
         peersRef.current[targetId] = pc;
-        if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
-        }
+        localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         pc.ontrack = (event) => {
             const remoteStream = event.streams[0];
             if (!audioAnalyzersRef.current[targetId]) {
@@ -193,33 +183,20 @@ export default function WebRTCMeeting({ roomId }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
-            // Langsung tempelkan ke video lokal jika ref sudah ada
-            if (localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
             const monitor = monitorStream(stream);
             if (monitor) audioAnalyzersRef.current["local"] = monitor;
             initSocket();
-        } catch (err) { console.error("❌ Error Accessing Media:", err); }
+        } catch (err) { console.error("❌ Error:", err); }
     };
 
     const toggleMic = () => {
-        if (!localStreamRef.current) return;
         const track = localStreamRef.current.getAudioTracks()[0];
-        if (track) { 
-            track.enabled = !track.enabled; 
-            setIsMicOn(track.enabled); 
-            if (!track.enabled) setIsLocalSpeaking(false); 
-        }
+        if (track) { track.enabled = !track.enabled; setIsMicOn(track.enabled); if (!track.enabled) setIsLocalSpeaking(false); }
     };
 
     const toggleCamera = () => {
-        if (!localStreamRef.current) return;
         const track = localStreamRef.current.getVideoTracks()[0];
-        if (track) { 
-            track.enabled = !track.enabled; 
-            setIsCamOn(track.enabled); 
-        }
+        if (track) { track.enabled = !track.enabled; setIsCamOn(track.enabled); }
     };
 
     const toggleScreenShare = async () => {
@@ -257,13 +234,13 @@ export default function WebRTCMeeting({ roomId }) {
         const displayName = isLocal ? userName : (participantNames[id] || "Peserta...");
 
         return (
-            <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 transition-all duration-500 ${customClass}
-                ${isSpeaking && (isLocal ? isMicOn : true) ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' : 'border-transparent'}`}>
+            <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 transition-all duration-300 ${customClass}
+                ${isSpeaking && (isLocal ? isMicOn : true) ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}>
                 
                 <video
-                    key={`vid-${id}`}
+                    key={`video-ele-${id}`}
                     ref={el => { if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el; }}
-                    autoPlay muted={isLocal} playsInline className="w-full h-full object-cover bg-neutral-900"
+                    autoPlay muted={isLocal} playsInline className="w-full h-full object-cover"
                 />
 
                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] sm:text-xs flex items-center gap-2 z-10">
@@ -289,8 +266,7 @@ export default function WebRTCMeeting({ roomId }) {
                     📌
                 </button>
 
-                {/* PLACEHOLDER SAAT KAMERA MATI */}
-                {((isLocal && !isCamOn && !isScreenSharing)) && (
+                {isLocal && !isCamOn && !isScreenSharing && (
                     <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
                         <div className="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center text-2xl">👤</div>
                     </div>
