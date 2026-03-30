@@ -191,11 +191,11 @@ export default function WebRTCMeeting({ roomId }) {
             <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 border-transparent transition-all duration-300 ${customClass}`}>
                 
                 {/* LABEL NAMA DI KIRI ATAS */}
-                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-[10px] sm:text-xs flex items-center gap-2 z-30">
-                    <span className="font-semibold truncate max-w-[120px]">
+                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 z-30">
+                    <span className="font-semibold truncate max-w-[80px] sm:max-w-[120px]">
                         {isLocal ? (isScreenSharing ? "Layar Anda" : "Anda") : `User: ${id.slice(0, 6)}`}
                     </span>
-                    {isLocal && !isMicOn && <span className="text-red-400">🔇</span>}
+                    {isLocal && !isMicOn && <span className="text-red-400 text-[10px] sm:text-base">🔇</span>}
                 </div>
 
                 <video
@@ -206,7 +206,6 @@ export default function WebRTCMeeting({ roomId }) {
                         if (isLocal) localVideoRef.current = el;
                         else if (el) videoRefs.current[id] = el;
                         
-                        // Pasang stream saat elemen di-mount
                         if (el) {
                             const stream = isLocal 
                                 ? (isScreenSharing ? screenStreamRef.current : localStreamRef.current)
@@ -219,7 +218,7 @@ export default function WebRTCMeeting({ roomId }) {
 
                 <button 
                     onClick={() => setPinnedId(pinnedId === id ? null : id)}
-                    className={`absolute top-3 right-3 p-2 rounded-full transition-all z-30 
+                    className={`absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full transition-all z-30 
                     ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100'}`}
                 >
                     📌
@@ -227,7 +226,7 @@ export default function WebRTCMeeting({ roomId }) {
 
                 {!showVideo && isLocal && (
                     <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
-                        <div className="w-20 h-20 bg-neutral-700 rounded-full flex items-center justify-center text-3xl text-white/50">👤</div>
+                        <div className="w-12 h-12 sm:w-20 sm:h-20 bg-neutral-700 rounded-full flex items-center justify-center text-xl sm:text-3xl text-white/50">👤</div>
                     </div>
                 )}
             </div>
@@ -235,43 +234,51 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     return (
-        <div className="w-full h-screen bg-black flex flex-col overflow-hidden relative">
-            <div className="flex-1 overflow-hidden p-4 sm:p-6 relative">
-                {/* Switch Layout Logic */}
-                {layoutType === 'grid' && (
-                    <div className="flex flex-wrap content-start justify-center gap-4 h-full overflow-y-auto pb-24">
+        <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative">
+            <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative">
+                
+                {/* AUTO LAYOUT (Sangat Responsif) */}
+                {layoutType === 'auto' && (
+                    <div className={`grid gap-2 sm:gap-4 h-full w-full mx-auto
+                        ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl' : 
+                          participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-6xl' : 
+                          participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 
+                          'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
                         {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full aspect-video md:aspect-auto" />
                         ))}
                     </div>
                 )}
+
+                {/* GRID LAYOUT (Tradisional) */}
+                {layoutType === 'grid' && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start">
+                        {participants.all.map(p => (
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video w-full h-auto" />
+                        ))}
+                    </div>
+                )}
+
+                {/* FOCUS LAYOUT */}
                 {layoutType === 'focus' && (
-                    <div className="w-full h-full max-w-5xl mx-auto">
+                    <div className="w-full h-full max-w-6xl mx-auto flex items-center justify-center">
                         <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
                     </div>
                 )}
+
+                {/* SIDEBAR LAYOUT (Desktop Friendly, Mobile Stacked) */}
                 {layoutType === 'sidebar' && (
-                    <div className="flex h-full gap-4">
-                        <div className="flex-[3] h-full">
+                    <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4">
+                        <div className="flex-[3] h-[60%] md:h-full">
                             <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
                         </div>
-                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar hidden md:flex max-w-[280px]">
+                        <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[40%] md:h-full">
                             {participants.others.map(p => (
-                                <div key={p.id} className="w-full aspect-video shrink-0">
+                                <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
                                     <VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
-                {layoutType === 'auto' && (
-                    <div className={`grid gap-4 h-full w-full 
-                        ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 
-                          participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 
-                          'grid-cols-2 lg:grid-cols-3'}`}>
-                        {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
-                        ))}
                     </div>
                 )}
             </div>
@@ -279,47 +286,49 @@ export default function WebRTCMeeting({ roomId }) {
             {/* MODAL LAYOUT */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/60" onClick={() => setIsLayoutModalOpen(false)} />
-                    <div className="bg-white text-neutral-900 w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
-                        <h3 className="text-xl font-semibold mb-6">Tampilan Rapat</h3>
-                        <div className="space-y-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsLayoutModalOpen(false)} />
+                    <div className="bg-neutral-900 text-white w-full max-w-xs rounded-3xl p-5 relative shadow-2xl border border-white/10">
+                        <h3 className="text-lg font-bold mb-5 text-center">Ganti Tampilan</h3>
+                        <div className="grid grid-cols-1 gap-3">
                             {['auto', 'grid', 'focus', 'sidebar'].map((type) => (
-                                <label key={type} className="flex items-center justify-between p-4 rounded-2xl border hover:bg-neutral-50 cursor-pointer border-neutral-100">
-                                    <div className="flex items-center gap-4">
-                                        <input type="radio" checked={layoutType === type} onChange={() => { setLayoutType(type); setIsLayoutModalOpen(false); }} className="w-5 h-5 accent-blue-600" />
-                                        <p className="font-medium capitalize">{type}</p>
-                                    </div>
-                                </label>
+                                <button 
+                                    key={type} 
+                                    onClick={() => { setLayoutType(type); setIsLayoutModalOpen(false); }}
+                                    className={`py-3 px-4 rounded-xl font-medium capitalize transition-all ${layoutType === type ? 'bg-blue-600' : 'bg-white/5 hover:bg-white/10'}`}
+                                >
+                                    {type}
+                                </button>
                             ))}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* CONTROL BAR */}
-            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
-                <div className="flex items-center gap-3 bg-neutral-900/95 backdrop-blur-2xl p-4 px-8 rounded-full border border-white/10 shadow-2xl mb-4">
-                    <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+            {/* CONTROL BAR (Responsive sizing) */}
+            <div className="fixed bottom-0 left-0 right-0 h-20 sm:h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-center z-[9999] pb-4 px-2">
+                <div className="flex items-center gap-2 sm:gap-4 bg-neutral-900/95 backdrop-blur-2xl p-2 sm:p-3 md:p-4 px-4 sm:px-8 rounded-full border border-white/10 shadow-2xl max-w-full overflow-x-auto">
+                    <button onClick={toggleMic} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
                         {isMicOn ? "🎤" : "🔇"}
                     </button>
-                    <button onClick={toggleCamera} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+                    <button onClick={toggleCamera} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
                         {isCamOn ? "📹" : "🚫"}
                     </button>
-                    <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
+                    <button onClick={toggleScreenShare} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
                         🖥️
                     </button>
-                    <div className="w-[1px] h-8 bg-white/10 mx-1" />
-                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-white">⋮</button>
-                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95">
-                        <span className="text-lg">📞</span>
+                    <div className="w-[1px] h-6 sm:h-8 bg-white/10 mx-1 shrink-0" />
+                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0 text-white">⋮</button>
+                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95 text-xs sm:text-base shrink-0">
+                        <span>📞</span>
                         <span className="hidden sm:inline">Keluar</span>
                     </button>
                 </div>
             </div>
 
             <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
             `}</style>
         </div>
     );
