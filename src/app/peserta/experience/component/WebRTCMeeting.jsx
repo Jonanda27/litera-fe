@@ -28,6 +28,17 @@ export default function WebRTCMeeting({ roomId }) {
     const [participantsList, setParticipantsList] = useState([]); 
     const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
 
+    // --- TAMBAHAN: State Notifikasi ---
+    const [notifications, setNotifications] = useState([]);
+
+    const addNotification = useCallback((message) => {
+        const id = Date.now();
+        setNotifications(prev => [...prev, { id, message }]);
+        setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        }, 3000); // Notifikasi hilang setelah 3 detik
+    }, []);
+
     // --- FUNGSI SINKRONISASI VIDEO ---
     const syncAllVideos = useCallback(() => {
         if (localVideoRef.current && localStreamRef.current) {
@@ -96,6 +107,10 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("video_user_joined", (data) => {
             const newUser = typeof data === 'string' ? { id: data, name: `User_${data.slice(0,4)}` } : data;
+            
+            // Tambah Notifikasi Bergabung
+            addNotification(`${newUser.name} bergabung`);
+
             setParticipantsList(prev => {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
@@ -133,7 +148,15 @@ export default function WebRTCMeeting({ roomId }) {
         });
 
         socket.on("video_user_left", (id) => {
-            setParticipantsList(prev => prev.filter(p => p.id !== id));
+            // Temukan nama user sebelum dihapus untuk notifikasi
+            setParticipantsList(prev => {
+                const exitingUser = prev.find(p => p.id === id);
+                if (exitingUser) {
+                    addNotification(`${exitingUser.name} keluar`);
+                }
+                return prev.filter(p => p.id !== id);
+            });
+
             if (peersRef.current[id]) { 
                 peersRef.current[id].close(); 
                 delete peersRef.current[id]; 
@@ -322,6 +345,17 @@ export default function WebRTCMeeting({ roomId }) {
 
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative text-white">
+            
+            {/* AREA NOTIFIKASI TOAST */}
+            <div className="fixed top-6 left-6 z-[10001] flex flex-col gap-2 pointer-events-none">
+                {notifications.map(n => (
+                    <div key={n.id} className="bg-neutral-900/90 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl text-sm font-medium text-white shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left duration-300">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        {n.message}
+                    </div>
+                ))}
+            </div>
+
             <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
                 <div className="flex-1 h-full overflow-hidden">
                     {layoutType === 'auto' && (
@@ -352,11 +386,9 @@ export default function WebRTCMeeting({ roomId }) {
 
                     {layoutType === 'sidebar' && (
                         <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4 overflow-hidden">
-                            {/* Utama */}
                             <div className="flex-[3] h-[55%] md:h-full overflow-hidden">
                                 <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full" />
                             </div>
-                            {/* List Samping / Bawah */}
                             <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[45%] md:h-full pb-20 md:pb-0">
                                 {participants.others.map(p => (
                                     <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
@@ -403,7 +435,6 @@ export default function WebRTCMeeting({ roomId }) {
                 )}
             </div>
 
-            {/* MODAL LAYOUT (IKON TITIK 3) */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsLayoutModalOpen(false)} />
@@ -424,7 +455,6 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             )}
 
-            {/* CONTROL BAR */}
             <div className="fixed bottom-0 left-0 right-0 h-24 flex items-center justify-center p-4 z-[9999]">
                 <div className="bg-neutral-900/95 backdrop-blur-2xl p-4 px-8 rounded-full flex items-center gap-4 border border-white/10 shadow-2xl max-w-full overflow-x-auto">
                     <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
@@ -440,10 +470,7 @@ export default function WebRTCMeeting({ roomId }) {
                     <button onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800'}`}>
                         👥
                     </button>
-                    
-                    {/* IKON TITIK TIGA */}
                     <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0 text-white">⋮</button>
-                    
                     <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95 text-base shrink-0">
                         <span>📞</span><span className="hidden sm:inline">Keluar</span>
                     </button>
@@ -457,6 +484,8 @@ export default function WebRTCMeeting({ roomId }) {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 @keyframes animate-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
                 .animate-in { animation: animate-in 0.3s ease-out forwards; }
+                @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+                .fade-in { animation: fade-in 0.3s ease-out; }
             `}</style>
         </div>
     );
