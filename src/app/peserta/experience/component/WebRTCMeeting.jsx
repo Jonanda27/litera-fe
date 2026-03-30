@@ -19,9 +19,11 @@ export default function WebRTCMeeting({ roomId }) {
     const [layoutType, setLayoutType] = useState("auto");
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
 
-    // --- FUNGSI SINKRONISASI VIDEO: Memastikan Stream Selalu Terpasang ---
+    // --- TAMBAHAN BARU: State untuk Daftar Peserta & UI ---
+    const [participantsList, setParticipantsList] = useState([]); 
+    const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
+
     const syncAllVideos = useCallback(() => {
-        // 1. Sinkronisasi Video Lokal
         if (localVideoRef.current) {
             const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
             if (targetStream && localVideoRef.current.srcObject !== targetStream) {
@@ -30,7 +32,6 @@ export default function WebRTCMeeting({ roomId }) {
             }
         }
 
-        // 2. Sinkronisasi Video Peserta Lain
         remoteStreams.forEach(user => {
             const videoEl = videoRefs.current[user.id];
             if (videoEl && user.stream && videoEl.srcObject !== user.stream) {
@@ -40,7 +41,6 @@ export default function WebRTCMeeting({ roomId }) {
         });
     }, [remoteStreams, isScreenSharing]);
 
-    // Jalankan setiap kali ada perubahan state UI
     useEffect(() => {
         syncAllVideos();
     }, [syncAllVideos, layoutType, pinnedId, isCamOn, isMicOn]);
@@ -74,12 +74,22 @@ export default function WebRTCMeeting({ roomId }) {
 
     const initSocket = () => {
         socket.emit("join_video_room", roomId);
+        
         socket.on("video_room_users", (users) => {
-            users.forEach(({ socketId }) => { 
+            // Update daftar peserta (hanya ID)
+            setParticipantsList(users);
+
+            users.forEach((socketId) => { 
                 if (socketId !== socket.id) createPeerConnection(socketId, true); 
             });
         });
-        socket.on("video_user_joined", (id) => createPeerConnection(id, true));
+
+        socket.on("video_user_joined", (id) => {
+            // Update daftar peserta saat ada yang baru masuk
+            setParticipantsList(prev => prev.includes(id) ? prev : [...prev, id]);
+            createPeerConnection(id, true);
+        });
+
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             const pc = await createPeerConnection(senderId, false);
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -87,16 +97,25 @@ export default function WebRTCMeeting({ roomId }) {
             await pc.setLocalDescription(answer);
             socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
         });
+
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             const pc = peersRef.current[senderId];
             if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
         });
+
         socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
             const pc = peersRef.current[senderId];
             if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
         });
+
         socket.on("video_user_left", (id) => {
-            if (peersRef.current[id]) { peersRef.current[id].close(); delete peersRef.current[id]; }
+            // Update daftar peserta saat ada yang keluar
+            setParticipantsList(prev => prev.filter(pId => pId !== id));
+            
+            if (peersRef.current[id]) { 
+                peersRef.current[id].close(); 
+                delete peersRef.current[id]; 
+            }
             setRemoteStreams(prev => prev.filter(s => s.id !== id));
             if (pinnedId === id) setPinnedId(null);
         });
@@ -183,14 +202,11 @@ export default function WebRTCMeeting({ roomId }) {
         return { pinned, others, all };
     }, [pinnedId, remoteStreams]);
 
-    // --- KOMPONEN VIDEO CARD (Clean & Stable) ---
     const VideoCard = ({ id, isLocal, customClass = "" }) => {
         const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
 
         return (
             <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 border-transparent transition-all duration-300 ${customClass}`}>
-                
-                {/* LABEL NAMA DI KIRI ATAS */}
                 <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 z-30">
                     <span className="font-semibold truncate max-w-[80px] sm:max-w-[120px]">
                         {isLocal ? (isScreenSharing ? "Layar Anda" : "Anda") : `User: ${id.slice(0, 6)}`}
@@ -235,47 +251,82 @@ export default function WebRTCMeeting({ roomId }) {
 
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative">
-            <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative">
+            <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
                 
-                {/* AUTO LAYOUT (Sangat Responsif) */}
-                {layoutType === 'auto' && (
-                    <div className={`grid gap-2 sm:gap-4 h-full w-full mx-auto
-                        ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl' : 
-                          participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-6xl' : 
-                          participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 
-                          'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
-                        {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full aspect-video md:aspect-auto" />
-                        ))}
-                    </div>
-                )}
+                {/* AREA VIDEO UTAMA */}
+                <div className="flex-1 h-full">
+                    {layoutType === 'auto' && (
+                        <div className={`grid gap-2 sm:gap-4 h-full w-full mx-auto
+                            ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl' : 
+                              participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-6xl' : 
+                              participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 
+                              'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+                            {participants.all.map(p => (
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full aspect-video md:aspect-auto" />
+                            ))}
+                        </div>
+                    )}
 
-                {/* GRID LAYOUT (Tradisional) */}
-                {layoutType === 'grid' && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start">
-                        {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video w-full h-auto" />
-                        ))}
-                    </div>
-                )}
+                    {layoutType === 'grid' && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start">
+                            {participants.all.map(p => (
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video w-full h-auto" />
+                            ))}
+                        </div>
+                    )}
 
-                {/* FOCUS LAYOUT */}
-                {layoutType === 'focus' && (
-                    <div className="w-full h-full max-w-6xl mx-auto flex items-center justify-center">
-                        <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
-                    </div>
-                )}
-
-                {/* SIDEBAR LAYOUT (Desktop Friendly, Mobile Stacked) */}
-                {layoutType === 'sidebar' && (
-                    <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4">
-                        <div className="flex-[3] h-[60%] md:h-full">
+                    {layoutType === 'focus' && (
+                        <div className="w-full h-full max-w-6xl mx-auto flex items-center justify-center">
                             <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
                         </div>
-                        <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[40%] md:h-full">
-                            {participants.others.map(p => (
-                                <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
-                                    <VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
+                    )}
+
+                    {layoutType === 'sidebar' && (
+                        <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4">
+                            <div className="flex-[3] h-[60%] md:h-full">
+                                <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                            </div>
+                            <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[40%] md:h-full">
+                                {participants.others.map(p => (
+                                    <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
+                                        <VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* --- TAMBAHAN BARU: Sidebar Daftar Peserta --- */}
+                {isParticipantsOpen && (
+                    <div className="w-64 sm:w-80 h-full bg-neutral-900 border-l border-white/10 flex flex-col z-[100] animate-in slide-in-from-right duration-300">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                            <h3 className="text-white font-bold">Peserta ({participantsList.length + 1})</h3>
+                            <button onClick={() => setIsParticipantsOpen(false)} className="text-white/50 hover:text-white text-xl">✕</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                            {/* User Lokal */}
+                            <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-blue-500/30">
+                                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white">Anda</div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-white text-sm font-medium truncate">Anda (Host)</p>
+                                    <p className="text-xs text-white/40">ID: {socket.id?.slice(0, 8)}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <span>{isMicOn ? "🎤" : "🔇"}</span>
+                                    <span>{isCamOn ? "📹" : "🚫"}</span>
+                                </div>
+                            </div>
+                            {/* User Lain */}
+                            {participantsList.filter(id => id !== socket.id).map((id) => (
+                                <div key={id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl">
+                                    <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">User</div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-sm font-medium truncate">User_{id.slice(0, 6)}</p>
+                                        <p className="text-xs text-white/40">ID: {id.slice(0, 8)}</p>
+                                    </div>
+                                    {/* Status indikator stream */}
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 </div>
                             ))}
                         </div>
@@ -304,7 +355,7 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             )}
 
-            {/* CONTROL BAR (Responsive sizing) */}
+            {/* CONTROL BAR */}
             <div className="fixed bottom-0 left-0 right-0 h-20 sm:h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-end justify-center z-[9999] pb-4 px-2">
                 <div className="flex items-center gap-2 sm:gap-4 bg-neutral-900/95 backdrop-blur-2xl p-2 sm:p-3 md:p-4 px-4 sm:px-8 rounded-full border border-white/10 shadow-2xl max-w-full overflow-x-auto">
                     <button onClick={toggleMic} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
@@ -314,9 +365,18 @@ export default function WebRTCMeeting({ roomId }) {
                         {isCamOn ? "📹" : "🚫"}
                     </button>
                     <button onClick={toggleScreenShare} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
-                        🖥️
+                        {isScreenSharing ? "❌" : "🖥️"}
                     </button>
                     <div className="w-[1px] h-6 sm:h-8 bg-white/10 mx-1 shrink-0" />
+                    
+                    {/* TOMBOL DAFTAR PESERTA (Baru) */}
+                    <button 
+                        onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} 
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isParticipantsOpen ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white/70'}`}
+                    >
+                        👥
+                    </button>
+
                     <button onClick={() => setIsLayoutModalOpen(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-neutral-800 flex items-center justify-center shrink-0 text-white">⋮</button>
                     <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full font-bold flex items-center gap-2 shadow-lg transition-transform active:scale-95 text-xs sm:text-base shrink-0">
                         <span>📞</span>
@@ -329,6 +389,8 @@ export default function WebRTCMeeting({ roomId }) {
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                @keyframes animate-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+                .animate-in { animation: animate-in 0.3s ease-out forwards; }
             `}</style>
         </div>
     );
