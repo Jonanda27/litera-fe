@@ -13,8 +13,9 @@ export default function WebRTCMeeting({ roomId }) {
     const peersRef = useRef({});
     const videoRefs = useRef({});
     
-    // Antrian Sinyal & ICE
+    // Antrian Sinyal & ICE + Logika Multi-user
     const makingOffer = useRef({}); 
+    const ignoreOffer = useRef({}); // Menangani tabrakan penawaran pada 3+ user
     const iceCandidatesQueue = useRef({}); 
 
     const [remoteStreams, setRemoteStreams] = useState([]);
@@ -30,6 +31,7 @@ export default function WebRTCMeeting({ roomId }) {
     const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
 
+    // STATE CHAT
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [chatInput, setChatInput] = useState("");
@@ -108,10 +110,7 @@ export default function WebRTCMeeting({ roomId }) {
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
             setParticipantsList(normalizedUsers);
             normalizedUsers.forEach((user) => { 
-                if (user.id !== socket.id) {
-                    // Kita membuat koneksi ke mereka
-                    createPeerConnection(user.id, true); 
-                }
+                if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
         });
 
@@ -122,8 +121,6 @@ export default function WebRTCMeeting({ roomId }) {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
             });
-            // PERBAIKAN: Saat orang baru masuk, kita (yang lama) harus jadi Initiator kirim Offer
-            createPeerConnection(newUser.id, true);
         });
 
         socket.on("new_chat_message", (msg) => {
@@ -134,6 +131,14 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
                 const pc = await createPeerConnection(senderId, false);
+                
+                // POLITE PEER LOGIC: Tangani tabrakan sinyal
+                const readyForOffer = !makingOffer.current[senderId] && (pc.signalingState === "stable" || ignoreOffer.current[senderId]);
+                const offerCollision = !readyForOffer;
+                ignoreOffer.current[senderId] = offerCollision;
+
+                if (offerCollision) return;
+
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
                 
                 if (iceCandidatesQueue.current[senderId]) {
@@ -164,6 +169,7 @@ export default function WebRTCMeeting({ roomId }) {
             try {
                 const pc = peersRef.current[senderId];
                 const rtcCandidate = new RTCIceCandidate(candidate);
+                
                 if (!pc || !pc.remoteDescription) {
                     if (!iceCandidatesQueue.current[senderId]) iceCandidatesQueue.current[senderId] = [];
                     iceCandidatesQueue.current[senderId].push(rtcCandidate);
@@ -199,16 +205,13 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetId] = pc;
 
-        // Tambahkan track lokal ke koneksi baru
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         }
 
-        // Tangkap track dari remote
         pc.ontrack = (event) => {
             setRemoteStreams(prev => {
-                const existing = prev.find(s => s.id === targetId);
-                if (existing) return prev;
+                if (prev.find(s => s.id === targetId)) return prev;
                 return [...prev, { id: targetId, stream: event.streams[0] }];
             });
         };
@@ -305,11 +308,7 @@ export default function WebRTCMeeting({ roomId }) {
                     {isLocal && !isMicOn && <span className="text-red-500">🔇</span>}
                 </div>
                 <video autoPlay muted={isLocal} playsInline ref={el => {
-                    if (isLocal) {
-                        localVideoRef.current = el;
-                    } else if (el) {
-                        videoRefs.current[id] = el;
-                    }
+                    if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el;
                     if (el) {
                         const stream = isLocal ? (isScreenSharing ? screenStreamRef.current : localStreamRef.current) : remoteStreams.find(s => s.id === id)?.stream;
                         if (stream && el.srcObject !== stream) el.srcObject = stream;
@@ -376,20 +375,25 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
                 </div>
 
+                {/* TOOLBAR */}
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10006]">
-                    <div className="bg-[#1e1e1e]/80 backdrop-blur-3xl p-4 px-8 rounded-full flex items-center gap-5 border border-white/10 shadow-2xl md:scale-110">
+                    <div className="bg-[#1e1e1e]/80 backdrop-blur-3xl p-4 px-8 rounded-full flex items-center gap-5 border border-white/10 shadow-2xl scale-100 md:scale-110">
                         <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600 hover:bg-red-700'}`}>{isMicOn ? "🎤" : "🔇"}</button>
                         <button onClick={toggleCamera} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isCamOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600 hover:bg-red-700'}`}>{isCamOn ? "📹" : "🚫"}</button>
                         <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>{isScreenSharing ? "❌" : "🖥️"}</button>
+                        
                         <div className="w-[1px] h-8 bg-white/10 mx-1" />
+                        
                         <button onClick={() => { setIsChatOpen(!isChatOpen); setIsParticipantsOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isChatOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>💬</button>
                         <button onClick={() => { setIsParticipantsOpen(!isParticipantsOpen); setIsChatOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>👥</button>
                         <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center">⋮</button>
+                        
                         <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all active:scale-90 text-sm"><span>📞</span><span className="hidden sm:inline">Keluar</span></button>
                     </div>
                 </div>
             </div>
 
+            {/* AREA KANAN: RIGHTBAR */}
             {(isChatOpen || isParticipantsOpen) && (
                 <div className="w-80 md:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col z-[10005] animate-in slide-in-from-right duration-300 shadow-2xl">
                     {isChatOpen && (
@@ -398,9 +402,10 @@ export default function WebRTCMeeting({ roomId }) {
                                 <h3 className="text-white font-bold text-lg">Pesan Rapat</h3>
                                 <button onClick={() => setIsChatOpen(false)} className="text-white/50 hover:text-white">✕</button>
                             </div>
+
                             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
-                                <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center">
-                                    <p className="text-[10px] text-white/40">Pesan tidak akan disimpan setelah rapat berakhir.</p>
+                                <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                                    <p className="text-[10px] text-white/40 text-center leading-tight">Pesan bersifat sementara dan akan hilang setelah rapat berakhir.</p>
                                 </div>
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex flex-col ${msg.senderId === socket.id ? 'items-end' : 'items-start'}`}>
@@ -408,13 +413,14 @@ export default function WebRTCMeeting({ roomId }) {
                                             <span className="text-[9px] font-bold text-blue-400">{msg.senderName}</span>
                                             <span className="text-[8px] text-white/20">{msg.timestamp}</span>
                                         </div>
-                                        <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                                        <div className={`px-4 py-2 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                                             {msg.text}
                                         </div>
                                     </div>
                                 ))}
                                 <div ref={chatEndRef} />
                             </div>
+
                             <div className="p-4 border-t border-white/5">
                                 <form onSubmit={sendChat} className="relative">
                                     <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Tulis pesan..." className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-5 pr-12 text-sm outline-none focus:border-blue-500 transition-all placeholder:text-white/20" />
@@ -425,6 +431,7 @@ export default function WebRTCMeeting({ roomId }) {
                             </div>
                         </div>
                     )}
+
                     {isParticipantsOpen && (
                         <div className="flex flex-col h-full">
                             <div className="p-5 border-b border-white/5 flex justify-between items-center">
@@ -450,6 +457,7 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             )}
 
+            {/* MODAL GANTI TAMPILAN */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[20000] flex items-center justify-center p-6 backdrop-blur-sm">
                     <div className="absolute inset-0 bg-black/40" onClick={() => setIsLayoutModalOpen(false)} />
