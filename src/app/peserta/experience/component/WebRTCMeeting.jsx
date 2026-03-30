@@ -1,17 +1,64 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
 import { socket } from "@/lib/sockets/socket";
+
+// 🔴 PERBAIKAN PENTING: Komponen VideoCard dipindah ke luar agar tidak di-unmount paksa oleh React
+const VideoCard = memo(({ id, isLocal, name, stream, isCamOn, isMicOn, isScreenSharing, pinnedId, setPinnedId, customClass = "" }) => {
+    const videoRef = useRef(null);
+    const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
+
+    // Mengikat stream secara reaktif menggunakan useEffect
+    useEffect(() => {
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
+        }
+    }, [stream]);
+
+    return (
+        <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-2 border-white/5 transition-all duration-300 shadow-xl ${customClass}`}>
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-[10px] flex items-center gap-2 z-30">
+                <span className="font-bold truncate max-w-[120px]">
+                    {isLocal ? (isScreenSharing ? "Layar Anda" : `Anda (${name})`) : name}
+                </span>
+                {isLocal && !isMicOn && <span className="text-red-500">🔇</span>}
+            </div>
+            
+            <video 
+                ref={videoRef}
+                autoPlay 
+                muted={isLocal} 
+                playsInline 
+                className={`w-full h-full object-cover transition-opacity duration-300 ${showVideo ? 'opacity-100' : 'opacity-0'}`} 
+            />
+            
+            <button 
+                onClick={() => setPinnedId(pinnedId === id ? null : id)} 
+                className={`absolute top-2 right-2 p-1.5 rounded-xl transition-all z-30 ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 backdrop-blur-md'}`}
+            >
+                📌
+            </button>
+            
+            {!showVideo && isLocal && (
+                <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
+                    <div className="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center text-2xl font-bold text-white/30">
+                        {name?.charAt(0).toUpperCase()}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+});
+VideoCard.displayName = "VideoCard";
+
 
 export default function WebRTCMeeting({ roomId }) {
     const [userName, setUserName] = useState("");
     const [isJoined, setIsJoined] = useState(false);
 
-    const localVideoRef = useRef(null);
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
     const peersRef = useRef({});
-    const videoRefs = useRef({});
     
     // Antrian Sinyal & ICE
     const makingOffer = useRef({}); 
@@ -48,30 +95,8 @@ export default function WebRTCMeeting({ roomId }) {
     const addNotification = useCallback((message) => {
         const id = Date.now();
         setNotifications(prev => [...prev, { id, message }]);
-        setTimeout(() => {
-            setNotifications(prev => prev.filter(n => n.id !== id));
-        }, 3000);
+        setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 3000);
     }, []);
-
-    const syncAllVideos = useCallback(() => {
-        if (localVideoRef.current && localStreamRef.current) {
-            const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
-            if (localVideoRef.current.srcObject !== targetStream) {
-                localVideoRef.current.srcObject = targetStream;
-            }
-        }
-        remoteStreams.forEach(user => {
-            const videoEl = videoRefs.current[user.id];
-            if (videoEl && user.stream && videoEl.srcObject !== user.stream) {
-                videoEl.srcObject = user.stream;
-                videoEl.play().catch(() => {});
-            }
-        });
-    }, [remoteStreams, isScreenSharing]);
-
-    useEffect(() => {
-        if (isJoined) syncAllVideos();
-    }, [syncAllVideos, isJoined, remoteStreams]);
 
     const handleJoin = async (e) => {
         e.preventDefault();
@@ -83,9 +108,8 @@ export default function WebRTCMeeting({ roomId }) {
             initSocket();
         } catch (err) { 
             console.error("❌ Media Error:", err); 
-            // Tetap izinkan join jika tidak ada kamera/mic (Opsional)
             setIsJoined(true);
-            initSocket();
+            initSocket(); // Tetap izinkan masuk walau tanpa kamera (misal dari PC tanpa webcam)
         }
     };
 
@@ -109,14 +133,13 @@ export default function WebRTCMeeting({ roomId }) {
         
         socket.on("video_room_users", (users) => {
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
-            // Tambahkan user yang sudah ada ke dalam state
             setParticipantsList(prev => {
                 const existingIds = new Set(prev.map(p => p.id));
                 const newUsers = normalizedUsers.filter(u => !existingIds.has(u.id));
                 return [...prev, ...newUsers];
             });
 
-            // Karena kita yang baru join dan menerima list ini, kita bertindak sebagai INITIATOR ke semua partisipan
+            // Sebagai user baru, kita yang mengirim OFFER ke semua partisipan yang sudah ada di room
             normalizedUsers.forEach((user) => { 
                 if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
@@ -129,7 +152,7 @@ export default function WebRTCMeeting({ roomId }) {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
             });
-            // CATATAN: Disini kita JANGAN memanggil createPeerConnection agar tidak tabrakan (Biar user baru yang menginisiasi)
+            // Tidak menginisiasi koneksi dari sini untuk mencegah tabrakan. Tunggu Offer dari user baru.
         });
 
         socket.on("new_chat_message", (msg) => {
@@ -139,10 +162,8 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
-                // Saat menerima offer, kita sebagai ANSWERER (isInitiator = false)
                 const pc = await createPeerConnection(senderId, false);
                 
-                // Cek tabrakan sinyal (Berjaga-jaga jika ada network latency)
                 const readyForOffer = !makingOffer.current[senderId] && (pc.signalingState === "stable" || ignoreOffer.current[senderId]);
                 const offerCollision = !readyForOffer;
                 ignoreOffer.current[senderId] = offerCollision;
@@ -152,7 +173,7 @@ export default function WebRTCMeeting({ roomId }) {
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
                 
                 if (iceCandidatesQueue.current[senderId]) {
-                    iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate));
+                    iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate).catch(() => {}));
                     delete iceCandidatesQueue.current[senderId];
                 }
 
@@ -168,7 +189,7 @@ export default function WebRTCMeeting({ roomId }) {
                 if (pc && pc.signalingState !== "stable") {
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     if (iceCandidatesQueue.current[senderId]) {
-                        iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate));
+                        iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate).catch(() => {}));
                         delete iceCandidatesQueue.current[senderId];
                     }
                 }
@@ -209,8 +230,15 @@ export default function WebRTCMeeting({ roomId }) {
     const createPeerConnection = async (targetId, isInitiator) => {
         if (peersRef.current[targetId]) return peersRef.current[targetId];
 
+        // 🔴 PERBAIKAN: Perbanyak STUN Server untuk deployment di jaringan publik/4G
         const pc = new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" },
+                { urls: "stun:stun1.l.google.com:19302" },
+                { urls: "stun:stun2.l.google.com:19302" },
+                { urls: "stun:stun3.l.google.com:19302" },
+                { urls: "stun:stun4.l.google.com:19302" }
+            ],
         });
 
         peersRef.current[targetId] = pc;
@@ -299,6 +327,11 @@ export default function WebRTCMeeting({ roomId }) {
         setChatInput("");
     };
 
+    const getParticipantStream = useCallback((isLocal, pId) => {
+        if (isLocal) return isScreenSharing ? screenStreamRef.current : localStreamRef.current;
+        return remoteStreams.find(s => s.id === pId)?.stream || null;
+    }, [isScreenSharing, remoteStreams]);
+
     const participants = useMemo(() => {
         const all = [{ id: 'local', isLocal: true, name: userName || "Anda" }, ...remoteStreams.map(s => {
             const pInfo = participantsList.find(p => p.id === s.id);
@@ -308,31 +341,6 @@ export default function WebRTCMeeting({ roomId }) {
         const others = all.filter(p => p.id !== pinned.id);
         return { pinned, others, all };
     }, [pinnedId, remoteStreams, participantsList, userName]);
-
-    const VideoCard = ({ id, isLocal, name, customClass = "" }) => {
-        const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
-        return (
-            <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-2 border-white/5 transition-all duration-300 shadow-xl ${customClass}`}>
-                <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-[10px] flex items-center gap-2 z-30">
-                    <span className="font-bold truncate max-w-[120px]">{isLocal ? (isScreenSharing ? "Layar Anda" : `Anda (${name})`) : name}</span>
-                    {isLocal && !isMicOn && <span className="text-red-500">🔇</span>}
-                </div>
-                <video autoPlay muted={isLocal} playsInline ref={el => {
-                    if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el;
-                    if (el) {
-                        const stream = isLocal ? (isScreenSharing ? screenStreamRef.current : localStreamRef.current) : remoteStreams.find(s => s.id === id)?.stream;
-                        if (stream && el.srcObject !== stream) el.srcObject = stream;
-                    }
-                }} className={`w-full h-full object-cover transition-opacity duration-300 ${showVideo ? 'opacity-100' : 'opacity-0'}`} />
-                <button onClick={() => setPinnedId(pinnedId === id ? null : id)} className={`absolute top-2 right-2 p-1.5 rounded-xl transition-all z-30 ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 backdrop-blur-md'}`}>📌</button>
-                {!showVideo && isLocal && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
-                        <div className="w-16 h-16 bg-neutral-700 rounded-full flex items-center justify-center text-2xl font-bold text-white/30">{name?.charAt(0).toUpperCase()}</div>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     if (!isJoined) {
         return (
@@ -362,24 +370,34 @@ export default function WebRTCMeeting({ roomId }) {
                 <div className="flex-1 w-full h-full relative p-4 pb-28">
                     {layoutType === 'auto' && (
                         <div className={`grid gap-4 w-full h-full mx-auto transition-all duration-500 ${participants.all.length === 1 ? 'grid-cols-1 max-w-5xl' : participants.all.length <= 4 ? 'grid-cols-2 max-w-7xl' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
-                            {participants.all.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full" />)}
+                            {participants.all.map(p => (
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} stream={getParticipantStream(p.isLocal, p.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} customClass="w-full h-full" />
+                            ))}
                         </div>
                     )}
                     {layoutType === 'grid' && (
                         <div className="w-full h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto custom-scrollbar content-start">
-                            {participants.all.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="aspect-video w-full h-auto" />)}
+                            {participants.all.map(p => (
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} stream={getParticipantStream(p.isLocal, p.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} customClass="aspect-video w-full h-auto" />
+                            ))}
                         </div>
                     )}
                     {layoutType === 'focus' && (
                         <div className="w-full h-full flex items-center justify-center">
-                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full max-w-6xl" />
+                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} stream={getParticipantStream(participants.pinned.isLocal, participants.pinned.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} customClass="w-full h-full max-w-6xl" />
                         </div>
                     )}
                     {layoutType === 'sidebar' && (
                         <div className="w-full h-full flex flex-col md:flex-row gap-4">
-                            <div className="flex-[3] h-full overflow-hidden"><VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full" /></div>
+                            <div className="flex-[3] h-full overflow-hidden">
+                                <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} stream={getParticipantStream(participants.pinned.isLocal, participants.pinned.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} customClass="w-full h-full" />
+                            </div>
                             <div className="flex-1 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-y-auto custom-scrollbar">
-                                {participants.others.map(p => <div key={p.id} className="min-w-[180px] md:min-w-0 w-full aspect-video shrink-0"><VideoCard id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full" /></div>)}
+                                {participants.others.map(p => (
+                                    <div key={p.id} className="min-w-[180px] md:min-w-0 w-full aspect-video shrink-0">
+                                        <VideoCard id={p.id} isLocal={p.isLocal} name={p.name} stream={getParticipantStream(p.isLocal, p.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} customClass="w-full h-full" />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
