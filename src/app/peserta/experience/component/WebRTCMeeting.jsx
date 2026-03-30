@@ -13,8 +13,9 @@ export default function WebRTCMeeting({ roomId }) {
     const peersRef = useRef({});
     const videoRefs = useRef({});
     
-    // --- LOGIKA WEBRTC DARI CODE STABIL ANDA ---
+    // --- WEBRTC STABILIZATION LOGIC (Perfect Negotiation) ---
     const makingOffer = useRef({}); 
+    const ignoreOffer = useRef({}); 
     const iceCandidatesQueue = useRef({}); 
 
     const [remoteStreams, setRemoteStreams] = useState([]);
@@ -130,6 +131,14 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
                 const pc = await createPeerConnection(senderId, false);
+                
+                // Mencegah error "Called in wrong state: have-remote-offer"
+                const readyForOffer = !makingOffer.current[senderId] && (pc.signalingState === "stable" || ignoreOffer.current[senderId]);
+                const offerCollision = !readyForOffer;
+                ignoreOffer.current[senderId] = offerCollision;
+
+                if (offerCollision) return; // Abaikan offer jika terjadi tabrakan
+
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
                 
                 if (iceCandidatesQueue.current[senderId]) {
@@ -146,7 +155,8 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             try {
                 const pc = peersRef.current[senderId];
-                if (pc && pc.signalingState !== "stable") {
+                // HANYA proses answer jika state memang mengharapkan answer
+                if (pc && pc.signalingState === "have-local-offer") {
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     if (iceCandidatesQueue.current[senderId]) {
                         iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate));
@@ -180,6 +190,7 @@ export default function WebRTCMeeting({ roomId }) {
                 peersRef.current[id].close(); 
                 delete peersRef.current[id]; 
                 delete makingOffer.current[id];
+                delete ignoreOffer.current[id];
                 delete iceCandidatesQueue.current[id];
             }
             setRemoteStreams(prev => prev.filter(s => s.id !== id));
@@ -216,6 +227,7 @@ export default function WebRTCMeeting({ roomId }) {
             try {
                 makingOffer.current[targetId] = true;
                 const offer = await pc.createOffer();
+                // Cegah setLocalDescription jika state berubah saat proses createOffer
                 if (pc.signalingState !== "stable") return;
                 await pc.setLocalDescription(offer);
                 socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
@@ -332,7 +344,6 @@ export default function WebRTCMeeting({ roomId }) {
     return (
         <div className="fixed inset-0 bg-black flex flex-row overflow-hidden text-white font-sans">
             
-            {/* AREA KIRI: VIDEO (FULLSCREEN) */}
             <div className="flex-1 flex flex-col relative h-full overflow-hidden">
                 <div className="fixed top-6 left-6 z-[10001] flex flex-col gap-2 pointer-events-none">
                     {notifications.map(n => (
@@ -368,7 +379,6 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
                 </div>
 
-                {/* TOOLBAR */}
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10006]">
                     <div className="bg-[#1e1e1e]/80 backdrop-blur-3xl p-4 px-8 rounded-full flex items-center gap-5 border border-white/10 shadow-2xl md:scale-110">
                         <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600 hover:bg-red-700'}`}>{isMicOn ? "🎤" : "🔇"}</button>
@@ -378,12 +388,11 @@ export default function WebRTCMeeting({ roomId }) {
                         <button onClick={() => { setIsChatOpen(!isChatOpen); setIsParticipantsOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isChatOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>💬</button>
                         <button onClick={() => { setIsParticipantsOpen(!isParticipantsOpen); setIsChatOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>👥</button>
                         <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center">⋮</button>
-                        <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all active:scale-90 text-sm"><span>📞</span><span className="hidden sm:inline">Keluar</span></button>
+                        <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 active:scale-95 transition-all text-sm"><span>📞</span><span className="hidden sm:inline">Keluar</span></button>
                     </div>
                 </div>
             </div>
 
-            {/* RIGHTBAR: CHAT & PESERTA */}
             {(isChatOpen || isParticipantsOpen) && (
                 <div className="w-80 md:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col z-[10005] animate-in slide-in-from-right duration-300 shadow-2xl">
                     {isChatOpen && (
