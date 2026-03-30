@@ -13,7 +13,7 @@ export default function WebRTCMeeting({ roomId }) {
     const peersRef = useRef({});
     const videoRefs = useRef({});
     
-    // --- ANTRIAN & STABILISASI ---
+    // Antrian Sinyal & ICE
     const makingOffer = useRef({}); 
     const iceCandidatesQueue = useRef({}); 
 
@@ -51,9 +51,8 @@ export default function WebRTCMeeting({ roomId }) {
         }, 3000);
     }, []);
 
-    // SINKRONISASI VIDEO DOM
     const syncAllVideos = useCallback(() => {
-        if (localVideoRef.current && (localStreamRef.current || screenStreamRef.current)) {
+        if (localVideoRef.current && localStreamRef.current) {
             const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
             if (localVideoRef.current.srcObject !== targetStream) {
                 localVideoRef.current.srcObject = targetStream;
@@ -110,7 +109,7 @@ export default function WebRTCMeeting({ roomId }) {
             setParticipantsList(normalizedUsers);
             normalizedUsers.forEach((user) => { 
                 if (user.id !== socket.id) {
-                    // Buat koneksi ke semua orang yang sudah ada
+                    // Kita membuat koneksi ke mereka
                     createPeerConnection(user.id, true); 
                 }
             });
@@ -123,7 +122,7 @@ export default function WebRTCMeeting({ roomId }) {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
             });
-            // HANYA buat koneksi (Initiator) jika ada user baru masuk
+            // PERBAIKAN: Saat orang baru masuk, kita (yang lama) harus jadi Initiator kirim Offer
             createPeerConnection(newUser.id, true);
         });
 
@@ -200,13 +199,16 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetId] = pc;
 
+        // Tambahkan track lokal ke koneksi baru
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         }
 
+        // Tangkap track dari remote
         pc.ontrack = (event) => {
             setRemoteStreams(prev => {
-                if (prev.find(s => s.id === targetId)) return prev;
+                const existing = prev.find(s => s.id === targetId);
+                if (existing) return prev;
                 return [...prev, { id: targetId, stream: event.streams[0] }];
             });
         };
@@ -303,7 +305,11 @@ export default function WebRTCMeeting({ roomId }) {
                     {isLocal && !isMicOn && <span className="text-red-500">🔇</span>}
                 </div>
                 <video autoPlay muted={isLocal} playsInline ref={el => {
-                    if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el;
+                    if (isLocal) {
+                        localVideoRef.current = el;
+                    } else if (el) {
+                        videoRefs.current[id] = el;
+                    }
                     if (el) {
                         const stream = isLocal ? (isScreenSharing ? screenStreamRef.current : localStreamRef.current) : remoteStreams.find(s => s.id === id)?.stream;
                         if (stream && el.srcObject !== stream) el.srcObject = stream;
@@ -323,10 +329,10 @@ export default function WebRTCMeeting({ roomId }) {
         return (
             <div className="fixed inset-0 bg-black flex items-center justify-center p-6 text-white z-[99999]">
                 <div className="w-full max-w-md bg-neutral-900 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
-                    <h1 className="text-2xl font-black mb-6 text-center tracking-tight">Join Meeting</h1>
+                    <h1 className="text-2xl font-black mb-6 text-center">Join Meeting</h1>
                     <form onSubmit={handleJoin} className="space-y-6">
                         <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} placeholder="Nama Anda" className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 outline-none focus:ring-2 focus:ring-blue-600 transition-all" required />
-                        <button type="submit" className="w-full bg-blue-600 py-4 rounded-xl font-black text-lg transition-all active:scale-95 shadow-lg shadow-blue-600/20">Bergabung</button>
+                        <button type="submit" className="w-full bg-blue-600 py-4 rounded-xl font-black text-lg transition-all active:scale-95">Bergabung</button>
                     </form>
                 </div>
             </div>
@@ -334,12 +340,8 @@ export default function WebRTCMeeting({ roomId }) {
     }
 
     return (
-        <div className="fixed inset-0 bg-black flex flex-row overflow-hidden text-white font-sans selection:bg-blue-500/30">
-            
-            {/* AREA VIDEO (FULLSCREEN) */}
+        <div className="fixed inset-0 bg-black flex flex-row overflow-hidden text-white font-sans">
             <div className="flex-1 flex flex-col relative h-full overflow-hidden">
-                
-                {/* NOTIFICATIONS */}
                 <div className="fixed top-6 left-6 z-[10001] flex flex-col gap-2 pointer-events-none">
                     {notifications.map(n => (
                         <div key={n.id} className="bg-neutral-900/90 backdrop-blur-md border border-white/10 px-4 py-2.5 rounded-2xl text-xs font-bold text-white shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-left duration-500">
@@ -348,7 +350,6 @@ export default function WebRTCMeeting({ roomId }) {
                     ))}
                 </div>
 
-                {/* VIDEO KONTEN */}
                 <div className="flex-1 w-full h-full relative p-4 pb-28">
                     {layoutType === 'auto' && (
                         <div className={`grid gap-4 w-full h-full mx-auto transition-all duration-500 ${participants.all.length === 1 ? 'grid-cols-1 max-w-5xl' : participants.all.length <= 4 ? 'grid-cols-2 max-w-7xl' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
@@ -361,7 +362,7 @@ export default function WebRTCMeeting({ roomId }) {
                         </div>
                     )}
                     {layoutType === 'focus' && (
-                        <div className="w-full h-full flex items-center justify-center p-2">
+                        <div className="w-full h-full flex items-center justify-center">
                             <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full max-w-6xl" />
                         </div>
                     )}
@@ -375,88 +376,71 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
                 </div>
 
-                {/* BOTTOM TOOLBAR */}
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10006]">
-                    <div className="bg-[#1e1e1e]/80 backdrop-blur-3xl p-4 px-8 rounded-full flex items-center gap-5 border border-white/10 shadow-2xl scale-100 md:scale-110">
-                        <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700 shadow-lg' : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20 animate-pulse'}`}>{isMicOn ? "🎤" : "🔇"}</button>
-                        <button onClick={toggleCamera} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isCamOn ? 'bg-neutral-800 hover:bg-neutral-700 shadow-lg' : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20'}`}>{isCamOn ? "📹" : "🚫"}</button>
-                        <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isScreenSharing ? 'bg-blue-600 shadow-lg' : 'bg-neutral-800 hover:bg-neutral-700 shadow-lg'}`}>{isScreenSharing ? "❌" : "🖥️"}</button>
-                        
+                    <div className="bg-[#1e1e1e]/80 backdrop-blur-3xl p-4 px-8 rounded-full flex items-center gap-5 border border-white/10 shadow-2xl md:scale-110">
+                        <button onClick={toggleMic} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600 hover:bg-red-700'}`}>{isMicOn ? "🎤" : "🔇"}</button>
+                        <button onClick={toggleCamera} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isCamOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600 hover:bg-red-700'}`}>{isCamOn ? "📹" : "🚫"}</button>
+                        <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>{isScreenSharing ? "❌" : "🖥️"}</button>
                         <div className="w-[1px] h-8 bg-white/10 mx-1" />
-                        
-                        <button onClick={() => { setIsChatOpen(!isChatOpen); setIsParticipantsOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isChatOpen ? 'bg-blue-600 shadow-lg' : 'bg-neutral-800 hover:bg-neutral-700 shadow-lg'}`}>💬</button>
-                        <button onClick={() => { setIsParticipantsOpen(!isParticipantsOpen); setIsChatOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isParticipantsOpen ? 'bg-blue-600 shadow-lg' : 'bg-neutral-800 hover:bg-neutral-700 shadow-lg'}`}>👥</button>
-                        <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center shadow-lg">⋮</button>
-                        
-                        <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full font-black flex items-center gap-2 transition-all active:scale-90 text-sm shadow-xl shadow-red-600/20"><span>📞</span><span className="hidden sm:inline">Keluar</span></button>
+                        <button onClick={() => { setIsChatOpen(!isChatOpen); setIsParticipantsOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isChatOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>💬</button>
+                        <button onClick={() => { setIsParticipantsOpen(!isParticipantsOpen); setIsChatOpen(false); }} className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isParticipantsOpen ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-700'}`}>👥</button>
+                        <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center">⋮</button>
+                        <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-all active:scale-90 text-sm"><span>📞</span><span className="hidden sm:inline">Keluar</span></button>
                     </div>
                 </div>
             </div>
 
-            {/* RIGHTBAR (SIDEBAR) */}
             {(isChatOpen || isParticipantsOpen) && (
                 <div className="w-80 md:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col z-[10005] animate-in slide-in-from-right duration-300 shadow-2xl">
-                    
-                    {/* CHAT CONTENT */}
                     {isChatOpen && (
-                        <div className="flex flex-col h-full overflow-hidden">
+                        <div className="flex flex-col h-full">
                             <div className="p-5 border-b border-white/5 flex justify-between items-center">
                                 <h3 className="text-white font-bold text-lg">Pesan Rapat</h3>
-                                <button onClick={() => setIsChatOpen(false)} className="text-white/50 hover:text-white transition-colors">✕</button>
+                                <button onClick={() => setIsChatOpen(false)} className="text-white/50 hover:text-white">✕</button>
                             </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-5">
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
                                 <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center">
-                                    <p className="text-[10px] text-white/40 leading-relaxed">Pesan bersifat sementara dan tidak akan disimpan setelah rapat berakhir.</p>
+                                    <p className="text-[10px] text-white/40">Pesan tidak akan disimpan setelah rapat berakhir.</p>
                                 </div>
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex flex-col ${msg.senderId === socket.id ? 'items-end' : 'items-start'}`}>
                                         <div className="flex items-center gap-2 mb-1 px-1">
                                             <span className="text-[9px] font-bold text-blue-400">{msg.senderName}</span>
-                                            <span className="text-[8px] text-white/20 font-medium">{msg.timestamp}</span>
+                                            <span className="text-[8px] text-white/20">{msg.timestamp}</span>
                                         </div>
-                                        <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[90%] break-words shadow-lg border border-white/5 ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                                        <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                                             {msg.text}
                                         </div>
                                     </div>
                                 ))}
                                 <div ref={chatEndRef} />
                             </div>
-
-                            <div className="p-4 border-t border-white/5 bg-[#1e1e1e]">
+                            <div className="p-4 border-t border-white/5">
                                 <form onSubmit={sendChat} className="relative">
-                                    <input 
-                                        type="text" 
-                                        value={chatInput} 
-                                        onChange={(e) => setChatInput(e.target.value)} 
-                                        placeholder="Tulis pesan..." 
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-5 pr-12 text-sm outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
-                                    />
-                                    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 p-2 hover:bg-white/5 rounded-full transition-colors group">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-active:scale-90 transition-transform"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Tulis pesan..." className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-5 pr-12 text-sm outline-none focus:border-blue-500 transition-all placeholder:text-white/20" />
+                                    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 p-2 hover:bg-white/5 rounded-full transition-colors">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                                     </button>
                                 </form>
                             </div>
                         </div>
                     )}
-
-                    {/* PARTICIPANTS CONTENT */}
                     {isParticipantsOpen && (
                         <div className="flex flex-col h-full">
                             <div className="p-5 border-b border-white/5 flex justify-between items-center">
                                 <h3 className="text-white font-bold text-lg">Peserta ({participantsList.length + 1})</h3>
-                                <button onClick={() => setIsParticipantsOpen(false)} className="text-white/50 hover:text-white transition-colors">✕</button>
+                                <button onClick={() => setIsParticipantsOpen(false)} className="text-white/50 hover:text-white">✕</button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                                 <div className="flex items-center gap-4 bg-blue-600/10 p-4 rounded-2xl border border-blue-500/20">
-                                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">ME</div>
-                                    <div className="flex-1 truncate"><p className="text-xs font-bold truncate">{userName} (Anda)</p><p className="text-[10px] text-white/30 truncate uppercase tracking-tighter">ID: {socket.id?.slice(0, 8)}</p></div>
+                                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">ME</div>
+                                    <div className="flex-1 truncate"><p className="text-xs font-bold truncate">{userName} (Anda)</p><p className="text-[10px] text-white/30 truncate">ID: {socket.id?.slice(0, 8)}</p></div>
                                     <div className="flex gap-2 text-sm"><span>{isMicOn ? "🎤" : "🔇"}</span><span>{isCamOn ? "📹" : "🚫"}</span></div>
                                 </div>
                                 {participantsList.filter(p => p.id !== socket.id).map((p) => (
-                                    <div key={p.id} className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 hover:bg-white/10 transition-all group">
-                                        <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-white text-xs font-bold transition-transform group-hover:scale-105 shadow-md">{p.name?.charAt(0).toUpperCase()}</div>
-                                        <div className="flex-1 truncate"><p className="text-xs font-bold truncate group-hover:text-blue-400 transition-colors">{p.name}</p><p className="text-[10px] text-white/20">Anggota Rapat</p></div>
+                                    <div key={p.id} className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 hover:bg-white/10 transition-all">
+                                        <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-white text-xs font-bold">{p.name?.charAt(0).toUpperCase()}</div>
+                                        <div className="flex-1 truncate"><p className="text-xs font-bold truncate">{p.name}</p><p className="text-[10px] text-white/20">Peserta Rapat</p></div>
                                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
                                     </div>
                                 ))}
@@ -466,15 +450,14 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             )}
 
-            {/* LAYOUT MODAL */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[20000] flex items-center justify-center p-6 backdrop-blur-sm">
                     <div className="absolute inset-0 bg-black/40" onClick={() => setIsLayoutModalOpen(false)} />
-                    <div className="bg-[#1e1e1e] border border-white/10 w-full max-w-xs rounded-[2.5rem] p-8 relative shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h3 className="text-xl font-black mb-8 text-center tracking-tight">Tampilan Video</h3>
+                    <div className="bg-[#1e1e1e] border border-white/10 w-full max-w-xs rounded-[2rem] p-8 relative shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <h3 className="text-xl font-black mb-6 text-center">Tampilan Video</h3>
                         <div className="grid grid-cols-1 gap-3">
                             {['auto', 'grid', 'focus', 'sidebar'].map((type) => (
-                                <button key={type} onClick={() => { setLayoutType(type); setIsLayoutModalOpen(false); }} className={`py-4 rounded-2xl font-bold capitalize transition-all border border-white/5 ${layoutType === type ? 'bg-blue-600 shadow-lg shadow-blue-600/20 border-blue-400' : 'bg-white/5 hover:bg-white/10'}`}>{type}</button>
+                                <button key={type} onClick={() => { setLayoutType(type); setIsLayoutModalOpen(false); }} className={`py-4 rounded-xl font-bold capitalize transition-all ${layoutType === type ? 'bg-blue-600 shadow-lg' : 'bg-white/5 hover:bg-white/10'}`}>{type}</button>
                             ))}
                         </div>
                     </div>
@@ -483,10 +466,10 @@ export default function WebRTCMeeting({ roomId }) {
 
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 @keyframes slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-                .animate-in { animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .animate-in { animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
             `}</style>
         </div>
     );
