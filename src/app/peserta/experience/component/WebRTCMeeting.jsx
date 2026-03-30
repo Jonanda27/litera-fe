@@ -16,24 +16,16 @@ export default function WebRTCMeeting({ roomId }) {
     const [isCamOn, setIsCamOn] = useState(true);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
 
+    // Fitur Nama
+    const [userName, setUserName] = useState("User-" + Math.floor(Math.random() * 1000));
+    const [participantNames, setParticipantNames] = useState({}); // { socketId: name }
+
     const [speakingUsers, setSpeakingUsers] = useState({});
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
 
     const [pinnedId, setPinnedId] = useState(null); 
-    const [layoutType, setLayoutType] = useState("auto");
+    const [layoutType, setLayoutType] = useState("auto"); // auto, grid, focus, sidebar
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
-
-    const [userName, setUserName] = useState("User-" + Math.floor(Math.random() * 1000));
-    const [isEditingName, setIsEditingName] = useState(false);
-    const [participantNames, setParticipantNames] = useState({}); 
-    const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
-    const [notifications, setNotifications] = useState([]);
-
-    const addNotification = (message) => {
-        const id = Date.now();
-        setNotifications(prev => [...prev, { id, message }]);
-        setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 3000);
-    };
 
     useEffect(() => {
         start();
@@ -47,14 +39,13 @@ export default function WebRTCMeeting({ roomId }) {
             socket.off("webrtc_answer");
             socket.off("webrtc_ice_candidate");
             socket.off("video_user_left");
-            socket.off("update_user_name");
+            socket.off("name_updated");
         };
     }, []);
 
-    // Sinkronisasi Video Stream agar tidak flicker saat re-render
     useEffect(() => {
         const syncStreams = () => {
-            if (localVideoRef.current && localStreamRef.current) {
+            if (localVideoRef.current) {
                 const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
                 if (localVideoRef.current.srcObject !== targetStream) {
                     localVideoRef.current.srcObject = targetStream;
@@ -68,94 +59,14 @@ export default function WebRTCMeeting({ roomId }) {
             });
         };
         syncStreams();
-    }, [remoteStreams, pinnedId, isScreenSharing, layoutType, isParticipantsOpen]);
+    }, [remoteStreams, pinnedId, isScreenSharing, layoutType]);
 
     const participants = useMemo(() => {
-        const all = [{ id: 'local', isLocal: true }, ...remoteStreams.map(s => ({ id: s.id, isLocal: false }))];
+        const all = [{ id: 'local', isLocal: true, stream: localStreamRef.current }, ...remoteStreams.map(s => ({ ...s, isLocal: false }))];
         const pinned = all.find(p => p.id === pinnedId) || all[0];
-        const others = all.filter(p => p.id !== pinned.id);
+        const others = all.filter(p => p.id !== (pinnedId || all[0].id));
         return { pinned, others, all };
     }, [pinnedId, remoteStreams]);
-
-    const initSocket = () => {
-        socket.emit("join_video_room", { roomId, name: userName });
-
-        socket.on("video_room_users", (users) => {
-            const namesMap = {};
-            users.forEach(({ socketId, name }) => {
-                namesMap[socketId] = name;
-                if (socketId !== socket.id) createPeerConnection(socketId, true);
-            });
-            setParticipantNames(namesMap);
-        });
-
-        socket.on("video_user_joined", ({ socketId, name }) => {
-            addNotification(`${name || 'Seseorang'} bergabung`);
-            setParticipantNames(prev => ({ ...prev, [socketId]: name }));
-            createPeerConnection(socketId, true);
-        });
-
-        socket.on("webrtc_offer", async ({ offer, senderId }) => {
-            const pc = await createPeerConnection(senderId, false);
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
-        });
-
-        socket.on("webrtc_answer", async ({ answer, senderId }) => {
-            const pc = peersRef.current[senderId];
-            if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        });
-
-        socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
-            const pc = peersRef.current[senderId];
-            if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        });
-
-        socket.on("video_user_left", (id) => {
-            addNotification(`${participantNames[id] || 'Seseorang'} keluar`);
-            if (peersRef.current[id]) { peersRef.current[id].close(); delete peersRef.current[id]; }
-            setRemoteStreams(prev => prev.filter(s => s.id !== id));
-            setParticipantNames(prev => { const n = {...prev}; delete n[id]; return n; });
-        });
-
-        socket.on("update_user_name", ({ socketId, name }) => {
-            setParticipantNames(prev => ({ ...prev, [socketId]: name }));
-        });
-    };
-
-    const createPeerConnection = async (targetId, isInitiator) => {
-        if (peersRef.current[targetId]) return peersRef.current[targetId];
-
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-        });
-        peersRef.current[targetId] = pc;
-
-        localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
-
-        pc.ontrack = (event) => {
-            const [remoteStream] = event.streams;
-            // PENTING: Gunakan Functional Update (prev => ...) agar user lain tidak hilang
-            setRemoteStreams(prev => {
-                if (prev.find(s => s.id === targetId)) return prev;
-                return [...prev, { id: targetId, stream: remoteStream }];
-            });
-            monitorStream(remoteStream, targetId);
-        };
-
-        pc.onicecandidate = (e) => {
-            if (e.candidate) socket.emit("webrtc_ice_candidate", { target: targetId, candidate: e.candidate, senderId: socket.id });
-        };
-
-        if (isInitiator) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
-        }
-        return pc;
-    };
 
     const monitorStream = (stream, socketId = null) => {
         try {
@@ -166,148 +77,308 @@ export default function WebRTCMeeting({ roomId }) {
             analyser.fftSize = 256;
             source.connect(analyser);
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
+            let isSpeaking = false;
+
             const checkVolume = () => {
                 if (!analyser) return;
                 analyser.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
-                const speaking = average > 30;
-                if (socketId === null) setIsLocalSpeaking(speaking);
-                else setSpeakingUsers(prev => ({ ...prev, [socketId]: speaking }));
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const average = sum / dataArray.length;
+                const currentlySpeaking = average > 30;
+
+                if (currentlySpeaking !== isSpeaking) {
+                    isSpeaking = currentlySpeaking;
+                    if (socketId === null) setIsLocalSpeaking(isSpeaking);
+                    else setSpeakingUsers(prev => ({ ...prev, [socketId]: isSpeaking }));
+                }
                 requestAnimationFrame(checkVolume);
             };
             checkVolume();
-        } catch (e) {}
+            return { stop: () => { source.disconnect(); analyser.disconnect(); audioContext.close(); } };
+        } catch (e) { console.error(e); }
     };
 
     const start = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
-            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+            const monitor = monitorStream(stream);
+            if (monitor) audioAnalyzersRef.current["local"] = monitor;
             initSocket();
-        } catch (err) { console.error("Media Error:", err); }
+        } catch (err) { console.error("❌ Error:", err); }
     };
 
-    const toggleMic = () => {
-        const t = localStreamRef.current?.getAudioTracks()[0];
-        if (t) { t.enabled = !t.enabled; setIsMicOn(t.enabled); }
-    };
-
-    const toggleCamera = () => {
-        const t = localStreamRef.current?.getVideoTracks()[0];
-        if (t) { t.enabled = !t.enabled; setIsCamOn(t.enabled); }
+    const handleUpdateName = (e) => {
+        const newName = e.target.value;
+        setUserName(newName);
+        socket.emit("update_video_name", { roomId, userName: newName });
     };
 
     const toggleScreenShare = async () => {
-        if (!isScreenSharing) {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-            screenStreamRef.current = stream;
-            setIsScreenSharing(true);
-            Object.values(peersRef.current).forEach(pc => {
-                const vs = pc.getSenders().find(s => s.track.kind === "video");
-                vs.replaceTrack(stream.getVideoTracks()[0]);
-            });
-            stream.getVideoTracks()[0].onended = () => stopScreenSharing();
-        } else { stopScreenSharing(); }
+        try {
+            if (!isScreenSharing) {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                screenStreamRef.current = screenStream;
+                const screenTrack = screenStream.getVideoTracks()[0];
+                Object.values(peersRef.current).forEach(pc => {
+                    const vs = pc.getSenders().find(s => s.track.kind === "video");
+                    if (vs) vs.replaceTrack(screenTrack);
+                });
+                screenTrack.onended = () => stopScreenSharing();
+                setIsScreenSharing(true);
+                setPinnedId('local');
+                setLayoutType('sidebar');
+            } else {
+                stopScreenSharing();
+            }
+        } catch (err) { console.error(err); }
     };
 
     const stopScreenSharing = () => {
-        screenStreamRef.current?.getTracks().forEach(t => t.stop());
-        setIsScreenSharing(false);
+        if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop());
+        const videoTrack = localStreamRef.current.getVideoTracks()[0];
         Object.values(peersRef.current).forEach(pc => {
             const vs = pc.getSenders().find(s => s.track.kind === "video");
-            vs.replaceTrack(localStreamRef.current.getVideoTracks()[0]);
+            if (vs) vs.replaceTrack(videoTrack);
+        });
+        setIsScreenSharing(false);
+    };
+
+    const initSocket = () => {
+        socket.emit("join_video_room", { roomId, userName });
+
+        socket.on("video_room_users", (users) => {
+            const names = {};
+            users.forEach(({ socketId, userName: uName }) => { 
+                names[socketId] = uName;
+                if (socketId !== socket.id) createPeerConnection(socketId, true); 
+            });
+            setParticipantNames(prev => ({ ...prev, ...names }));
+        });
+
+        socket.on("video_user_joined", ({ socketId, userName: uName }) => {
+            setParticipantNames(prev => ({ ...prev, [socketId]: uName }));
+            createPeerConnection(socketId, true);
+        });
+
+        socket.on("name_updated", ({ socketId, userName: uName }) => {
+            setParticipantNames(prev => ({ ...prev, [socketId]: uName }));
+        });
+
+        socket.on("webrtc_offer", async ({ offer, senderId }) => {
+            const pc = await createPeerConnection(senderId, false);
+            await pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
+        });
+
+        socket.on("webrtc_answer", async ({ answer, senderId }) => {
+            const pc = peersRef.current[senderId];
+            if (pc) await pc.setRemoteDescription(answer);
+        });
+
+        socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
+            const pc = peersRef.current[senderId];
+            if (pc) await pc.addIceCandidate(candidate);
+        });
+
+        socket.on("video_user_left", (id) => {
+            if (peersRef.current[id]) { peersRef.current[id].close(); delete peersRef.current[id]; }
+            if (audioAnalyzersRef.current[id]) { audioAnalyzersRef.current[id].stop(); delete audioAnalyzersRef.current[id]; }
+            setRemoteStreams(prev => prev.filter(s => s.id !== id));
+            setParticipantNames(prev => { const n = { ...prev }; delete n[id]; return n; });
+            if (pinnedId === id) setPinnedId(null);
         });
     };
 
-    const VideoCard = ({ id, isLocal, customClass = "" }) => {
-        const isSpeaking = isLocal ? isLocalSpeaking : speakingUsers[id];
-        const nameLabel = isLocal ? userName : (participantNames[id] || "Peserta");
+    const createPeerConnection = async (targetId, isInitiator) => {
+        if (peersRef.current[targetId]) return peersRef.current[targetId];
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }],
+        });
+        peersRef.current[targetId] = pc;
+        localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+        pc.ontrack = (event) => {
+            const remoteStream = event.streams[0];
+            if (!audioAnalyzersRef.current[targetId]) {
+                const monitor = monitorStream(remoteStream, targetId);
+                if (monitor) audioAnalyzersRef.current[targetId] = monitor;
+            }
+            setRemoteStreams(prev => {
+                if (prev.find(s => s.id === targetId)) return prev;
+                return [...prev, { id: targetId, stream: remoteStream }];
+            });
+        };
+        pc.onicecandidate = (e) => { if (e.candidate) socket.emit("webrtc_ice_candidate", { target: targetId, candidate: e.candidate, senderId: socket.id }); };
+        if (isInitiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
+        }
+        return pc;
+    };
 
+    const toggleMic = () => {
+        const track = localStreamRef.current.getAudioTracks()[0];
+        if (track) { track.enabled = !track.enabled; setIsMicOn(track.enabled); if (!track.enabled) setIsLocalSpeaking(false); }
+    };
+
+    const toggleCamera = () => {
+        const track = localStreamRef.current.getVideoTracks()[0];
+        if (track) { track.enabled = !track.enabled; setIsCamOn(track.enabled); }
+    };
+
+    const VideoCard = ({ id, isLocal, isPinned, customClass = "" }) => {
+        const isSpeaking = isLocal ? isLocalSpeaking : speakingUsers[id];
+        const displayName = isLocal ? (isScreenSharing ? `${userName} (Presentasi)` : `${userName} (Anda)`) : (participantNames[id] || `Peserta: ${id.slice(0, 4)}`);
+        
         return (
             <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 transition-all duration-300 ${customClass}
-                ${isSpeaking && (isLocal ? isMicOn : true) ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}>
+                ${isSpeaking && (isLocal ? isMicOn : true) ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}>
                 
                 <video
-                    key={`vid-${id}`}
+                    key={`video-${id}`}
                     ref={el => { if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el; }}
-                    autoPlay muted={isLocal} playsInline className="w-full h-full object-cover bg-neutral-800"
+                    autoPlay muted={isLocal} playsInline className="w-full h-full object-cover"
                 />
 
-                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[11px] z-10 flex items-center gap-2">
-                    <span onClick={() => isLocal && setIsEditingName(true)} className={isLocal ? "cursor-pointer hover:text-blue-300" : ""}>
-                        {isLocal && isEditingName ? "" : nameLabel} {isLocal && !isEditingName && "✎"}
-                    </span>
-                    {isLocal && isEditingName && (
-                        <input autoFocus className="bg-transparent border-b outline-none w-20" value={userName} 
-                        onChange={(e) => setUserName(e.target.value)} onBlur={() => {setIsEditingName(false); socket.emit("change_name", {roomId, name: userName})}} />
-                    )}
-                    {isLocal && !isMicOn && <span>🔇</span>}
+                {/* LABEL NAMA DI KIRI ATAS */}
+                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-[10px] sm:text-xs flex items-center gap-2 z-10 pointer-events-none border border-white/10">
+                    <span className="font-bold tracking-wide truncate max-w-[120px] sm:max-w-[180px] uppercase">{displayName}</span>
+                    {isLocal && !isMicOn && <span className="text-red-400">🔇</span>}
+                    {!isLocal && speakingUsers[id] && <span className="animate-pulse text-green-400">●</span>}
                 </div>
 
-                <button onClick={() => setPinnedId(pinnedId === id ? null : id)} className={`absolute top-3 right-3 p-2 rounded-full z-20 ${pinnedId === id ? 'bg-blue-600' : 'bg-black/40 opacity-0 group-hover:opacity-100'}`}>📌</button>
-                
+                <button 
+                    onClick={() => setPinnedId(pinnedId === id ? null : id)}
+                    className={`absolute top-3 right-3 p-2 rounded-full transition-all z-20 
+                    ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'}`}
+                >
+                    📌
+                </button>
+
                 {isLocal && !isCamOn && !isScreenSharing && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 text-3xl">👤</div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
+                        <div className="w-20 h-20 bg-neutral-700 rounded-full flex items-center justify-center text-3xl shadow-inner text-white/50">{userName.charAt(0).toUpperCase()}</div>
+                    </div>
                 )}
             </div>
         );
     };
 
     return (
-        <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col text-white overflow-hidden">
-            <div className="flex flex-1 overflow-hidden relative">
-                <div className="flex-1 p-4 pb-28 relative overflow-y-auto">
-                    {pinnedId ? (
-                        <div className="flex h-full gap-4 lg:flex-row flex-col">
-                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="flex-[3] h-full" />
-                            <div className="flex-1 flex lg:flex-col flex-row gap-4 overflow-auto lg:max-w-[280px]">
-                                {participants.others.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video shrink-0 w-[200px] lg:w-full" />)}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className={`grid gap-4 w-full h-full content-center justify-center ${participants.all.length <= 1 ? 'grid-cols-1 max-w-2xl mx-auto' : participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'}`}>
-                            {participants.all.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video w-full" />)}
-                        </div>
-                    )}
-                </div>
-
-                {isParticipantsOpen && (
-                    <div className="w-80 bg-neutral-900 border-l border-white/10 p-6 z-50">
-                        <h3 className="text-xl font-bold mb-4 flex justify-between">Peserta <button onClick={() => setIsParticipantsOpen(false)}>✕</button></h3>
+        <div className="w-full h-screen bg-black flex flex-col overflow-hidden relative">
+            <div className="flex-1 overflow-hidden p-4 sm:p-6 relative">
+                {layoutType === 'grid' && (
+                    <div className="flex flex-wrap content-start justify-center gap-4 h-full overflow-y-auto pb-24">
                         {participants.all.map(p => (
-                            <div key={p.id} className="flex justify-between p-3 bg-white/5 rounded-xl mb-2 italic">
-                                {p.isLocal ? userName + " (Anda)" : (participantNames[p.id] || "Peserta")}
-                            </div>
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />
+                        ))}
+                    </div>
+                )}
+                {layoutType === 'focus' && (
+                    <div className="w-full h-full max-w-5xl mx-auto">
+                        <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                    </div>
+                )}
+                {layoutType === 'sidebar' && (
+                    <div className="flex h-full gap-4">
+                        <div className="flex-[3] h-full">
+                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                        </div>
+                        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar hidden md:flex max-w-[280px]">
+                            {participants.others.map(p => (
+                                <div key={p.id} className="w-full aspect-video shrink-0"><VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" /></div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {layoutType === 'auto' && (
+                    <div className={`grid gap-4 h-full w-full 
+                        ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 
+                          participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 
+                          'grid-cols-2 lg:grid-cols-3'}`}>
+                        {participants.all.map(p => (
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
                         ))}
                     </div>
                 )}
             </div>
 
-            <div className="fixed bottom-28 left-6 space-y-2 z-50">
-                {notifications.map(n => <div key={n.id} className="bg-blue-600 px-4 py-2 rounded-xl animate-in slide-in-from-left">{n.message}</div>)}
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 h-24 bg-black/80 backdrop-blur-xl flex items-center justify-center gap-4 z-[1000] border-t border-white/10">
-                <button onClick={toggleMic} className={`p-4 rounded-full ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>🎤</button>
-                <button onClick={toggleCamera} className={`p-4 rounded-full ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>📹</button>
-                <button onClick={toggleScreenShare} className={`p-4 rounded-full ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>🖥️</button>
-                <button onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} className="p-4 rounded-full bg-neutral-800">👥</button>
-                <button onClick={() => setIsLayoutModalOpen(true)} className="p-4 rounded-full bg-neutral-800">⋮</button>
-                <button onClick={() => window.location.reload()} className="px-8 py-3 bg-red-600 rounded-full font-bold">Keluar</button>
-            </div>
-
+            {/* MODAL PENGATURAN & NAMA */}
             {isLayoutModalOpen && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[2000]">
-                    <div className="bg-white text-black p-8 rounded-3xl w-80 shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">Layout</h3>
-                        <button onClick={() => {setPinnedId(null); setIsLayoutModalOpen(false)}} className="w-full p-3 border rounded-xl mb-2">Otomatis</button>
-                        <button onClick={() => {setPinnedId('local'); setIsLayoutModalOpen(false)}} className="w-full p-3 border rounded-xl">Fokus</button>
-                        <button onClick={() => setIsLayoutModalOpen(false)} className="w-full mt-4 text-neutral-400">Batal</button>
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsLayoutModalOpen(false)} />
+                    <div className="bg-white text-neutral-900 w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold">Pengaturan Sesi</h3>
+                            <button onClick={() => setIsLayoutModalOpen(false)} className="text-2xl hover:rotate-90 transition-transform">✕</button>
+                        </div>
+                        
+                        <div className="space-y-6">
+                            {/* INPUT NAMA */}
+                            <div className="space-y-2">
+                                <p className="text-xs font-bold text-neutral-400 uppercase ml-1">Nama Tampilan</p>
+                                <input 
+                                    type="text" 
+                                    value={userName} 
+                                    onChange={handleUpdateName}
+                                    placeholder="Masukkan nama..."
+                                    className="w-full px-4 py-3 bg-neutral-100 rounded-2xl border-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                />
+                            </div>
+
+                            <div className="space-y-3">
+                                <p className="text-xs font-bold text-neutral-400 uppercase ml-1">Tampilan Video</p>
+                                {[
+                                    { id: 'auto', name: 'Otomatis', icon: '✦' },
+                                    { id: 'grid', name: 'Kotak (Grid)', icon: '▦' },
+                                    { id: 'focus', name: 'Sorotan', icon: '▢' },
+                                    { id: 'sidebar', name: 'Sidebar', icon: '◫' }
+                                ].map((item) => (
+                                    <label key={item.id} className="flex items-center justify-between p-4 rounded-2xl border hover:bg-neutral-50 cursor-pointer border-neutral-100 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <input type="radio" name="layout" checked={layoutType === item.id} onChange={() => { setLayoutType(item.id); }} className="w-5 h-5 accent-blue-600" />
+                                            <p className="font-semibold">{item.name}</p>
+                                        </div>
+                                        <div className="w-10 h-8 bg-neutral-100 rounded flex items-center justify-center text-neutral-500">{item.icon}</div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
+
+            {/* CONTROL BAR */}
+            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
+                <div className="flex items-center gap-2 sm:gap-4 bg-neutral-900/90 backdrop-blur-2xl p-3 sm:p-4 px-6 sm:px-10 rounded-full border border-white/10 shadow-2xl mb-4">
+                    <button onClick={toggleMic} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all flex items-center justify-center ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700 text-white' : 'bg-red-600 text-white animate-pulse'}`}>
+                        <span className="text-xl">{isMicOn ? "🎤" : "🔇"}</span>
+                    </button>
+                    <button onClick={toggleCamera} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all flex items-center justify-center ${isCamOn ? 'bg-neutral-800 hover:bg-neutral-700 text-white' : 'bg-red-600 text-white'}`}>
+                        <span className="text-xl">{isCamOn ? "📹" : "🚫"}</span>
+                    </button>
+                    <button onClick={toggleScreenShare} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all flex items-center justify-center ${isScreenSharing ? 'bg-blue-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700 text-white'}`}>
+                        <span className="text-xl">🖥️</span>
+                    </button>
+                    <div className="w-[1px] h-8 bg-white/10 mx-1" />
+                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-neutral-800 hover:bg-neutral-700 transition-all flex items-center justify-center group">
+                        <span className="text-xl font-bold text-white group-hover:rotate-90 transition-transform">⋮</span>
+                    </button>
+                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-4 sm:px-8 py-2.5 sm:py-3 rounded-full font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2">
+                        <span className="text-lg">📞</span>
+                        <span className="hidden sm:inline">Keluar</span>
+                    </button>
+                </div>
+            </div>
+
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+            `}</style>
         </div>
     );
 }
