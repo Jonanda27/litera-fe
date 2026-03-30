@@ -9,8 +9,19 @@ export default function WebRTCMeeting({ roomId }) {
     const localStreamRef = useRef(null);
     const peersRef = useRef({});
     const videoRefs = useRef({});
+    
+    // Ref untuk menyimpan Audio Analyzers agar bisa dibersihkan
+    const audioAnalyzersRef = useRef({});
 
     const [remoteStreams, setRemoteStreams] = useState([]);
+    
+    // State untuk kontrol Media
+    const [isMicOn, setIsMicOn] = useState(true);
+    const [isCamOn, setIsCamOn] = useState(true);
+
+    // State untuk mendeteksi siapa yang sedang berbicara
+    const [speakingUsers, setSpeakingUsers] = useState({}); // { socketId: true/false }
+    const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
 
     useEffect(() => {
         start();
@@ -30,6 +41,9 @@ export default function WebRTCMeeting({ roomId }) {
                 localVideoRef.current.srcObject = null;
             }
 
+            // Cleanup Audio Analyzers
+            Object.values(audioAnalyzersRef.current).forEach(a => a.stop());
+
             socket.off("video_room_users");
             socket.off("video_user_joined");
             socket.off("webrtc_offer");
@@ -45,9 +59,7 @@ export default function WebRTCMeeting({ roomId }) {
 
             if (videoEl && user.stream) {
                 console.log("🎬 SET VIDEO STREAM:", user.id);
-
                 videoEl.srcObject = user.stream;
-
                 videoEl.onloadedmetadata = () => {
                     videoEl.play().catch(err => {
                         console.log("❌ play error:", err);
@@ -56,6 +68,73 @@ export default function WebRTCMeeting({ roomId }) {
             }
         });
     }, [remoteStreams]);
+
+    // ==============================
+    // LOGIKA DETEKSI SUARA (AUDIO MONITOR) - FIXED
+    // ==============================
+    const monitorStream = (stream, socketId = null) => {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioContext = new AudioContext();
+            
+            // Penting: Resume AudioContext jika dalam keadaan suspended
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            
+            analyser.fftSize = 256;
+            analyser.minDecibels = -90;
+            analyser.maxDecibels = -10;
+            analyser.smoothingTimeConstant = 0.85;
+            
+            source.connect(analyser);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            let isSpeaking = false;
+            // Nilai threshold diturunkan menjadi 30 agar lebih sensitif
+            const threshold = 30; 
+
+            const checkVolume = () => {
+                if (!analyser) return;
+                analyser.getByteFrequencyData(dataArray);
+                
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                const currentlySpeaking = average > threshold;
+
+                if (currentlySpeaking !== isSpeaking) {
+                    isSpeaking = currentlySpeaking;
+                    if (socketId === null) {
+                        setIsLocalSpeaking(isSpeaking);
+                    } else {
+                        setSpeakingUsers(prev => ({ ...prev, [socketId]: isSpeaking }));
+                    }
+                }
+                
+                requestAnimationFrame(checkVolume);
+            };
+
+            checkVolume();
+
+            return {
+                stop: () => {
+                    source.disconnect();
+                    analyser.disconnect();
+                    audioContext.close();
+                }
+            };
+        } catch (e) {
+            console.error("Audio Context Error:", e);
+        }
+    };
 
     const start = async () => {
         try {
@@ -70,8 +149,11 @@ export default function WebRTCMeeting({ roomId }) {
                 localVideoRef.current.srcObject = stream;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Mulai monitor suara lokal segera setelah stream didapat
+            const monitor = monitorStream(stream);
+            if (monitor) audioAnalyzersRef.current["local"] = monitor;
 
+            await new Promise(resolve => setTimeout(resolve, 300));
             initSocket();
             console.log("✅ Camera & Mic ON");
         } catch (err) {
@@ -79,15 +161,36 @@ export default function WebRTCMeeting({ roomId }) {
         }
     };
 
+    // ==============================
+    // FITUR KONTROL MEDIA
+    // ==============================
+    const toggleMic = () => {
+        if (localStreamRef.current) {
+            const audioTrack = localStreamRef.current.getAudioTracks()[0];
+            if (audioTrack) {
+                audioTrack.enabled = !audioTrack.enabled;
+                setIsMicOn(audioTrack.enabled);
+                if (!audioTrack.enabled) setIsLocalSpeaking(false);
+            }
+        }
+    };
 
+    const toggleCamera = () => {
+        if (localStreamRef.current) {
+            const videoTrack = localStreamRef.current.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.enabled = !videoTrack.enabled;
+                setIsCamOn(videoTrack.enabled);
+            }
+        }
+    };
 
     // ==============================
     // SOCKET EVENTS
     // ==============================
     const initSocket = () => {
-
-        // user yang sudah ada di room
         socket.emit("join_video_room", roomId);
+        
         socket.on("video_room_users", (users) => {
             users.forEach(({ socketId }) => {
                 if (socketId !== socket.id) {
@@ -96,16 +199,13 @@ export default function WebRTCMeeting({ roomId }) {
             });
         });
 
-        // user baru join
         socket.on("video_user_joined", (socketId) => {
             createPeerConnection(socketId, true);
         });
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             const pc = await createPeerConnection(senderId, false);
-
             await pc.setRemoteDescription(offer);
-
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
 
@@ -132,19 +232,15 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("video_user_left", (socketId) => {
             const pc = peersRef.current[socketId];
-
             if (pc) {
                 pc.close();
                 delete peersRef.current[socketId];
             }
-
+            if (audioAnalyzersRef.current[socketId]) {
+                audioAnalyzersRef.current[socketId].stop();
+                delete audioAnalyzersRef.current[socketId];
+            }
             setRemoteStreams(prev => prev.filter(s => s.id !== socketId));
-        });
-
-        socket.on("video_user_joined", (socketId) => {
-            console.log("👤 user baru join:", socketId);
-
-            createPeerConnection(socketId, true);
         });
     };
 
@@ -167,36 +263,25 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetSocketId] = pc;
 
-        console.log("📤 Kirim tracks:", localStreamRef.current.getTracks());
-
         localStreamRef.current.getTracks().forEach(track => {
             pc.addTrack(track, localStreamRef.current);
         });
 
-        // terima stream
         pc.ontrack = (event) => {
-            console.log("🔥 TRACK MASUK DARI:", targetSocketId);
-            console.log("STREAM:", event.streams);
-
             if (event.streams && event.streams[0]) {
-                // normal
-            } else {
-                const newStream = new MediaStream();
-                newStream.addTrack(event.track);
+                const remoteStream = event.streams[0];
+                if (!audioAnalyzersRef.current[targetSocketId]) {
+                    const monitor = monitorStream(remoteStream, targetSocketId);
+                    if (monitor) audioAnalyzersRef.current[targetSocketId] = monitor;
+                }
+                setRemoteStreams(prev => {
+                    const exists = prev.find(s => s.id === targetSocketId);
+                    if (exists) return prev;
+                    return [...prev, { id: targetSocketId, stream: remoteStream }];
+                });
             }
-
-            setRemoteStreams(prev => {
-                const exists = prev.find(s => s.id === targetSocketId);
-                if (exists) return prev;
-
-                return [
-                    ...prev,
-                    { id: targetSocketId, stream: event.streams[0] }
-                ];
-            });
         };
 
-        // ICE
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 socket.emit("webrtc_ice_candidate", {
@@ -207,11 +292,9 @@ export default function WebRTCMeeting({ roomId }) {
             }
         };
 
-        // initiator
         if (isInitiator) {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-
             socket.emit("webrtc_offer", {
                 target: targetSocketId,
                 offer,
@@ -223,30 +306,84 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     return (
-        <div className="w-full h-full bg-black flex flex-wrap gap-2 p-2">
+        <div className="relative w-full h-screen bg-black overflow-hidden flex flex-col">
+            
+            <div className="flex-1 overflow-y-auto p-6 flex flex-wrap content-start justify-start gap-4 pb-32">
+                
+                {/* 1. VIDEO LOKAL */}
+                <div className="relative w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]">
+                    <video
+                        ref={localVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        // FIXED: Pastikan border-solid ada dan transisi berjalan
+                        className={`w-full h-full rounded-2xl object-cover border-4 border-solid transition-all duration-300
+                            ${isLocalSpeaking && isMicOn 
+                                ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' 
+                                : 'border-transparent'}`}
+                    />
+                    <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs flex items-center gap-2">
+                        <span className="font-semibold">Anda (Host)</span>
+                        {!isMicOn && <span className="text-red-400">🔇</span>}
+                    </div>
+                    
+                    {!isCamOn && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-900 rounded-2xl">
+                            <div className="w-16 h-16 bg-neutral-800 rounded-full flex items-center justify-center mb-2">👤</div>
+                        </div>
+                    )}
+                </div>
 
-            {/* LOCAL */}
-            <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="w-[300px] h-[200px] rounded-xl border border-green-500"
-            />
+                {/* 2. VIDEO PESERTA LAIN */}
+                {remoteStreams.map((user) => (
+                    <div key={user.id} className="relative w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]">
+                        <video
+                            ref={(el) => {
+                                if (el) videoRefs.current[user.id] = el;
+                            }}
+                            autoPlay
+                            playsInline
+                            className={`w-full h-full rounded-2xl bg-neutral-800 object-cover border-4 border-solid transition-all duration-300
+                                ${speakingUsers[user.id] 
+                                    ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]' 
+                                    : 'border-transparent'}`}
+                        />
+                        <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs flex items-center gap-2">
+                            <span>Peserta: {user.id.slice(0, 6)}</span>
+                            {speakingUsers[user.id] && <span className="animate-pulse">🔊</span>}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-            {/* REMOTE */}
-            {remoteStreams.map((user) => (
-                <video
-                    key={user.id}
-                    ref={(el) => {
-                        if (el) videoRefs.current[user.id] = el;
-                    }}
-                    autoPlay
-                    playsInline
-                    className="w-[300px]  h-[200px] rounded-xl border border-blue-500"
-                />
-            ))}
+            {/* BAR KONTROL */}
+            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
+                <div className="flex items-center gap-4 bg-neutral-900/90 backdrop-blur-2xl p-4 px-10 rounded-full border border-white/10 shadow-2xl mb-4">
+                    <button 
+                        onClick={toggleMic}
+                        className={`group relative flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all active:scale-90 ${isMicOn ? 'bg-neutral-700 hover:bg-neutral-600' : 'bg-red-600 hover:bg-red-700'}`}
+                    >
+                        <span className="text-xl">{isMicOn ? "🎤" : "🔇"}</span>
+                    </button>
 
+                    <button 
+                        onClick={toggleCamera}
+                        className={`group relative flex flex-col items-center justify-center w-12 h-12 rounded-full transition-all active:scale-90 ${isCamOn ? 'bg-neutral-700 hover:bg-neutral-600' : 'bg-red-600 hover:bg-red-700'}`}
+                    >
+                        <span className="text-xl">{isCamOn ? "📹" : "🚫"}</span>
+                    </button>
+
+                    <div className="w-[1px] h-8 bg-white/10 mx-2" />
+
+                    <button 
+                        onClick={() => window.location.reload()}
+                        className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                    >
+                        <span className="text-lg">📞</span> Keluar
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
