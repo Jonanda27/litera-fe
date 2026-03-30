@@ -8,7 +8,7 @@ const VideoCard = memo(({ id, isLocal, name, stream, isCamOn, isMicOn, isScreenS
     const videoRef = useRef(null);
     const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
 
-    // FIX KAMERA KOSONG: Mengikat stream dan memaksa play() saat metadata siap
+    // Mengikat stream dan memaksa play() saat metadata siap
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream;
@@ -173,7 +173,7 @@ export default function WebRTCMeeting({ roomId }) {
             if (!isChatOpen) addNotification(`Pesan baru dari ${msg.senderName}`);
         });
 
-        // LISTENER RAISE HAND
+        // LISTENER RAISE HAND (Menerima sinyal dari orang lain via Server)
         socket.on("user_toggled_hand", ({ userId, isRaised, name }) => {
             setRaisedHands(prev => {
                 if (isRaised) {
@@ -349,6 +349,7 @@ export default function WebRTCMeeting({ roomId }) {
             return prev.filter(id => id !== 'local');
         });
 
+        // MENGIRIM PESAN RAISE HAND KE SERVER
         socket.emit("toggle_raise_hand", { roomId, isRaised: newState, name: userName });
     };
 
@@ -466,7 +467,6 @@ export default function WebRTCMeeting({ roomId }) {
             </div>
 
             {/* AREA KANAN: RIGHTBAR (CHAT & PARTICIPANTS) */}
-            {/* Pada Mobile: Fixed overlay menutupi layar. Pada Tablet/Desktop: Muncul di samping w-80/w-96 */}
             {(isChatOpen || isParticipantsOpen) && (
                 <div className="fixed inset-0 z-[20000] md:relative md:inset-auto w-full md:w-80 lg:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
                     {isChatOpen && (
@@ -562,7 +562,6 @@ export default function WebRTCMeeting({ roomId }) {
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 
-                /* Class khusus menyembunyikan scrollbar di menu toolbar agar terlihat bersih */
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
                 
