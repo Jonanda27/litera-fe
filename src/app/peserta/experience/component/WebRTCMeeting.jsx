@@ -231,7 +231,7 @@ export default function WebRTCMeeting({ roomId }) {
                 autoPlay
                 muted
                 playsInline
-                className="w-[300px] rounded-xl border border-green-500"
+                className="w-[300px] h-[200px] rounded-xl border border-green-500"
             />
 
             {/* REMOTE */}
