@@ -105,7 +105,6 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
                 const pc = await createPeerConnection(senderId, false);
-                // Hanya proses jika state stabil untuk menghindari InvalidStateError
                 if (pc.signalingState !== "stable") return;
 
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -324,19 +323,21 @@ export default function WebRTCMeeting({ roomId }) {
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative text-white">
             <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
-                <div className="flex-1 h-full">
+                <div className="flex-1 h-full overflow-hidden">
                     {layoutType === 'auto' && (
-                        <div className={`grid gap-2 sm:gap-4 h-full w-full mx-auto
-                            ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl' : 
-                              participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
-                            {participants.all.map(p => (
-                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full aspect-video md:aspect-auto" />
-                            ))}
+                        <div className="w-full h-full overflow-y-auto custom-scrollbar pb-24 md:pb-4">
+                            <div className={`grid gap-2 sm:gap-4 mx-auto
+                                ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl h-full' : 
+                                  participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+                                {participants.all.map(p => (
+                                    <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full aspect-video md:h-auto" />
+                                ))}
+                            </div>
                         </div>
                     )}
 
                     {layoutType === 'grid' && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start custom-scrollbar">
                             {participants.all.map(p => (
                                 <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="aspect-video w-full h-auto" />
                             ))}
@@ -350,11 +351,13 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
 
                     {layoutType === 'sidebar' && (
-                        <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4">
-                            <div className="flex-[3] h-[60%] md:h-full">
+                        <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4 overflow-hidden">
+                            {/* Utama */}
+                            <div className="flex-[3] h-[55%] md:h-full overflow-hidden">
                                 <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full" />
                             </div>
-                            <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[40%] md:h-full">
+                            {/* List Samping / Bawah */}
+                            <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[45%] md:h-full pb-20 md:pb-0">
                                 {participants.others.map(p => (
                                     <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
                                         <VideoCard id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full" />
@@ -371,7 +374,7 @@ export default function WebRTCMeeting({ roomId }) {
                             <h3 className="text-white font-bold">Peserta ({participantsList.length + 1})</h3>
                             <button onClick={() => setIsParticipantsOpen(false)} className="text-white/50 hover:text-white text-xl">✕</button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
                             <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-blue-500/30">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">Anda</div>
                                 <div className="flex-1 min-w-0">
@@ -448,8 +451,10 @@ export default function WebRTCMeeting({ roomId }) {
             </div>
             
             <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #444; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 @keyframes animate-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
                 .animate-in { animation: animate-in 0.3s ease-out forwards; }
             `}</style>
