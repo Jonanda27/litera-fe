@@ -23,31 +23,28 @@ export default function WebRTCMeeting({ roomId }) {
     const [layoutType, setLayoutType] = useState("auto");
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
 
-    // --- FUNGSI SINKRONISASI: Menjamin Video Tetap Tampil Saat State Berubah ---
-    const syncAllVideos = useCallback(() => {
-        // 1. Sinkronisasi Video Lokal
+    // --- FUNGSI SINKRONISASI VIDEO (Mencegah Video Mati Saat Outline Muncul) ---
+    const syncVideos = useCallback(() => {
+        // Sinkronisasi Local
         if (localVideoRef.current) {
-            const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
-            if (targetStream && localVideoRef.current.srcObject !== targetStream) {
-                localVideoRef.current.srcObject = targetStream;
-                localVideoRef.current.play().catch(() => {});
+            const stream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
+            if (stream && localVideoRef.current.srcObject !== stream) {
+                localVideoRef.current.srcObject = stream;
             }
         }
-
-        // 2. Sinkronisasi Video Peserta Lain
+        // Sinkronisasi Remotes
         remoteStreams.forEach(user => {
-            const videoEl = videoRefs.current[user.id];
-            if (videoEl && user.stream && videoEl.srcObject !== user.stream) {
-                videoEl.srcObject = user.stream;
-                videoEl.play().catch(() => {});
+            const el = videoRefs.current[user.id];
+            if (el && user.stream && el.srcObject !== user.stream) {
+                el.srcObject = user.stream;
             }
         });
     }, [remoteStreams, isScreenSharing]);
 
-    // Jalankan sinkronisasi setiap kali ada perubahan UI/State
+    // Efek ini akan menjaga video tetap menyala saat state speaking atau UI berubah
     useEffect(() => {
-        syncAllVideos();
-    }, [syncAllVideos, isMicOn, isCamOn, layoutType, pinnedId, isScreenSharing]);
+        syncVideos();
+    }, [syncVideos, isLocalSpeaking, speakingUsers, layoutType, pinnedId]);
 
     const monitorStream = (stream, socketId = null) => {
         try {
@@ -210,7 +207,7 @@ export default function WebRTCMeeting({ roomId }) {
         return { pinned, others, all };
     }, [pinnedId, remoteStreams]);
 
-    // --- KOMPONEN VIDEO CARD ---
+    // --- KOMPONEN VIDEO CARD (Fixed Re-render Issue) ---
     const VideoCard = ({ id, isLocal, customClass = "" }) => {
         const isSpeaking = isLocal ? isLocalSpeaking : speakingUsers[id];
         const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
@@ -235,6 +232,13 @@ export default function WebRTCMeeting({ roomId }) {
                     ref={el => {
                         if (isLocal) localVideoRef.current = el;
                         else if (el) videoRefs.current[id] = el;
+                        // Pasang stream secara instan saat elemen di-mount
+                        if (el) {
+                            const stream = isLocal 
+                                ? (isScreenSharing ? screenStreamRef.current : localStreamRef.current)
+                                : remoteStreams.find(s => s.id === id)?.stream;
+                            if (stream) el.srcObject = stream;
+                        }
                     }}
                     className={`w-full h-full object-cover transition-opacity duration-300 ${showVideo ? 'opacity-100' : 'opacity-0'}`}
                 />
@@ -258,28 +262,27 @@ export default function WebRTCMeeting({ roomId }) {
 
     return (
         <div className="w-full h-screen bg-black flex flex-col overflow-hidden relative">
-            {/* AREA VIDEO */}
             <div className="flex-1 overflow-hidden p-4 sm:p-6 relative">
                 {layoutType === 'grid' && (
                     <div className="flex flex-wrap content-start justify-center gap-4 h-full overflow-y-auto pb-24">
                         {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />
+                            <VideoCard key={`grid-${p.id}`} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />
                         ))}
                     </div>
                 )}
                 {layoutType === 'focus' && (
                     <div className="w-full h-full max-w-5xl mx-auto">
-                        <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                        <VideoCard key={`focus-${participants.pinned.id}`} id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
                     </div>
                 )}
                 {layoutType === 'sidebar' && (
                     <div className="flex h-full gap-4">
                         <div className="flex-[3] h-full">
-                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                            <VideoCard key={`side-main-${participants.pinned.id}`} id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
                         </div>
                         <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar hidden md:flex max-w-[280px]">
                             {participants.others.map(p => (
-                                <div key={p.id} className="w-full aspect-video shrink-0">
+                                <div key={`side-list-${p.id}`} className="w-full aspect-video shrink-0">
                                     <VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
                                 </div>
                             ))}
@@ -292,13 +295,32 @@ export default function WebRTCMeeting({ roomId }) {
                           participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 
                           'grid-cols-2 lg:grid-cols-3'}`}>
                         {participants.all.map(p => (
-                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
+                            <VideoCard key={`auto-${p.id}`} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* MODAL PENGATURAN LAYOUT */}
+            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
+                <div className="flex items-center gap-3 sm:gap-4 bg-neutral-900/95 backdrop-blur-2xl p-4 px-8 rounded-full border border-white/10 shadow-2xl mb-4">
+                    <button onClick={toggleMic} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+                        {isMicOn ? "🎤" : "🔇"}
+                    </button>
+                    <button onClick={toggleCamera} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
+                        {isCamOn ? "📹" : "🚫"}
+                    </button>
+                    <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
+                        🖥️
+                    </button>
+                    <div className="w-[1px] h-8 bg-white/10 mx-1" />
+                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-white text-xl font-bold">⋮</button>
+                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-transform active:scale-95 shadow-lg">
+                        <span className="text-lg">📞</span>
+                        <span className="hidden sm:inline">Keluar</span>
+                    </button>
+                </div>
+            </div>
+
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setIsLayoutModalOpen(false)} />
@@ -317,29 +339,6 @@ export default function WebRTCMeeting({ roomId }) {
                     </div>
                 </div>
             )}
-
-            {/* CONTROL BAR */}
-            <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
-                <div className="flex items-center gap-3 sm:gap-4 bg-neutral-900/95 backdrop-blur-2xl p-4 px-8 rounded-full border border-white/10 shadow-2xl mb-4">
-                    <button onClick={toggleMic} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isMicOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
-                        {isMicOn ? "🎤" : "🔇"}
-                    </button>
-                    <button onClick={toggleCamera} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isCamOn ? 'bg-neutral-800' : 'bg-red-600'}`}>
-                        {isCamOn ? "📹" : "🚫"}
-                    </button>
-                    <button onClick={toggleScreenShare} className={`w-12 h-12 rounded-full transition-all flex items-center justify-center ${isScreenSharing ? 'bg-blue-600' : 'bg-neutral-800'}`}>
-                        🖥️
-                    </button>
-                    <div className="w-[1px] h-8 bg-white/10 mx-1" />
-                    <button onClick={() => setIsLayoutModalOpen(true)} className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-white">
-                        ⋮
-                    </button>
-                    <button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full font-bold flex items-center gap-2 transition-transform active:scale-95 shadow-lg">
-                        <span className="text-lg">📞</span>
-                        <span className="hidden sm:inline">Keluar</span>
-                    </button>
-                </div>
-            </div>
 
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
