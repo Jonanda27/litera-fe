@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-// Import Lucide untuk ikon loading yang lebih bagus
 import { Loader2, CheckCircle2, Rocket } from "lucide-react"; 
 import {
   KeyboardSensor,
@@ -14,7 +13,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { toPng } from "html-to-image";
 
-// Import Steps...
+// Import Steps Fiksi
 import StepIdeCepat from "./fiksi/StepIdeCepat";
 import StepPapanVisi from "./fiksi/StepPapanVisi";
 import StepRiset from "./fiksi/StepRiset";
@@ -28,6 +27,7 @@ import StepRevisi from "./fiksi/StepRevisi";
 import StepFinalisasi from "./fiksi/StepFinalisasi";
 import StepCover from "./fiksi/StepCover";
 
+// Import Steps Non-Fiksi
 import StepRisetNonFiksi from "./nonfiksi/StepRisetNonFiksi";
 import StepDaftarIstilah from "./nonfiksi/StepDaftarIstilah";
 import StepDaftarPustaka from "./nonfiksi/StepDaftarPustaka";
@@ -38,6 +38,9 @@ import StepChapterStructure from "./nonfiksi/StepChapterStructure";
 import StepPenulisanNonFiction from "./nonfiksi/StepPenulisanNon";
 
 import { API_BASE_URL } from "@/lib/constans/constans";
+import StepCoverNon from "./nonfiksi/StepCoverNon";
+import StepFinalisasiNon from "./nonfiksi/StepFinalisasiNon";
+import StepRevisiNon from "./nonfiksi/StepRevisiNon";
 
 // KONFIGURASI LANGKAH...
 const FICTION_STEPS = [
@@ -57,14 +60,16 @@ const FICTION_STEPS = [
 
 const NON_FICTION_STEPS = [
   { id: 1, title: "Problem & Riset" },
-  { id: 2, title: "Big Idea" },
-  { id: 3, title: "Target Pembaca" },
-  { id: 4, title: "Koleksi Data" },
-  { id: 5, title: "Struktur Bab" },
-  { id: 6, title: "Penulisan Inti" },
-  { id: 7, title: "Validasi Data" },
-  { id: 8, title: "Editing" },
-  { id: 9, title: "Finalisasi" },
+  { id: 2, title: "Cover Buku" },
+  { id: 3, title: "Daftar Istilah" },
+  { id: 4, title: "Daftar Pustaka" },
+  { id: 5, title: "Studi Kasus" },
+  { id: 6, title: "Worksheet" },
+  { id: 7, title: "Koleksi Data" },
+  { id: 8, title: "Struktur Bab" },
+  { id: 9, title: "Penulisan Inti" },
+  { id: 10, title: "Revisi Total" }, // Tahap Revisi ditambahkan
+  { id: 11, title: "Finalisasi" },   // Digeser menjadi 11
 ];
 
 interface AddProjectModalProps {
@@ -162,7 +167,7 @@ const AddProjectModal = ({
   const handleNextStep = async () => {
     const isTimetoCapture =
       (category === "Fiksi" && currentStep === 11) ||
-      (category === "Non-Fiksi" && currentStep === 8);
+      (category === "Non-Fiksi" && currentStep === 10); // Menyesuaikan ID step Revisi Non-Fiksi
     
     if (isTimetoCapture) {
       await captureRevisiImage();
@@ -180,7 +185,7 @@ const AddProjectModal = ({
     // Jika kita meninggalkan step revisi, coba capture dulu
     const isTimetoCapture =
       (category === "Fiksi" && currentStep === 11) ||
-      (category === "Non-Fiksi" && currentStep === 8);
+      (category === "Non-Fiksi" && currentStep === 10); // Menyesuaikan ID step Revisi Non-Fiksi
     
     if (isTimetoCapture) {
       await captureRevisiImage();
@@ -240,30 +245,34 @@ const AddProjectModal = ({
           );
         case 2:
           return (
-            <StepDaftarIstilah formData={formData} onDataChange={setFormData} />
+            <StepCoverNon formData={formData} onDataChange={setFormData} />
           );
         case 3:
           return (
-            <StepDaftarPustaka formData={formData} onDataChange={setFormData} />
+            <StepDaftarIstilah formData={formData} onDataChange={setFormData} />
           );
         case 4:
           return (
-            <StepStudiKasus formData={formData} onDataChange={setFormData} />
+            <StepDaftarPustaka formData={formData} onDataChange={setFormData} />
           );
         case 5:
           return (
-            <StepWorksheet formData={formData} onDataChange={setFormData} />
+            <StepStudiKasus formData={formData} onDataChange={setFormData} />
           );
         case 6:
-          return <StepKoleksi formData={formData} onDataChange={setFormData} />;
+          return (
+            <StepWorksheet formData={formData} onDataChange={setFormData} />
+          );
         case 7:
+          return <StepKoleksi formData={formData} onDataChange={setFormData} />;
+        case 8:
           return (
             <StepChapterStructure
               formData={formData}
               onDataChange={setFormData}
             />
           );
-        case 8:
+        case 9:
           return (
             <StepPenulisanNonFiction
               isZenMode={isZenMode}
@@ -274,9 +283,20 @@ const AddProjectModal = ({
               }
             />
           );
-        case 9:
+        case 10:
           return (
-            <StepFinalisasi
+            <StepRevisiNon
+              comments={[]}
+              versions={[]}
+              formData={formData}
+              handleInputChange={(f: string, v: any) =>
+                setFormData((p: any) => ({ ...p, [f]: v }))
+              }
+            />
+          );
+        case 11:
+          return (
+            <StepFinalisasiNon
               ref={finalisasiRef}
               previewImage={previewImage}
               previewConfig={previewConfig}
@@ -286,7 +306,7 @@ const AddProjectModal = ({
           );
         default:
           return (
-            <StepIdeCepat formData={formData} onDataChange={setFormData} />
+            <StepRisetNonFiksi formData={formData} onDataChange={setFormData} />
           );
       }
     } else {

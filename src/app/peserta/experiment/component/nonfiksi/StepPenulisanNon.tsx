@@ -3,20 +3,14 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import {
-  BookText,
-  ChevronDown,
-  RefreshCw,
-  CheckCircle2,
-  Lock,
-  Edit3,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  Type,
-} from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
+
+// Asumsi komponen ini di-copy/tersedia di folder nonfiksi juga, 
+// atau Anda bisa menyesuaikan path-nya ke "../fiksi/componentPenulisan/..." jika di-share
+import StatsFooter from "./componentPenulisan/StatsFooter";
+import ChapterDropdown from "./componentPenulisan/ChapterDropdown";
+import EditorToolbar from "./componentPenulisan/EditorToolbar";
+import WritingPage from "./componentPenulisan/WritingPage";
 
 interface StepPenulisanProps {
   isZenMode: boolean;
@@ -32,6 +26,7 @@ export default function StepPenulisanNonFiction({
   handleInputChange,
 }: StepPenulisanProps) {
   const editorRefs = useRef<(HTMLDivElement | null)[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState("Safe");
   const [pageCount, setPageCount] = useState(1);
@@ -41,59 +36,88 @@ export default function StepPenulisanNonFiction({
     "'Times New Roman', serif",
   );
 
-  // --- INTEGRASI OUTLINE & CUSTOM DROP-DOWN ---
-  const [chapters, setChapters] = useState<any[]>([]);
+  const [outlines, setOutlines] = useState<any[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<any>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const bookId = formData?.bookId || formData?.id;
 
-  // --- 1. FETCH DAFTAR BAB (DARI STRUCTURE) ---
+  // --- 1. FETCH DAFTAR BAB DARI OUTLINE (NON-FIKSI) ---
   useEffect(() => {
-    const fetchChapterList = async () => {
-      if (!bookId) return;
+    const fetchOutlines = async () => {
       try {
         const token = localStorage.getItem("token");
+
+        if (!token || !formData.bookId) return;
+
+        // Menggunakan endpoint Non-Fiksi
         const res = await axios.get(
-          `${API_BASE_URL}/books/chapter-structures/${bookId}`,
+          `${API_BASE_URL}/books/chapter-structures/${formData.bookId}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setChapters(res.data);
+
+        // Map chapterNumber ke chapter_number agar komponen Dropdown & Footer tetap berjalan normal
+        const mappedData = res.data.map((item: any) => ({
+          ...item,
+          chapter_number: item.chapterNumber, 
+        }));
+
+        setOutlines(mappedData);
       } catch (err) {
-        console.error("Gagal mengambil struktur bab");
+        console.error("Gagal memuat daftar outline:", err);
       }
     };
-    fetchChapterList();
-  }, [bookId]);
 
-  // --- 2. FETCH KONTEN SAAT BAB DIPILIH (Integrasi API GET) ---
+    fetchOutlines();
+  }, [formData.bookId]);
+
+  // --- 2. INITIAL LOAD CONTENT (NON-FIKSI MULTI-PAGE) ---
   useEffect(() => {
-    const fetchChapterContent = async () => {
+    const fetchInitialContent = async () => {
       const token = localStorage.getItem("token");
-      if (!token || !bookId || !selectedChapter) return;
+
+      if (!token || !formData.bookId || !selectedChapter) return;
 
       try {
         setIsLoading(true);
+
         const response = await fetch(
-          `${API_BASE_URL}/books/non-fiction/get-content?bookId=${bookId}&chapterNumber=${selectedChapter.chapterNumber}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          `${API_BASE_URL}/books/non-fiction/get-content?bookId=${formData.bookId}&chapterNumber=${selectedChapter.chapterNumber}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
 
         const result = await response.json();
 
         if (response.ok && result.data) {
-          const content = result.data.content || "";
+          // Menyesuaikan dengan format DB baru: result.data seharusnya array of pages
+          const pagesArray = Array.isArray(result.data) ? result.data : [result.data];
 
-          setTimeout(() => {
-            if (editorRefs.current[0]) {
-              editorRefs.current[0]!.innerHTML = content;
-            }
-            updateStats();
-          }, 300);
-          setPageCount(1);
+          if (pagesArray.length > 0) {
+            setPageCount(pagesArray.length); // Render jumlah halaman sesuai data
+            
+            setTimeout(() => {
+              pagesArray.forEach((pageData: any, index: number) => {
+                if (editorRefs.current[index]) {
+                  editorRefs.current[index]!.innerHTML = pageData.content || "";
+                }
+              });
+              updateStats();
+            }, 300);
+          } else {
+            // Jika array kosong (bab baru)
+            setPageCount(1);
+            setTimeout(() => {
+              if (editorRefs.current[0]) editorRefs.current[0]!.innerHTML = "";
+              updateStats();
+            }, 300);
+          }
         } else {
           setPageCount(1);
           setTimeout(() => {
@@ -107,65 +131,78 @@ export default function StepPenulisanNonFiction({
         setIsLoading(false);
       }
     };
-    fetchChapterContent();
-  }, [selectedChapter, bookId]);
 
-  // --- 3. STATS & AUTO-SAVE ---
+    fetchInitialContent();
+  }, [selectedChapter, formData.bookId]);
+
+  // --- 3. STATS & AUTO-SAVE (NON-FIKSI MULTI-PAGE) ---
   const updateStats = () => {
     let totalText = "";
+
     editorRefs.current.forEach((ref) => {
       if (ref) totalText += ref.innerText + " ";
     });
+
     const words = totalText
       .trim()
       .split(/\s+/)
       .filter((w) => w !== "").length;
+
     handleInputChange("currentWordCount", words);
+
     triggerAutoSave();
   };
 
   const triggerAutoSave = () => {
     if (!selectedChapter) return;
+
     setSaveStatus("Typing...");
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
     saveTimerRef.current = setTimeout(() => {
       performSave();
     }, 2000);
   };
 
   const performSave = async () => {
-    if (isLoading || !bookId || !selectedChapter) return;
+    if (isLoading || !formData.bookId || !selectedChapter) return;
 
-    let fullHtml = "";
-    editorRefs.current.forEach((ref) => {
-      if (ref) fullHtml += ref.innerHTML;
-    });
+    // Petakan setiap ref ke dalam format object array untuk dikirim ke backend
+    const pagesPayload = editorRefs.current
+      .map((ref, index) => {
+        if (!ref) return null;
+        
+        // Opsional: Hitung kata per halaman jika ingin disimpan spesifik per page di DB
+        const textContent = ref.innerText || "";
+        const wordCountPerPage = textContent.trim().split(/\s+/).filter((w) => w !== "").length;
 
-    const words =
-      editorRefs.current[0]?.innerText
-        .trim()
-        .split(/\s+/)
-        .filter((w) => w !== "").length || 0;
+        return {
+          pageNumber: index + 1,
+          content: ref.innerHTML,
+          wordCount: wordCountPerPage,
+        };
+      })
+      .filter(Boolean); // Filter elemen null jika ada ref yang kosong
 
     setSaveStatus("Saving...");
+
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${API_BASE_URL}/books/non-fiction/save-content`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            bookId,
-            chapterNumber: selectedChapter.chapterNumber,
-            content: fullHtml,
-            wordCount: words,
-          }),
+
+      const response = await fetch(`${API_BASE_URL}/books/non-fiction/save-content`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      );
+        body: JSON.stringify({
+          bookId: formData.bookId,
+          chapterNumber: selectedChapter.chapterNumber,
+          pages: pagesPayload, // Kirimkan array of pages
+          wordCount: formData.currentWordCount || 0, // Total kata tetap dikirim jika di-handle controller
+        }),
+      });
 
       if (response.ok) {
         setSaveStatus("Saved");
@@ -185,21 +222,9 @@ export default function StepPenulisanNonFiction({
     };
   }, []);
 
-  // --- 4. FORMATTING TOOLS (FIXED FONT SIZE & FONT FAMILY) ---
+  // --- 4. FORMATTING TOOLS ---
   const applyStyle = (command: string, value: any = undefined) => {
     document.execCommand(command, false, value);
-    updateStats();
-  };
-
-  const applyFontSize = (size: string) => {
-    setSelectedFontSize(size);
-    // execCommand 'fontSize' bawaan hanya 1-7. Kita gunakan hack font size 7 lalu diubah stylingnya.
-    document.execCommand("fontSize", false, "7");
-    const fontSpans = document.querySelectorAll('font[size="7"]');
-    fontSpans.forEach((span) => {
-      (span as HTMLElement).removeAttribute("size");
-      (span as HTMLElement).style.fontSize = size;
-    });
     updateStats();
   };
 
@@ -209,433 +234,225 @@ export default function StepPenulisanNonFiction({
     updateStats();
   };
 
-  const handleOnInput = (index: number) => {
+  const handleInput = (index: number) => {
     updateStats();
     handleReflow(index);
   };
 
   // --- 5. NAVIGATION & OVERFLOW ---
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
     const el = e.currentTarget;
+
     setCurrentPage(index + 1);
 
-    // Jika menekan Backspace di awal halaman, pindah ke halaman sebelumnya
-    if (e.key === "Backspace" && index > 0) {
-      const selection = window.getSelection();
-      if (selection && selection.anchorOffset === 0 && selection.anchorNode === el.firstChild) {
-        e.preventDefault();
-        const prevPage = editorRefs.current[index - 1];
-        if (prevPage) {
-          // Hapus halaman saat ini jika kosong (opsional)
-          if (el.innerText.trim() === "") {
-            setPageCount(prev => prev - 1);
-          }
-          prevPage.focus();
-          const range = document.createRange();
-          range.selectNodeContents(prevPage);
-          range.collapse(false);
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      }
-    }
-
-    // Jika Enter dan halaman penuh, langsung fokus ke halaman baru
     if (e.key === "Enter") {
       requestAnimationFrame(() => {
         if (el.scrollHeight > el.clientHeight) {
           if (index === pageCount - 1) {
-            setPageCount(prev => prev + 1);
+            setPageCount((prev) => prev + 1);
           }
+
           setTimeout(() => {
             editorRefs.current[index + 1]?.focus();
           }, 10);
         }
       });
     }
-  };
 
-  const handleReflow = useCallback((index: number) => {
-    const el = editorRefs.current[index];
-    if (!el) return;
+    if (e.key === "Backspace" && el.innerText.length === 0 && index > 0) {
+      e.preventDefault();
 
-    if (el.scrollHeight > el.clientHeight) {
-      if (index === pageCount - 1) {
-        setPageCount((prev) => prev + 1);
-        return;
-      }
+      const prevPage = editorRefs.current[index - 1];
 
-      const nextPage = editorRefs.current[index + 1];
-      if (nextPage) {
-        while (el.scrollHeight > el.clientHeight && el.childNodes.length > 0) {
-          const lastChild = el.lastChild;
-          if (!lastChild) break;
+      if (prevPage) {
+        setPageCount((prev) => prev - 1);
 
-          nextPage.insertBefore(lastChild, nextPage.firstChild);
-        }
+        prevPage.focus();
 
-        handleReflow(index + 1);
+        const range = document.createRange();
+        const sel = window.getSelection();
+
+        range.selectNodeContents(prevPage);
+        range.collapse(false);
+
+        sel?.removeAllRanges();
+        sel?.addRange(range);
       }
     }
-  }, [pageCount]);
+  };
+
+  const handleReflow = useCallback(
+    (index: number) => {
+      const el = editorRefs.current[index];
+
+      if (!el) return;
+
+      if (el.scrollHeight > el.clientHeight) {
+        
+        // 1. Jika ini adalah halaman terakhir, tambah halaman baru
+        if (index === pageCount - 1) {
+          setPageCount((prev) => prev + 1);
+        }
+
+        // 2. Langsung pindahkan kursor/fokus ke halaman berikutnya 
+        setTimeout(() => {
+          const nextPage = editorRefs.current[index + 1];
+          if (nextPage) {
+            nextPage.focus();
+            
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(nextPage);
+            range.collapse(true); 
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+          }
+        }, 50); 
+      }
+    },
+    [pageCount],
+  );
 
   return (
     <div
-      className={`space-y-6 px-2 md:px-0 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-2 md:p-12 overflow-y-auto text-black" : ""}`}
+      className={`space-y-4 md:space-y-6 ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-2 md:p-12 overflow-y-auto" : ""}`}
     >
-      {/* HEADER: CUSTOM DROPDOWN (WARNA PUTIH/ABU NETRAL) */}
+      {/* HEADER: DROPDOWN BAB */}
+
       {!isZenMode && (
-        <div className="max-w-[1200px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
-          <div className="flex-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block pl-1">
-              Navigasi Bab
-            </label>
+        <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border-2 border-slate-100 shadow-sm relative z-[60]">
+          <ChapterDropdown
+            outlines={outlines}
+            selectedChapter={selectedChapter}
+            setSelectedChapter={setSelectedChapter}
+            isDropdownOpen={isDropdownOpen}
+            setIsDropdownOpen={setIsDropdownOpen}
+          />
 
-            <div className="relative w-full max-w-md">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-full flex items-center justify-between bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl hover:border-slate-400 transition-all shadow-inner group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-600 shadow-sm">
-                    <BookText size={16} />
+          <div className="hidden md:flex items-center gap-4">
+            <AnimatePresence>
+              {selectedChapter && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-blue-50 px-5 py-3 rounded-2xl border border-blue-100 flex items-center gap-3"
+                >
+                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">
+                      Drafting Active
+                    </span>
+
+                    <span className="text-[11px] font-bold text-blue-900 mt-1">
+                      Bab {selectedChapter.chapter_number}
+                    </span>
                   </div>
-                  <span
-                    className={`text-sm font-bold truncate ${selectedChapter ? "text-slate-800" : "text-slate-400"}`}
-                  >
-                    {selectedChapter
-                      ? `Bab ${selectedChapter.chapterNumber}: ${selectedChapter.title}`
-                      : "Pilih bab untuk menulis..."}
-                  </span>
-                </div>
-                <motion.div animate={{ rotate: isDropdownOpen ? 180 : 0 }}>
-                  <ChevronDown size={18} className="text-slate-400" />
                 </motion.div>
-              </button>
-
-              <AnimatePresence>
-                {isDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setIsDropdownOpen(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-100 rounded-3xl shadow-2xl z-20 overflow-hidden"
-                    >
-                      <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-2">
-                        {chapters.length > 0 ? (
-                          chapters.map((ch) => (
-                            <button
-                              key={ch.id}
-                              onClick={() => {
-                                setSelectedChapter(ch);
-                                setIsDropdownOpen(false);
-                              }}
-                              className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all mb-1 ${selectedChapter?.chapterNumber ===
-                                ch.chapterNumber
-                                ? "bg-slate-100 text-slate-900"
-                                : "hover:bg-slate-50 text-slate-600"
-                                }`}
-                            >
-                              <span
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border ${selectedChapter?.chapterNumber === ch.chapterNumber ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-400 border-slate-200"}`}
-                              >
-                                {ch.chapterNumber}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-black uppercase tracking-tight truncate">
-                                  {ch.title}
-                                </p>
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-8 text-center">
-                            <p className="text-xs font-bold text-slate-400 italic">
-                              Belum ada struktur bab.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full border transition-all ${saveStatus === "Saved"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-                : "bg-slate-50 border-slate-200 text-slate-500"
-                }`}
-            >
-              {saveStatus === "Saved" ? (
-                <CheckCircle2 size={14} />
-              ) : (
-                <RefreshCw
-                  size={14}
-                  className={saveStatus === "Saving..." ? "animate-spin" : ""}
-                />
               )}
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                {saveStatus}
-              </span>
-            </div>
-            <button
-              onClick={() => setIsZenMode(!isZenMode)}
-              className="bg-slate-800 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase shadow-lg hover:bg-slate-950 transition-all active:scale-95"
-            >
-              {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
-            </button>
+            </AnimatePresence>
           </div>
         </div>
       )}
 
       {/* HEADER CONTROLS */}
-      <div className="flex justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto text-black">
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2 bg-white rounded-xl border shadow-sm flex items-center gap-2">
+
+      <div className="flex flex-col sm:flex-row justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto text-black gap-4 px-2">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="px-3 md:px-4 py-2 bg-white rounded-xl border shadow-sm flex items-center gap-2 w-full justify-center">
             <span
               className={`w-2 h-2 rounded-full ${selectedChapter ? "bg-green-500 animate-pulse" : "bg-slate-300"}`}
             />
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-              {selectedChapter
-                ? "Ready to write"
-                : "Waiting for chapter selection"}
+
+            <span className="text-[9px] md:text-[10px] font-black text-slate-600 uppercase tracking-widest truncate">
+              {selectedChapter ? "Ready to write" : "Wait selection"}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700">
-            Halaman: {currentPage} / {pageCount}
+        <div className="flex items-center justify-between w-full sm:w-auto gap-2 md:gap-4">
+          <span className="text-[9px] md:text-[10px] font-bold bg-white px-3 py-2 rounded-full border shadow-sm text-slate-700 whitespace-nowrap">
+            Hal: {currentPage} / {pageCount}
           </span>
+
+          <button
+            onClick={() => setIsZenMode(!isZenMode)}
+            className="bg-black text-white px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase shadow-xl hover:bg-slate-800 active:scale-95 transition-all flex-1 text-center"
+          >
+            {isZenMode ? "Keluar Mode Fokus" : "Fokus 🧘‍♂️"}
+          </button>
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto relative">
+      <div className="max-w-[1200px] mx-auto">
         {!selectedChapter ? (
-          <div className="h-[500px] flex flex-col items-center justify-center bg-slate-50/50 rounded-[3rem] border-4 border-dashed border-slate-200">
+          <div className="h-[300px] md:h-[500px] flex flex-col items-center justify-center bg-slate-50/50 rounded-[2rem] md:rounded-[3rem] border-4 border-dashed border-slate-200 p-6 text-center">
             <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ repeat: Infinity, duration: 2 }}
-              className="text-6xl mb-6 opacity-30"
+              className="text-4xl md:text-6xl mb-4 md:mb-6 opacity-30"
             >
-              <Lock size={60} />
+              📖
             </motion.div>
-            <h3 className="text-xl font-black text-slate-400 uppercase tracking-tighter">
-              Editor Terkunci
+
+            <h3 className="text-lg md:text-xl font-black text-slate-400 uppercase tracking-tighter">
+              Mulai Menulis
             </h3>
-            <p className="text-sm font-bold text-slate-300 italic mt-2">
-              Pilih bab dari menu dropdown di atas untuk mengaktifkan kertas
+
+            <p className="text-xs md:text-sm font-bold text-slate-300 italic mt-2">
+              Pilih bab dari menu di atas untuk mengaktifkan kertas
             </p>
           </div>
         ) : (
-          <div className="border-2 border-slate-200 rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-[0_20px_50px_rgba(0,0,0,0.1)]">
-            {/* TOOLBAR */}
-            <div className="w-full bg-slate-50 px-3 md:px-6 py-3 md:py-4 border-b-2 border-slate-100 flex flex-nowrap md:flex-wrap items-center gap-2 md:gap-4 sticky top-0 z-50 shadow-sm text-black overflow-x-auto custom-scrollbar whitespace-nowrap">
-              {/* Bold, Italic, Underline */}
-              <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-black font-black">
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("bold");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 border-r-2 border-slate-100 transition-colors"
-                >
-                  B
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("italic");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 border-r-2 border-slate-100 italic transition-colors"
-                >
-                  I
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("underline");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 underline transition-colors"
-                >
-                  U
-                </button>
-              </div>
+          <div className="border-2 border-slate-200 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-400 relative z-10 shadow-2xl">
+            <EditorToolbar
+              applyStyle={applyStyle}
+              applyFontFamily={applyFontFamily}
+              selectedFontFamily={selectedFontFamily}
+              saveStatus={saveStatus}
+            />
 
-              {/* Text Alignment */}
-              <div className="flex bg-white rounded-xl border-2 border-slate-200 shadow-sm overflow-hidden text-slate-600">
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("justifyLeft");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 border-r-2 border-slate-100 transition-colors"
-                >
-                  <AlignLeft size={16} />
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("justifyCenter");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 border-r-2 border-slate-100 transition-colors"
-                >
-                  <AlignCenter size={16} />
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("justifyRight");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 border-r-2 border-slate-100 transition-colors"
-                >
-                  <AlignRight size={16} />
-                </button>
-                <button
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    applyStyle("justifyFull");
-                  }}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 transition-colors"
-                >
-                  <AlignJustify size={16} />
-                </button>
-              </div>
-
-              {/* Font Family Selector */}
-              <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
-                <Type size={14} className="text-slate-400 mr-2" />
-                <select
-                  value={selectedFontFamily}
-                  onChange={(e) => applyFontFamily(e.target.value)}
-                  className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
-                >
-                  <option value="'Times New Roman', serif">
-                    Times New Roman
-                  </option>
-                  <option value="'Georgia', serif">Georgia</option>
-                  <option value="'Arial', sans-serif">Arial</option>
-                  <option value="'Courier New', monospace">Courier New</option>
-                  <option value="'Garamond', serif">Garamond</option>
-                </select>
-              </div>
-
-              {/* Font Size Selector */}
-              <div className="flex items-center bg-white rounded-xl border-2 border-slate-200 shadow-sm px-3">
-                <span className="text-[8px] font-black uppercase text-slate-400 mr-2">
-                  Size
-                </span>
-                <select
-                  value={selectedFontSize}
-                  onChange={(e) => applyFontSize(e.target.value)}
-                  className="bg-transparent text-[11px] font-black outline-none py-2 cursor-pointer text-black"
-                >
-                  {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36].map(
-                    (size) => (
-                      <option key={size} value={`${size}pt`}>
-                        {size} pt
-                      </option>
-                    ),
-                  )}
-                </select>
-              </div>
-
-              <div className="flex-1" />
-
-              <div className="flex items-center gap-2 px-4 py-2 bg-black rounded-full shadow-lg">
-                <span
-                  className={`w-2 h-2 rounded-full ${saveStatus === "Saving..." ? "bg-yellow-400 animate-spin" : saveStatus === "Typing..." ? "bg-blue-400 animate-pulse" : "bg-green-400"}`}
-                />
-                <span className="text-[9px] font-black text-white uppercase tracking-widest">
-                  {saveStatus}
-                </span>
-              </div>
-            </div>
-
-            {/* AREA HALAMAN (A4 STYLE) */}
             <div
-              className="w-full p-4 md:p-12 bg-slate-400 flex flex-col items-center gap-8 min-h-[800px] overflow-y-auto custom-scrollbar"
-              style={{ height: isZenMode ? "calc(100vh - 180px)" : "800px" }}
+              className="w-full p-2 md:p-12 bg-slate-400 flex flex-col items-center gap-4 md:gap-8 min-h-[500px] md:min-h-[800px] overflow-y-auto custom-scrollbar"
+              style={{ height: isZenMode ? "calc(100vh - 120px)" : "800px" }}
             >
               {Array.from({ length: pageCount }).map((_, index) => (
-                <div key={`page-${index}`} className="relative group">
-                  <div
-                    className={`absolute -left-16 top-10 font-black text-4xl transition-all ${currentPage === index + 1 ? "text-slate-800 opacity-100 scale-110" : "text-slate-200 opacity-30"}`}
-                  >
-                    {index + 1}
-                  </div>
-                  <div
-                    ref={(el) => {
-                      editorRefs.current[index] = el;
-                    }}
-                    contentEditable={!isLoading}
-                    suppressContentEditableWarning={true}
-                    onFocus={() => setCurrentPage(index + 1)}
-                    onInput={() => handleOnInput(index)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    className="bg-white shadow-2xl outline-none text-black prose prose-slate a4-page-div"
-                    style={{
-                      width: "100%",
-                      maxWidth: "210mm",
-                      minHeight: "297mm",
-                      height: "auto",
-                      padding: "clamp(1rem, 5vw, 2.54cm)",
-                      fontSize: selectedFontSize,
-                      fontFamily: selectedFontFamily,
-                      lineHeight: "1.8",
-                      overflow: "hidden",
-                      boxSizing: "border-box",
-                      wordBreak: "break-word",
-                      backgroundColor: "white"
-                    }}
-                  />
-                </div>
+                <WritingPage
+                  key={`page-${index}`}
+                  index={index}
+                  currentPage={currentPage}
+                  isLoading={isLoading}
+                  selectedFontSize={selectedFontSize}
+                  selectedFontFamily={selectedFontFamily}
+                  onFocus={() => setCurrentPage(index + 1)}
+                  onInput={() => handleInput(index)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  innerRef={(el) => {
+                    editorRefs.current[index] = el;
+                  }}
+                />
               ))}
 
               <button
                 onClick={() => setPageCount((prev) => prev + 1)}
-                className="mt-4 mb-20 px-10 py-4 bg-white/20 hover:bg-white/40 text-white rounded-full text-[10px] font-black uppercase border-2 border-white/30 transition-all shadow-xl backdrop-blur-md"
+                className="mt-4 mb-20 px-6 md:px-10 py-3 md:py-4 bg-black/20 hover:bg-black text-white rounded-full text-[9px] md:text-[10px] font-black uppercase border-2 border-white/30 transition-all shadow-xl backdrop-blur-md"
               >
-                + Tambah Halaman Manual
+                + Tambah Halaman
               </button>
             </div>
           </div>
         )}
 
-        {/* STATS FOOTER */}
         {!isZenMode && (
-          <div className="mt-6 md:mt-8 bg-white p-6 md:p-8 rounded-2xl md:rounded-[2.5rem] text-slate-800 flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl border border-slate-200">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                Total Kata Bab {selectedChapter?.chapterNumber || ""}
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black italic">
-                  {formData.currentWordCount || 0}
-                </span>
-                <span className="text-sm font-bold text-slate-400">
-                  / {formData.targetKata || 1000} Target
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-[10px] font-black uppercase bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200 shadow-inner">
-                Total Halaman: {pageCount}
-              </div>
-              <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">
-                LITERA Non-Fiction System v.2
-              </p>
-            </div>
-          </div>
+          <StatsFooter
+            selectedChapter={selectedChapter}
+            currentWordCount={formData.currentWordCount}
+            targetKata={parseInt(formData.targetKata)}
+            pageCount={pageCount}
+          />
         )}
       </div>
 
@@ -643,47 +460,105 @@ export default function StepPenulisanNonFiction({
         .a4-page-div {
           background-color: white !important;
           color: black !important;
-          border-radius: 4px;
         }
+
+        /* Reset Margin Heading agar pas dengan layout buku */
+
+        .prose h1 {
+          font-size: 2em;
+          font-weight: bold;
+          margin-bottom: 0.5em !important;
+          margin-top: 0.5em !important;
+          line-height: 1.2;
+        }
+
+        .prose h2 {
+          font-size: 1.5em;
+          font-weight: bold;
+          margin-bottom: 0.4em !important;
+          margin-top: 0.4em !important;
+          line-height: 1.2;
+        }
+
+        .prose h3 {
+          font-size: 1.2em;
+          font-weight: bold;
+          margin-bottom: 0.3em !important;
+          margin-top: 0.3em !important;
+          line-height: 1.2;
+        }
+
         .prose p {
           margin: 0 !important;
-          padding-bottom: 0.8em;
-          line-height: 1.8;
+          padding-bottom: 0.2em;
+          line-height: 1.6;
           text-align: justify;
           color: black !important;
         }
+
         [contenteditable]:empty:before {
-          content: "Mulai menulis naskah bab di sini...";
+          content: "Mulai menulis di sini...";
+
           color: #cbd5e1;
+
           font-style: italic;
+
           display: block;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-          height: 6px;
-          width: 6px;
+
+        @media (max-width: 768px) {
+          .writing-page-container {
+            width: 100%;
+
+            display: flex;
+
+            justify-content: center;
+
+            overflow: hidden;
+
+            height: auto;
+          }
+
+          .a4-page-div {
+            transform: scale(0.42);
+
+            transform-origin: top center;
+
+            margin-bottom: -170mm;
+          }
         }
+
+        @media (min-width: 480px) and (max-width: 767px) {
+          .a4-page-div {
+            transform: scale(0.6);
+
+            margin-bottom: -120mm;
+          }
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          height: 4px;
+          width: 4px;
+        }
+
         .custom-scrollbar::-webkit-scrollbar-track {
           background: #f1f1f1;
           border-radius: 10px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #94a3b8;
+          background: #cbd5e1;
           border-radius: 10px;
         }
-        @media (max-width: 1024px) {
-        .absolute.-left-16 {
-          display: none;
-        }
-        
-        .a4-page-div img {
-          max-width: 100%;
-          height: auto;
-        }
-      }
-
-      .custom-scrollbar::-webkit-scrollbar {
-        height: 4px;
-      }
       `}</style>
     </div>
   );

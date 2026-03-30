@@ -4,12 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock, RotateCcw } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
-import CharacterDetailModal from "./componentRevisi/CharacterDetailModal";
 import CommentInputModal from "./componentRevisi/CommentInputModal";
 import RevisionHeader from "./componentRevisi/RevisionHeader";
 import FeatureContent from "./componentRevisi/FeatureContent";
 import RevisionPage from "./componentRevisi/RevisionPage";
-import ComparisonModal from "./componentRevisi/ComparisonModal";
+import ComparisonModal from "./componentRevisi/ComparisonModal"; // Pastikan komponen ini dibuat
 
 interface StepRevisiProps {
   comments: any[];
@@ -18,15 +17,12 @@ interface StepRevisiProps {
   handleInputChange: (field: string, value: any) => void;
 }
 
-export default function StepRevisi({
-  comments: initialComments,
-  versions: initialVersions,
+export default function StepRevisiNon({
   formData,
   handleInputChange,
 }: StepRevisiProps) {
   // --- STATES ---
   const [loading, setLoading] = useState(true);
-  const [characters, setCharacters] = useState<any[]>([]);
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
   const [localComments, setLocalComments] = useState<any[]>([]);
   const [localVersions, setLocalVersions] = useState<any[]>([]);
@@ -46,14 +42,10 @@ export default function StepRevisi({
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFontSize, setSelectedFontSize] = useState("12pt");
   const [selectedFontFamily, setSelectedFontFamily] = useState("'Times New Roman', serif");
-  const [selectedChar, setSelectedChar] = useState<any | null>(null);
-
-  const [isScanningConsistency, setIsScanningConsistency] = useState(false);
-  const [consistencyReports, setConsistencyReports] = useState<any[]>([]);
 
   const [selectedVersionId, setSelectedVersionId] = useState<string | number>("sekarang");
-  
-  // New State for Restore Feature
+
+  // State untuk Fitur Restore
   const [versionToRestore, setVersionToRestore] = useState<any | null>(null);
 
   const editorRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -71,30 +63,36 @@ export default function StepRevisi({
     }
   }, [savedPages, loading, isZenMode, pageCount]);
 
-  // --- 2. FETCH OUTLINES ---
+  // --- 2. FETCH OUTLINES (NON-FIKSI) ---
   useEffect(() => {
     const fetchOutlines = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token || !formData.bookId) return;
 
-        const res = await fetch(`${API_BASE_URL}/books/outlines/${formData.bookId}`, {
+        const res = await fetch(`${API_BASE_URL}/books/chapter-structures/${formData.bookId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        setOutlines(data);
+        
+        const mappedData = data.map((item: any) => ({
+          ...item,
+          chapter_number: item.chapterNumber,
+        }));
+        
+        setOutlines(mappedData);
 
-        if (data.length > 0 && !selectedChapter) {
-          setSelectedChapter(data[0]);
+        if (mappedData.length > 0 && !selectedChapter) {
+          setSelectedChapter(mappedData[0]);
         }
       } catch (err) {
-        console.error("Gagal memuat daftar outline:", err);
+        console.error("Gagal memuat daftar outline non-fiksi:", err);
       }
     };
     fetchOutlines();
   }, [formData.bookId]);
 
-  // --- 3. FETCH DATA BAB ---
+  // --- 3. FETCH DATA BAB (CONTENT, COMMENTS, VERSIONS) ---
   const fetchData = async () => {
     const token = localStorage.getItem("token");
     if (!token || !formData.bookId || !selectedChapter) return;
@@ -104,7 +102,7 @@ export default function StepRevisi({
       setSaveStatus("Loading...");
 
       const resContent = await fetch(
-        `${API_BASE_URL}/books/get-chapter?bookId=${formData.bookId}&outlineId=${selectedChapter.id}`,
+        `${API_BASE_URL}/books/non-fiction/get-content?bookId=${formData.bookId}&chapterNumber=${selectedChapter.chapterNumber}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const contentResult = await resContent.json();
@@ -117,29 +115,23 @@ export default function StepRevisi({
         setMainChapterPages(pagesData);
       } else {
         setPageCount(1);
-        setSavedPages([{ page: 1, content: "" }]);
-        setMainChapterPages([{ page: 1, content: "" }]);
+        pagesData = [{ page: 1, content: "", id: contentResult.data?.id }];
+        setSavedPages(pagesData);
+        setMainChapterPages(pagesData);
       }
 
-      const resChars = await fetch(`${API_BASE_URL}/books/characters/${formData.bookId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const charResult = await resChars.json();
-      if (charResult) setCharacters(charResult);
-
-      if (pagesData.length > 0) {
-        const commentsPromises = pagesData.map((p: any) =>
-          fetch(`${API_BASE_URL}/books/get-comments?chapterId=${p.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((r) => r.json())
-        );
-        const commentsResults = await Promise.all(commentsPromises);
-        let allComments: any[] = [];
-        commentsResults.forEach((res) => { if (res.data) allComments = [...allComments, ...res.data]; });
-        allComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setLocalComments(allComments);
-
+      // Get Comments & Versions (Menggunakan ID dari halaman pertama Non-Fiksi)
+      if (pagesData.length > 0 && pagesData[0].id) {
         const firstPageId = pagesData[0].id;
+
+        // Fetch Comments
+        const resComments = await fetch(`${API_BASE_URL}/books/get-comments?chapterId=${firstPageId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const commentResult = await resComments.json();
+        if (commentResult.data) setLocalComments(commentResult.data);
+
+        // Fetch Versions
         const resVersions = await fetch(`${API_BASE_URL}/books/get-versions?chapterId=${firstPageId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -161,55 +153,46 @@ export default function StepRevisi({
 
   // --- 4. LOGIKA RESTORE VERSI ---
   const handleRestoreVersion = async (version: any) => {
-  const token = localStorage.getItem("token");
-  
-  // Ambil chapterId dari outline yang sedang aktif atau halaman pertama
-  const chapterId = selectedChapter?.id || mainChapterPages[0]?.id;
+    const token = localStorage.getItem("token");
+    const chapterId = savedPages[0]?.id; // ID dari tabel NonFictionChapterContents
 
-  if (!chapterId || !version.id) {
-    alert("Data tidak lengkap untuk melakukan pemulihan.");
-    return;
-  }
-
-  try {
-    setSaveStatus("Restoring...");
-    
-    const res = await fetch(`${API_BASE_URL}/books/restore-version`, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json", 
-        Authorization: `Bearer ${token}` 
-      },
-      body: JSON.stringify({ 
-        chapterId: chapterId, 
-        versionId: version.id 
-      }),
-    });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      // 1. Tutup modal perbandingan
-      setVersionToRestore(null);
-      
-      // 2. Kembalikan seleksi versi ke "sekarang"
-      setSelectedVersionId("sekarang");
-      
-      // 3. Refresh data naskah dari server agar editor terupdate
-      await fetchData();
-      
-      alert(result.message || "Naskah berhasil dipulihkan!");
-    } else {
-      alert(result.message || "Gagal memulihkan naskah.");
+    if (!chapterId || !version.id) {
+      alert("Data tidak lengkap untuk melakukan pemulihan.");
+      return;
     }
-  } catch (error) {
-    console.error("Restore Error:", error);
-    setSaveStatus("Error");
-    alert("Terjadi kesalahan koneksi saat memulihkan naskah.");
-  } finally {
-    setSaveStatus("Safe");
-  }
-};
+
+    try {
+      setSaveStatus("Restoring...");
+      const res = await fetch(`${API_BASE_URL}/books/restore-version`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ 
+          chapterId: chapterId, 
+          versionId: version.id, 
+          isNonFiction: true
+        }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        setVersionToRestore(null);
+        setSelectedVersionId("sekarang");
+        await fetchData(); // Refresh content di editor
+        alert(result.message || "Naskah berhasil dipulihkan!");
+      } else {
+        alert(result.message || "Gagal memulihkan naskah.");
+      }
+    } catch (error) {
+      console.error("Restore Error:", error);
+      setSaveStatus("Error");
+    } finally {
+      setSaveStatus("Safe");
+    }
+  };
 
   const handleSelectVersion = (version: any) => {
     if (version === "sekarang") {
@@ -217,46 +200,23 @@ export default function StepRevisi({
       setSavedPages(mainChapterPages);
       setPageCount(mainChapterPages.length || 1);
     } else {
-      // Buka Modal Preview Perbandingan
-      setVersionToRestore(version);
+      setVersionToRestore(version); // Membuka modal perbandingan
     }
     setActiveFeature(null);
   };
 
-  // --- 5. LOGIKA LAINNYA (SAVE, AI, KOMENTAR) ---
-  const handleAIConsistencyCheck = async () => {
-    const token = localStorage.getItem("token");
-    if (!token || characters.length === 0) return;
-    const fullText = editorRefs.current.map((ref) => ref?.innerText || "").join("\n");
-    if (fullText.trim().length < 50) return alert("Naskah terlalu pendek.");
-
-    try {
-      setIsScanningConsistency(true);
-      setActiveFeature("konsistensi");
-      const response = await fetch(`${API_BASE_URL}/ai/check-character-consistency`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text: fullText, characterDatabase: characters }),
-      });
-      const result = await response.json();
-      if (result.success) setConsistencyReports(result.data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsScanningConsistency(false);
-    }
-  };
-
+  // --- 5. LOGIKA SAVE, SELECTION, COMMENT ---
   const handleSaveVersion = async () => {
     const token = localStorage.getItem("token");
     const firstPageId = savedPages[0]?.id;
-    if (!firstPageId) return alert("Naskah kosong!");
+    if (!firstPageId) return alert("Simpan naskah terlebih dahulu!");
+
     try {
       setSaveStatus("Archiving...");
       const res = await fetch(`${API_BASE_URL}/books/save-chapter-version`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ chapterId: firstPageId }),
+        body: JSON.stringify({ chapterId: firstPageId, isNonFiction: true }),
       });
       if (res.ok) { fetchData(); setActiveFeature("versi"); }
     } catch (error) { setSaveStatus("Error"); }
@@ -276,37 +236,27 @@ export default function StepRevisi({
     const token = localStorage.getItem("token");
     const targetPage = savedPages[currentPage - 1];
     if (!targetPage?.id) return;
-    const highlightId = `highlight-${Date.now()}`;
-    const selection = window.getSelection();
-    if (!selection || !selectedText) return;
-
-    const range = selection.getRangeAt(0);
-    const span = document.createElement("span");
-    span.id = highlightId;
-    span.className = "bg-orange-200 rounded px-1 transition-all duration-300";
 
     try {
       setSaveStatus("Commenting...");
-      span.textContent = selectedText;
-      range.deleteContents();
-      range.insertNode(span);
       const res = await fetch(`${API_BASE_URL}/books/save-comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          chapterId: targetPage.id,
-          highlight_id: highlightId,
-          selected_text: selectedText,
-          comment_text: commentText,
-          label: commentLabel,
-          currentContent: editorRefs.current[currentPage - 1]?.innerHTML || "",
+            chapterId: targetPage.id,
+            highlight_id: `highlight-${Date.now()}`,
+            selected_text: selectedText,
+            comment_text: commentText,
+            label: commentLabel,
+            currentContent: editorRefs.current[currentPage - 1]?.innerHTML || "",
+            isNonFiction: true
         }),
       });
+
       if (res.ok) {
         setShowCommentInput(false);
         setSelectedText("");
         setCommentText("");
-        selection.removeAllRanges();
         fetchData();
         setActiveFeature("komentar");
       }
@@ -325,23 +275,19 @@ export default function StepRevisi({
   const handleDeleteComment = async (comment: any) => {
     const token = localStorage.getItem("token");
     if (!confirm("Hapus catatan ini?")) return;
-    const element = document.getElementById(comment.highlight_id);
-    if (element) element.replaceWith(element.innerText);
-    const targetPageIndex = savedPages.findIndex((p) => p.id === comment.chapterId);
-    const activeIndex = targetPageIndex !== -1 ? targetPageIndex : currentPage - 1;
     try {
       setSaveStatus("Deleting...");
-      const res = await fetch(`${API_BASE_URL}/books/delete-comment`, {
+      await fetch(`${API_BASE_URL}/books/delete-comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           commentId: comment.id,
           chapterId: comment.chapterId,
           highlight_id: comment.highlight_id,
-          currentContent: editorRefs.current[activeIndex]?.innerHTML || "",
+          currentContent: editorRefs.current[currentPage - 1]?.innerHTML || "",
         }),
       });
-      if (res.ok) fetchData();
+      fetchData();
     } catch (error) { setSaveStatus("Error"); }
   };
 
@@ -349,10 +295,6 @@ export default function StepRevisi({
     <div className={`space-y-8 transition-all duration-500 overflow-x-hidden ${isZenMode ? "fixed inset-0 z-[100] bg-[#F1F5F9] p-0 flex flex-col h-screen overflow-hidden text-black" : ""}`}>
       
       {/* MODALS */}
-      <AnimatePresence>
-        {selectedChar && <CharacterDetailModal selectedChar={selectedChar} onClose={() => setSelectedChar(null)} />}
-      </AnimatePresence>
-
       <AnimatePresence>
         {showCommentInput && (
           <CommentInputModal 
@@ -367,17 +309,16 @@ export default function StepRevisi({
         )}
       </AnimatePresence>
 
-      {/* NEW: RESTORE COMPARISON MODAL */}
-     <AnimatePresence>
-  {versionToRestore && (
-    <ComparisonModal 
-      version={versionToRestore}
-      currentContent={mainChapterPages} // Naskah saat ini untuk dibandingkan
-      onClose={() => setVersionToRestore(null)}
-      onRestore={() => handleRestoreVersion(versionToRestore)} // Menjalankan fungsi API di atas
-    />
-  )}
-</AnimatePresence>
+      <AnimatePresence>
+        {versionToRestore && (
+          <ComparisonModal 
+            version={versionToRestore}
+            currentContent={mainChapterPages}
+            onClose={() => setVersionToRestore(null)}
+            onRestore={() => handleRestoreVersion(versionToRestore)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* HEADER NAV */}
       {!isZenMode && (
@@ -385,27 +326,25 @@ export default function StepRevisi({
           outlines={outlines}
           selectedChapter={selectedChapter}
           setSelectedChapter={setSelectedChapter}
-          isScanningConsistency={isScanningConsistency}
-          handleAIConsistencyCheck={handleAIConsistencyCheck}
+          isScanningConsistency={false}
+          handleAIConsistencyCheck={() => {}}
         />
       )}
 
-      {/* TOOLBAR KONTROL */}
+      {/* TOOLBAR */}
       <div className={`${isZenMode ? "px-12 py-6 border-b bg-white" : "flex justify-between items-center border-b-2 border-slate-100 pb-4 max-w-[1200px] mx-auto"} flex justify-between items-center gap-4 flex-wrap`}>
         <div className="flex items-center gap-4">
-          <h4 className="font-black uppercase tracking-tighter text-black text-lg">
-            {isZenMode ? "📝 Mode Fokus" : "📄 Review Naskah"}
-          </h4>
+          <h4 className="font-black uppercase text-black text-lg">📄 Review Non-Fiksi</h4>
           <span className="text-[10px] font-bold bg-white px-3 py-1 rounded-full border shadow-sm text-slate-700">
-            Halaman: {currentPage} / {pageCount}
+            Hal: {currentPage} / {pageCount}
           </span>
         </div>
         <div className="flex gap-3 items-center">
-          <button onClick={() => setIsZenMode(!isZenMode)} className="text-[10px] font-black bg-black text-white px-6 py-2.5 rounded-full hover:bg-slate-800 transition-all uppercase shadow-xl">
+          <button onClick={() => setIsZenMode(!isZenMode)} className="text-[10px] font-black bg-black text-white px-6 py-2.5 rounded-full uppercase shadow-xl">
             {isZenMode ? "Keluar Mode Fokus" : "Mode Fokus 🧘‍♂️"}
           </button>
           {!isZenMode && (
-            <button onClick={handleSaveVersion} className="text-[10px] font-black bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-all uppercase shadow-xl">
+            <button onClick={handleSaveVersion} className="text-[10px] font-black bg-orange-500 text-white px-6 py-2.5 rounded-full uppercase shadow-xl">
               Simpan v.Next
             </button>
           )}
@@ -415,53 +354,46 @@ export default function StepRevisi({
       {/* MAIN CONTAINER */}
       <div className={`${isZenMode ? "flex flex-1 overflow-hidden" : "space-y-6 relative"}`}>
         
-        {/* TABS SIDEBAR (NORMAL) */}
         {!isZenMode ? (
-          <div className="max-w-[1200px] mx-auto flex border-2 border-slate-100 bg-white p-2 gap-2 rounded-2xl shadow-sm relative z-30">
-            {[
-              { id: "komentar", label: `Catatan (${localComments.length})`, icon: "💬" },
-              { id: "versi", label: "Versi", icon: "📜" },
-              { id: "qc", label: "QC Tokoh", icon: "👤" },
-              { id: "konsistensi", label: "Cek AI", icon: "🤖" },
-            ].map((item) => (
+          <div className="max-w-[400px] mx-auto flex border-2 border-slate-100 bg-white p-2 gap-2 rounded-2xl shadow-sm relative z-30">
+            {[{ id: "komentar", label: `Catatan (${localComments.length})`, icon: "💬" }, { id: "versi", label: "Versi", icon: "📜" }].map((item) => (
               <button key={item.id} onClick={() => setActiveFeature(activeFeature === item.id ? null : item.id)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest ${activeFeature === item.id ? "bg-black text-white" : "text-slate-400 hover:bg-slate-50"}`}>
+                className={`flex-1 py-3 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest ${activeFeature === item.id ? "bg-black text-white" : "text-slate-400 hover:bg-slate-50"}`}>
                 <span>{item.icon}</span> {item.label}
               </button>
             ))}
           </div>
         ) : (
-          /* TABS SIDEBAR (ZEN) */
           <div className="w-16 bg-white border-r flex flex-col items-center py-6 gap-6 z-20">
-            {[{ id: "komentar", icon: "💬" }, { id: "versi", icon: "📜" }, { id: "qc", icon: "👤" }, { id: "konsistensi", icon: "🤖" }].map((item) => (
+            {[{ id: "komentar", icon: "💬" }, { id: "versi", icon: "📜" }].map((item) => (
               <button key={item.id} onClick={() => setActiveFeature(activeFeature === item.id ? null : item.id)}
-                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${activeFeature === item.id ? "bg-black text-white" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`}>
+                className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${activeFeature === item.id ? "bg-black text-white" : "bg-slate-50 text-slate-400"}`}>
                 <span className="text-lg">{item.icon}</span>
               </button>
             ))}
           </div>
         )}
 
-        {/* FEATURE PANEL */}
         <AnimatePresence>
           {!isZenMode && activeFeature && (
-            <motion.div initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
               className="absolute left-0 right-0 top-[70px] z-50 px-2 pointer-events-none">
               <div className="max-w-5xl mx-auto pointer-events-auto">
                 <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <div className="p-8">
                     <FeatureContent 
                       activeFeature={activeFeature}
-                      isScanningConsistency={isScanningConsistency}
-                      consistencyReports={consistencyReports}
                       localComments={localComments}
                       localVersions={localVersions}
-                      characters={characters}
                       selectedVersionId={selectedVersionId}
                       handleSelectVersion={handleSelectVersion}
                       handleDeleteComment={handleDeleteComment}
                       scrollToHighlight={scrollToHighlight}
-                      setSelectedChar={setSelectedChar}
+                      // Non-fiksi tidak butuh data tokoh di sini, kirim empty array
+                      isScanningConsistency={false}
+                      consistencyReports={[]}
+                      characters={[]}
+                      setSelectedChar={() => {}}
                     />
                   </div>
                 </div>
@@ -470,24 +402,21 @@ export default function StepRevisi({
           )}
         </AnimatePresence>
 
-        {/* EDITOR AREA */}
         <div className={`flex-1 overflow-y-auto bg-slate-400 p-8 custom-scrollbar`}
              style={{ height: isZenMode ? 'calc(100vh - 80px)' : 'auto' }}>
-          <div id="paper-revisi" className={`mx-auto flex flex-col items-center gap-8 bg-slate-400 ${isZenMode ? "max-w-[1000px]" : "w-full"}`}>
+          <div className={`mx-auto flex flex-col items-center gap-8 bg-slate-400 ${isZenMode ? "max-w-[1000px]" : "w-full"}`}>
             {!selectedChapter ? (
               <div className="bg-white/80 backdrop-blur-md border-4 border-dashed border-white rounded-[3rem] p-20 flex flex-col items-center justify-center text-slate-500 shadow-2xl">
                 <Lock size={40} className="mb-6 opacity-20" />
                 <h3 className="text-xl font-black uppercase tracking-tighter">Review Terkunci</h3>
-                <p className="font-bold mt-2 text-center">Silahkan pilih bab pada dropdown navigasi.</p>
+                <p className="font-bold mt-2">Pilih bab untuk mulai mereview.</p>
               </div>
             ) : (
               <>
-                {loading && <div className="text-white text-xs font-black animate-pulse">MEMPROSES NASKAH...</div>}
+                {loading && <div className="text-white text-xs font-black animate-pulse">MEMPROSES...</div>}
                 {Array.from({ length: pageCount }).map((_, index) => (
                   <RevisionPage 
-                    key={index}
-                    index={index}
-                    currentPage={currentPage}
+                    key={index} index={index} currentPage={currentPage}
                     innerRef={(el) => { editorRefs.current[index] = el; }}
                     onMouseUp={() => handleTextSelection(index)}
                     onFocus={() => setCurrentPage(index + 1)}
@@ -499,46 +428,7 @@ export default function StepRevisi({
             )}
           </div>
         </div>
-
-        {/* ZEN MODE SIDEBAR PANEL */}
-        <AnimatePresence>
-          {isZenMode && activeFeature && (
-            <motion.div initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }} className="w-[400px] bg-white border-l-2 border-slate-200 h-full flex flex-col z-20 shadow-2xl">
-              <div className="p-6 border-b flex justify-between items-center bg-slate-50">
-                <h5 className="font-black text-xs uppercase text-black">{activeFeature} Panel</h5>
-                <button onClick={() => setActiveFeature(null)} className="text-black">✕</button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-                <FeatureContent 
-                  activeFeature={activeFeature}
-                  isVertical={true}
-                  isScanningConsistency={isScanningConsistency}
-                  consistencyReports={consistencyReports}
-                  localComments={localComments}
-                  localVersions={localVersions}
-                  characters={characters}
-                  selectedVersionId={selectedVersionId}
-                  handleSelectVersion={handleSelectVersion}
-                  handleDeleteComment={handleDeleteComment}
-                  scrollToHighlight={scrollToHighlight}
-                  setSelectedChar={setSelectedChar}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
-
-      <style jsx global>{`
-        .a4-page-div { background-color: white !important; color: black !important; }
-        .prose h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em !important; margin-top: 0.5em !important; line-height: 1.2; color: black !important; }
-        .prose p { margin: 0 !important; padding-bottom: 0.2em; line-height: 1.6; text-align: justify; color: black !important; word-break: break-word; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
-        [id^="highlight-"] { cursor: pointer; transition: all 0.2s; }
-        [id^="highlight-"]:hover { filter: brightness(0.9); }
-      `}</style>
     </div>
   );
 }
