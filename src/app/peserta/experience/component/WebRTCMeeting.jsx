@@ -20,12 +20,8 @@ export default function WebRTCMeeting({ roomId }) {
     const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
 
     const [pinnedId, setPinnedId] = useState(null); 
-    const [layoutType, setLayoutType] = useState("auto");
+    const [layoutType, setLayoutType] = useState("auto"); // auto, grid, focus, sidebar
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
-
-    const [userName, setUserName] = useState("User-" + Math.floor(Math.random() * 1000));
-    const [isEditingName, setIsEditingName] = useState(false);
-    const [participantNames, setParticipantNames] = useState({}); 
 
     useEffect(() => {
         start();
@@ -39,22 +35,20 @@ export default function WebRTCMeeting({ roomId }) {
             socket.off("webrtc_answer");
             socket.off("webrtc_ice_candidate");
             socket.off("video_user_left");
-            socket.off("update_user_name");
         };
     }, []);
 
-    // PERBAIKAN: Menambahkan isLayoutModalOpen & isCamOn ke dependency 
-    // agar stream dipastikan tetap nempel saat modal dibuka atau kamera diubah
+    // PERBAIKAN: Fungsi penempelan stream yang lebih stabil untuk mencegah flickering
     useEffect(() => {
         const syncStreams = () => {
-            // Sync Local Video
+            // Sync Local
             if (localVideoRef.current) {
                 const targetStream = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
                 if (localVideoRef.current.srcObject !== targetStream) {
                     localVideoRef.current.srcObject = targetStream;
                 }
             }
-            // Sync Remote Videos
+            // Sync Remotes
             remoteStreams.forEach(user => {
                 const videoEl = videoRefs.current[user.id];
                 if (videoEl && user.stream && videoEl.srcObject !== user.stream) {
@@ -62,11 +56,8 @@ export default function WebRTCMeeting({ roomId }) {
                 }
             });
         };
-
-        // Jalankan sinkronisasi segera setelah render
-        const timeoutId = setTimeout(syncStreams, 50);
-        return () => clearTimeout(timeoutId);
-    }, [remoteStreams, pinnedId, isScreenSharing, layoutType, isLayoutModalOpen, isCamOn]);
+        syncStreams();
+    }, [remoteStreams, pinnedId, isScreenSharing, layoutType]);
 
     const participants = useMemo(() => {
         const all = [{ id: 'local', isLocal: true, stream: localStreamRef.current }, ...remoteStreams.map(s => ({ ...s, isLocal: false }))];
@@ -74,81 +65,6 @@ export default function WebRTCMeeting({ roomId }) {
         const others = all.filter(p => p.id !== (pinnedId || all[0].id));
         return { pinned, others, all };
     }, [pinnedId, remoteStreams]);
-
-    const handleUpdateName = (e) => {
-        if (e.key === "Enter" || e.type === "blur") {
-            setIsEditingName(false);
-            socket.emit("change_name", { roomId, name: userName });
-        }
-    };
-
-    const initSocket = () => {
-        socket.emit("join_video_room", { roomId, name: userName });
-        socket.on("video_room_users", (users) => {
-            const namesMap = {};
-            users.forEach(({ socketId, name }) => {
-                namesMap[socketId] = name;
-                if (socketId !== socket.id) createPeerConnection(socketId, true);
-            });
-            setParticipantNames(namesMap);
-        });
-        socket.on("video_user_joined", ({ socketId, name }) => {
-            setParticipantNames(prev => ({ ...prev, [socketId]: name }));
-            createPeerConnection(socketId, true);
-        });
-        socket.on("update_user_name", ({ socketId, name }) => {
-            setParticipantNames(prev => ({ ...prev, [socketId]: name }));
-        });
-        socket.on("webrtc_offer", async ({ offer, senderId }) => {
-            const pc = await createPeerConnection(senderId, false);
-            await pc.setRemoteDescription(offer);
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
-        });
-        socket.on("webrtc_answer", async ({ answer, senderId }) => {
-            const pc = peersRef.current[senderId];
-            if (pc) await pc.setRemoteDescription(answer);
-        });
-        socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
-            const pc = peersRef.current[senderId];
-            if (pc) await pc.addIceCandidate(candidate);
-        });
-        socket.on("video_user_left", (id) => {
-            if (peersRef.current[id]) { peersRef.current[id].close(); delete peersRef.current[id]; }
-            if (audioAnalyzersRef.current[id]) { audioAnalyzersRef.current[id].stop(); delete audioAnalyzersRef.current[id]; }
-            setRemoteStreams(prev => prev.filter(s => s.id !== id));
-            setParticipantNames(prev => { const n = {...prev}; delete n[id]; return n; });
-            if (pinnedId === id) setPinnedId(null);
-        });
-    };
-
-    const createPeerConnection = async (targetId, isInitiator) => {
-        if (peersRef.current[targetId]) return peersRef.current[targetId];
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }],
-        });
-        peersRef.current[targetId] = pc;
-        localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
-        pc.ontrack = (event) => {
-            const remoteStream = event.streams[0];
-            if (!audioAnalyzersRef.current[targetId]) {
-                const monitor = monitorStream(remoteStream, targetId);
-                if (monitor) audioAnalyzersRef.current[targetId] = monitor;
-            }
-            setRemoteStreams(prev => {
-                if (prev.find(s => s.id === targetId)) return prev;
-                return [...prev, { id: targetId, stream: remoteStream }];
-            });
-        };
-        pc.onicecandidate = (e) => { if (e.candidate) socket.emit("webrtc_ice_candidate", { target: targetId, candidate: e.candidate, senderId: socket.id }); };
-        if (isInitiator) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
-        }
-        return pc;
-    };
 
     const monitorStream = (stream, socketId = null) => {
         try {
@@ -160,6 +76,7 @@ export default function WebRTCMeeting({ roomId }) {
             source.connect(analyser);
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             let isSpeaking = false;
+
             const checkVolume = () => {
                 if (!analyser) return;
                 analyser.getByteFrequencyData(dataArray);
@@ -167,6 +84,7 @@ export default function WebRTCMeeting({ roomId }) {
                 for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 const average = sum / dataArray.length;
                 const currentlySpeaking = average > 30;
+
                 if (currentlySpeaking !== isSpeaking) {
                     isSpeaking = currentlySpeaking;
                     if (socketId === null) setIsLocalSpeaking(isSpeaking);
@@ -187,16 +105,6 @@ export default function WebRTCMeeting({ roomId }) {
             if (monitor) audioAnalyzersRef.current["local"] = monitor;
             initSocket();
         } catch (err) { console.error("❌ Error:", err); }
-    };
-
-    const toggleMic = () => {
-        const track = localStreamRef.current.getAudioTracks()[0];
-        if (track) { track.enabled = !track.enabled; setIsMicOn(track.enabled); if (!track.enabled) setIsLocalSpeaking(false); }
-    };
-
-    const toggleCamera = () => {
-        const track = localStreamRef.current.getVideoTracks()[0];
-        if (track) { track.enabled = !track.enabled; setIsCamOn(track.enabled); }
     };
 
     const toggleScreenShare = async () => {
@@ -229,40 +137,98 @@ export default function WebRTCMeeting({ roomId }) {
         setIsScreenSharing(false);
     };
 
+    const initSocket = () => {
+        socket.emit("join_video_room", roomId);
+        socket.on("video_room_users", (users) => {
+            users.forEach(({ socketId }) => { if (socketId !== socket.id) createPeerConnection(socketId, true); });
+        });
+        socket.on("video_user_joined", (id) => createPeerConnection(id, true));
+        socket.on("webrtc_offer", async ({ offer, senderId }) => {
+            const pc = await createPeerConnection(senderId, false);
+            await pc.setRemoteDescription(offer);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
+        });
+        socket.on("webrtc_answer", async ({ answer, senderId }) => {
+            const pc = peersRef.current[senderId];
+            if (pc) await pc.setRemoteDescription(answer);
+        });
+        socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
+            const pc = peersRef.current[senderId];
+            if (pc) await pc.addIceCandidate(candidate);
+        });
+        socket.on("video_user_left", (id) => {
+            if (peersRef.current[id]) { peersRef.current[id].close(); delete peersRef.current[id]; }
+            if (audioAnalyzersRef.current[id]) { audioAnalyzersRef.current[id].stop(); delete audioAnalyzersRef.current[id]; }
+            setRemoteStreams(prev => prev.filter(s => s.id !== id));
+            if (pinnedId === id) setPinnedId(null);
+        });
+    };
+
+    const createPeerConnection = async (targetId, isInitiator) => {
+        if (peersRef.current[targetId]) return peersRef.current[targetId];
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" }],
+        });
+        peersRef.current[targetId] = pc;
+        localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+        pc.ontrack = (event) => {
+            const remoteStream = event.streams[0];
+            if (!audioAnalyzersRef.current[targetId]) {
+                const monitor = monitorStream(remoteStream, targetId);
+                if (monitor) audioAnalyzersRef.current[targetId] = monitor;
+            }
+            setRemoteStreams(prev => {
+                if (prev.find(s => s.id === targetId)) return prev;
+                return [...prev, { id: targetId, stream: remoteStream }];
+            });
+        };
+        pc.onicecandidate = (e) => { if (e.candidate) socket.emit("webrtc_ice_candidate", { target: targetId, candidate: e.candidate, senderId: socket.id }); };
+        if (isInitiator) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
+        }
+        return pc;
+    };
+
+    const toggleMic = () => {
+        const track = localStreamRef.current.getAudioTracks()[0];
+        if (track) { track.enabled = !track.enabled; setIsMicOn(track.enabled); if (!track.enabled) setIsLocalSpeaking(false); }
+    };
+
+    const toggleCamera = () => {
+        const track = localStreamRef.current.getVideoTracks()[0];
+        if (track) { track.enabled = !track.enabled; setIsCamOn(track.enabled); }
+    };
+
+    // PERBAIKAN: Komponen VideoCard dipisahkan atau dioptimasi agar tidak re-mount
     const VideoCard = ({ id, isLocal, isPinned, customClass = "" }) => {
         const isSpeaking = isLocal ? isLocalSpeaking : speakingUsers[id];
-        const displayName = isLocal ? userName : (participantNames[id] || "Peserta...");
-
+        
         return (
             <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 transition-all duration-300 ${customClass}
                 ${isSpeaking && (isLocal ? isMicOn : true) ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)]' : 'border-transparent'}`}>
                 
+                {/* Gunakan key yang stabil untuk mencegah re-mount video element */}
                 <video
-                    key={`video-ele-${id}`}
+                    key={`video-${id}`}
                     ref={el => { if (isLocal) localVideoRef.current = el; else if (el) videoRefs.current[id] = el; }}
                     autoPlay muted={isLocal} playsInline className="w-full h-full object-cover"
                 />
 
-                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] sm:text-xs flex items-center gap-2 z-10">
-                    {isLocal && isEditingName ? (
-                        <input
-                            autoFocus
-                            className="bg-transparent border-b border-blue-400 outline-none w-20 sm:w-28 text-white"
-                            value={userName}
-                            onChange={(e) => setUserName(e.target.value)}
-                            onKeyDown={handleUpdateName}
-                            onBlur={handleUpdateName}
-                        />
-                    ) : (
-                        <span className={`font-semibold truncate max-w-[100px] sm:max-w-[180px] ${isLocal ? 'cursor-pointer hover:text-blue-300' : ''}`} onClick={() => isLocal && setIsEditingName(true)}>
-                            {displayName} {isLocal && "✎"}
-                        </span>
-                    )}
+                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] sm:text-xs flex items-center gap-2 z-10 pointer-events-none">
+                    <span className="font-semibold truncate max-w-[80px] sm:max-w-[150px]">{isLocal ? (isScreenSharing ? "Layar Anda" : "Anda") : `Peserta: ${id.slice(0, 6)}`}</span>
                     {isLocal && !isMicOn && <span className="text-red-400">🔇</span>}
                     {!isLocal && speakingUsers[id] && <span className="animate-pulse">🔊</span>}
                 </div>
 
-                <button onClick={() => setPinnedId(pinnedId === id ? null : id)} className={`absolute top-3 right-3 p-2 rounded-full transition-all z-20 ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'}`}>
+                <button 
+                    onClick={() => setPinnedId(pinnedId === id ? null : id)}
+                    className={`absolute top-3 right-3 p-2 rounded-full transition-all z-20 
+                    ${pinnedId === id ? 'bg-blue-600 text-white' : 'bg-black/40 text-white opacity-0 group-hover:opacity-100 hover:bg-black/60'}`}
+                >
                     📌
                 </button>
 
@@ -280,7 +246,9 @@ export default function WebRTCMeeting({ roomId }) {
             <div className="flex-1 overflow-hidden p-4 sm:p-6 relative">
                 {layoutType === 'grid' && (
                     <div className="flex flex-wrap content-start justify-center gap-4 h-full overflow-y-auto pb-24">
-                        {participants.all.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />)}
+                        {participants.all.map(p => (
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-[300px] h-[220px] sm:w-[350px] sm:h-[250px]" />
+                        ))}
                     </div>
                 )}
                 {layoutType === 'focus' && (
@@ -290,19 +258,29 @@ export default function WebRTCMeeting({ roomId }) {
                 )}
                 {layoutType === 'sidebar' && (
                     <div className="flex h-full gap-4">
-                        <div className="flex-[3] h-full"><VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" /></div>
+                        <div className="flex-[3] h-full">
+                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                        </div>
                         <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar hidden md:flex max-w-[280px]">
-                            {participants.others.map(p => <div key={p.id} className="w-full aspect-video shrink-0"><VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" /></div>)}
+                            {participants.others.map(p => (
+                                <div key={p.id} className="w-full aspect-video shrink-0"><VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" /></div>
+                            ))}
                         </div>
                     </div>
                 )}
                 {layoutType === 'auto' && (
-                    <div className={`grid gap-4 h-full w-full ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'}`}>
-                        {participants.all.map(p => <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />)}
+                    <div className={`grid gap-4 h-full w-full 
+                        ${participants.all.length === 1 ? 'grid-cols-1 max-w-4xl mx-auto' : 
+                          participants.all.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 
+                          'grid-cols-2 lg:grid-cols-3'}`}>
+                        {participants.all.map(p => (
+                            <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
+                        ))}
                     </div>
                 )}
             </div>
 
+            {/* MODAL PENGATURAN (SAMA SEPERTI SEBELUMNYA) */}
             {isLayoutModalOpen && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setIsLayoutModalOpen(false)} />
@@ -331,6 +309,7 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             )}
 
+            {/* CONTROL BAR */}
             <div className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-center z-[9999]">
                 <div className="flex items-center gap-2 sm:gap-4 bg-neutral-900/90 backdrop-blur-2xl p-3 sm:p-4 px-6 sm:px-10 rounded-full border border-white/10 shadow-2xl mb-4">
                     <button onClick={toggleMic} className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all ${isMicOn ? 'bg-neutral-800 hover:bg-neutral-700' : 'bg-red-600'}`}>
