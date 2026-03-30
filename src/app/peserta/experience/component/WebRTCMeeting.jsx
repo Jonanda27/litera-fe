@@ -13,9 +13,9 @@ export default function WebRTCMeeting({ roomId }) {
     const peersRef = useRef({});
     const videoRefs = useRef({});
     
-    // Antrian Sinyal & ICE + Logika Multi-user
+    // Antrian Sinyal & ICE
     const makingOffer = useRef({}); 
-    const ignoreOffer = useRef({}); // Menangani tabrakan penawaran pada 3+ user
+    const ignoreOffer = useRef({}); 
     const iceCandidatesQueue = useRef({}); 
 
     const [remoteStreams, setRemoteStreams] = useState([]);
@@ -83,6 +83,7 @@ export default function WebRTCMeeting({ roomId }) {
             initSocket();
         } catch (err) { 
             console.error("❌ Media Error:", err); 
+            // Tetap izinkan join jika tidak ada kamera/mic (Opsional)
             setIsJoined(true);
             initSocket();
         }
@@ -108,7 +109,14 @@ export default function WebRTCMeeting({ roomId }) {
         
         socket.on("video_room_users", (users) => {
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
-            setParticipantsList(normalizedUsers);
+            // Tambahkan user yang sudah ada ke dalam state
+            setParticipantsList(prev => {
+                const existingIds = new Set(prev.map(p => p.id));
+                const newUsers = normalizedUsers.filter(u => !existingIds.has(u.id));
+                return [...prev, ...newUsers];
+            });
+
+            // Karena kita yang baru join dan menerima list ini, kita bertindak sebagai INITIATOR ke semua partisipan
             normalizedUsers.forEach((user) => { 
                 if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
@@ -121,6 +129,7 @@ export default function WebRTCMeeting({ roomId }) {
                 if (prev.find(p => p.id === newUser.id)) return prev;
                 return [...prev, newUser];
             });
+            // CATATAN: Disini kita JANGAN memanggil createPeerConnection agar tidak tabrakan (Biar user baru yang menginisiasi)
         });
 
         socket.on("new_chat_message", (msg) => {
@@ -130,9 +139,10 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
+                // Saat menerima offer, kita sebagai ANSWERER (isInitiator = false)
                 const pc = await createPeerConnection(senderId, false);
                 
-                // POLITE PEER LOGIC: Tangani tabrakan sinyal
+                // Cek tabrakan sinyal (Berjaga-jaga jika ada network latency)
                 const readyForOffer = !makingOffer.current[senderId] && (pc.signalingState === "stable" || ignoreOffer.current[senderId]);
                 const offerCollision = !readyForOffer;
                 ignoreOffer.current[senderId] = offerCollision;
