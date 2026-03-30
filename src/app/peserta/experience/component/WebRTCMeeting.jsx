@@ -13,8 +13,9 @@ export default function WebRTCMeeting({ roomId }) {
     const peersRef = useRef({});
     const videoRefs = useRef({});
     
-    // Antrian Sinyal & ICE
+    // --- FIX STATE WEBRTC ---
     const makingOffer = useRef({}); 
+    const ignoreOffer = useRef({}); // Untuk menangani tabrakan penawaran (Polite Peer)
     const iceCandidatesQueue = useRef({}); 
 
     const [remoteStreams, setRemoteStreams] = useState([]);
@@ -109,6 +110,7 @@ export default function WebRTCMeeting({ roomId }) {
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
             setParticipantsList(normalizedUsers);
             normalizedUsers.forEach((user) => { 
+                // Inisiator hanya untuk user yang sudah ada di room
                 if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
         });
@@ -130,11 +132,23 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             try {
                 const pc = await createPeerConnection(senderId, false);
+                
+                // --- LOGIKA PERFECT NEGOTIATION ---
+                const readyForOffer = !makingOffer.current[senderId] && 
+                                     (pc.signalingState === "stable" || ignoreOffer.current[senderId]);
+                
+                const offerCollision = !readyForOffer;
+                ignoreOffer.current[senderId] = offerCollision;
+
+                if (offerCollision) return; // Abaikan jika terjadi tabrakan (polite peer logic)
+
                 await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                
                 if (iceCandidatesQueue.current[senderId]) {
                     iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate));
                     delete iceCandidatesQueue.current[senderId];
                 }
+
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
                 socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
@@ -144,7 +158,8 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             try {
                 const pc = peersRef.current[senderId];
-                if (pc && pc.signalingState !== "stable") {
+                // FIX: Hanya setRemoteDescription jika state memang 'have-local-offer'
+                if (pc && pc.signalingState === "have-local-offer") {
                     await pc.setRemoteDescription(new RTCSessionDescription(answer));
                     if (iceCandidatesQueue.current[senderId]) {
                         iceCandidatesQueue.current[senderId].forEach(candidate => pc.addIceCandidate(candidate));
@@ -157,8 +172,9 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
             try {
                 const pc = peersRef.current[senderId];
+                if (!pc) return;
                 const rtcCandidate = new RTCIceCandidate(candidate);
-                if (!pc || !pc.remoteDescription) {
+                if (!pc.remoteDescription) {
                     if (!iceCandidatesQueue.current[senderId]) iceCandidatesQueue.current[senderId] = [];
                     iceCandidatesQueue.current[senderId].push(rtcCandidate);
                 } else {
@@ -186,33 +202,40 @@ export default function WebRTCMeeting({ roomId }) {
 
     const createPeerConnection = async (targetId, isInitiator) => {
         if (peersRef.current[targetId]) return peersRef.current[targetId];
+        
         const pc = new RTCPeerConnection({
             iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
         });
+        
         peersRef.current[targetId] = pc;
+
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         }
+
         pc.ontrack = (event) => {
             setRemoteStreams(prev => {
                 if (prev.find(s => s.id === targetId)) return prev;
                 return [...prev, { id: targetId, stream: event.streams[0] }];
             });
         };
+
         pc.onicecandidate = (e) => { 
             if (e.candidate) socket.emit("webrtc_ice_candidate", { target: targetId, candidate: e.candidate, senderId: socket.id }); 
         };
+
         pc.onnegotiationneeded = async () => {
-            if (!isInitiator) return;
             try {
                 makingOffer.current[targetId] = true;
                 const offer = await pc.createOffer();
+                // FIX: Cek state sebelum setLocal
                 if (pc.signalingState !== "stable") return;
                 await pc.setLocalDescription(offer);
                 socket.emit("webrtc_offer", { target: targetId, offer, senderId: socket.id });
             } catch (err) { console.error("Negotiation error:", err); } 
             finally { makingOffer.current[targetId] = false; }
         };
+
         return pc;
     };
 
@@ -322,7 +345,7 @@ export default function WebRTCMeeting({ roomId }) {
     return (
         <div className="fixed inset-0 bg-black flex flex-row overflow-hidden text-white font-sans">
             
-            {/* AREA KIRI: VIDEO */}
+            {/* AREA KIRI: VIDEO (RIGHTBAR FRIENDLY) */}
             <div className="flex-1 flex flex-col relative h-full overflow-hidden">
                 <div className="fixed top-6 left-6 z-[10001] flex flex-col gap-2 pointer-events-none">
                     {notifications.map(n => (
@@ -376,11 +399,11 @@ export default function WebRTCMeeting({ roomId }) {
                 </div>
             </div>
 
-            {/* AREA KANAN: RIGHTBAR */}
+            {/* AREA KANAN: RIGHTBAR (Chat/Peserta) */}
             {(isChatOpen || isParticipantsOpen) && (
-                <div className="w-80 md:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col z-[10005] animate-in slide-in-from-right duration-300">
+                <div className="w-80 md:w-96 h-full bg-[#1e1e1e] border-l border-white/5 flex flex-col z-[10005] animate-in slide-in-from-right duration-300 shadow-2xl">
                     
-                    {/* ISI CHAT */}
+                    {/* PANEL CHAT (Input di Bawah) */}
                     {isChatOpen && (
                         <div className="flex flex-col h-full">
                             <div className="p-5 border-b border-white/5 flex justify-between items-center">
@@ -388,10 +411,9 @@ export default function WebRTCMeeting({ roomId }) {
                                 <button onClick={() => setIsChatOpen(false)} className="text-white/50 hover:text-white">✕</button>
                             </div>
 
-                            {/* Area Pesan */}
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-5">
+                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
                                 <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                                    <p className="text-[10px] text-white/40 text-center">Pesan tidak akan disimpan setelah rapat berakhir.</p>
+                                    <p className="text-[10px] text-white/40 text-center leading-tight">Pesan bersifat sementara dan akan hilang setelah rapat berakhir.</p>
                                 </div>
                                 {messages.map((msg, idx) => (
                                     <div key={idx} className={`flex flex-col ${msg.senderId === socket.id ? 'items-end' : 'items-start'}`}>
@@ -399,7 +421,7 @@ export default function WebRTCMeeting({ roomId }) {
                                             <span className="text-[9px] font-bold text-blue-400">{msg.senderName}</span>
                                             <span className="text-[8px] text-white/20">{msg.timestamp}</span>
                                         </div>
-                                        <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+                                        <div className={`px-4 py-2 rounded-2xl text-sm max-w-[90%] break-words shadow-lg ${msg.senderId === socket.id ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                                             {msg.text}
                                         </div>
                                     </div>
@@ -407,7 +429,7 @@ export default function WebRTCMeeting({ roomId }) {
                                 <div ref={chatEndRef} />
                             </div>
 
-                            {/* Input Chat (DI BAWAH) */}
+                            {/* INPUT CHAT DI BAWAH */}
                             <div className="p-4 border-t border-white/5">
                                 <form onSubmit={sendChat} className="relative">
                                     <input 
@@ -415,7 +437,7 @@ export default function WebRTCMeeting({ roomId }) {
                                         value={chatInput} 
                                         onChange={(e) => setChatInput(e.target.value)} 
                                         placeholder="Tulis pesan..." 
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-5 pr-12 text-sm outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-5 pr-12 text-sm outline-none focus:border-blue-500 transition-all placeholder:text-white/20" 
                                     />
                                     <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 p-2 hover:bg-white/5 rounded-full transition-colors">
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
@@ -425,7 +447,7 @@ export default function WebRTCMeeting({ roomId }) {
                         </div>
                     )}
 
-                    {/* ISI PESERTA */}
+                    {/* PANEL PESERTA */}
                     {isParticipantsOpen && (
                         <div className="flex flex-col h-full">
                             <div className="p-5 border-b border-white/5 flex justify-between items-center">
@@ -435,14 +457,14 @@ export default function WebRTCMeeting({ roomId }) {
                             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                                 <div className="flex items-center gap-4 bg-blue-600/10 p-4 rounded-2xl border border-blue-500/20">
                                     <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold">ME</div>
-                                    <div className="flex-1"><p className="text-xs font-bold">{userName} (Anda)</p><p className="text-[10px] text-white/30 tracking-tight">ID: {socket.id?.slice(0, 8)}</p></div>
+                                    <div className="flex-1 truncate"><p className="text-xs font-bold truncate">{userName} (Anda)</p><p className="text-[10px] text-white/30 truncate">ID: {socket.id?.slice(0, 8)}</p></div>
                                     <div className="flex gap-2 text-sm"><span>{isMicOn ? "🎤" : "🔇"}</span><span>{isCamOn ? "📹" : "🚫"}</span></div>
                                 </div>
                                 {participantsList.filter(p => p.id !== socket.id).map((p) => (
                                     <div key={p.id} className="flex items-center gap-4 bg-white/5 p-4 rounded-2xl border border-white/5 hover:bg-white/10 transition-all">
                                         <div className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-white text-xs font-bold">{p.name?.charAt(0).toUpperCase()}</div>
-                                        <div className="flex-1"><p className="text-xs font-bold">{p.name}</p><p className="text-[10px] text-white/20">Peserta Rapat</p></div>
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                        <div className="flex-1 truncate"><p className="text-xs font-bold truncate">{p.name}</p><p className="text-[10px] text-white/20">Peserta Rapat</p></div>
+                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
                                     </div>
                                 ))}
                             </div>
