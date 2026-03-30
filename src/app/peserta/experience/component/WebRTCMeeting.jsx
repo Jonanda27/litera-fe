@@ -103,7 +103,7 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
             const pc = await createPeerConnection(senderId, false);
-            await pc.setRemoteDescription(offer);
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit("webrtc_answer", { target: senderId, answer, senderId: socket.id });
@@ -111,12 +111,12 @@ export default function WebRTCMeeting({ roomId }) {
 
         socket.on("webrtc_answer", async ({ answer, senderId }) => {
             const pc = peersRef.current[senderId];
-            if (pc) await pc.setRemoteDescription(answer);
+            if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
         });
 
         socket.on("webrtc_ice_candidate", async ({ candidate, senderId }) => {
             const pc = peersRef.current[senderId];
-            if (pc) await pc.addIceCandidate(candidate);
+            if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
         socket.on("video_user_left", (id) => {
@@ -152,6 +152,7 @@ export default function WebRTCMeeting({ roomId }) {
 
         pc.ontrack = (event) => {
             const remoteStream = event.streams[0];
+            // PERBAIKAN: Gunakan functional update agar remoteStreams tidak menimpa satu sama lain
             setRemoteStreams(prev => {
                 if (prev.find(s => s.id === targetId)) return prev;
                 return [...prev, { id: targetId, stream: remoteStream }];
@@ -210,7 +211,6 @@ export default function WebRTCMeeting({ roomId }) {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
             
-            // Pasang stream ke ref video jika elemen sudah ada
             if (localVideoRef.current) {
                 localVideoRef.current.srcObject = stream;
             }
@@ -290,6 +290,7 @@ export default function WebRTCMeeting({ roomId }) {
                             if (el && localStreamRef.current) el.srcObject = isScreenSharing ? screenStreamRef.current : localStreamRef.current;
                         } else if (el) {
                             videoRefs.current[id] = el;
+                            // Tambahkan pengecekan aliran remote di sini
                             const remoteS = remoteStreams.find(s => s.id === id);
                             if (remoteS) el.srcObject = remoteS.stream;
                         }
