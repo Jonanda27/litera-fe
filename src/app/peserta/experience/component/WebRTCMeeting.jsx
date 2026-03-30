@@ -4,6 +4,10 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { socket } from "@/lib/sockets/socket";
 
 export default function WebRTCMeeting({ roomId }) {
+    // --- STATE UNTUK IDENTITAS ---
+    const [userName, setUserName] = useState("");
+    const [isJoined, setIsJoined] = useState(false);
+
     const localVideoRef = useRef(null);
     const localStreamRef = useRef(null);
     const screenStreamRef = useRef(null);
@@ -19,7 +23,6 @@ export default function WebRTCMeeting({ roomId }) {
     const [layoutType, setLayoutType] = useState("auto");
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
 
-    // --- TAMBAHAN BARU: State untuk Daftar Peserta & UI ---
     const [participantsList, setParticipantsList] = useState([]); 
     const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
 
@@ -42,14 +45,22 @@ export default function WebRTCMeeting({ roomId }) {
     }, [remoteStreams, isScreenSharing]);
 
     useEffect(() => {
-        syncAllVideos();
-    }, [syncAllVideos, layoutType, pinnedId, isCamOn, isMicOn]);
+        if (isJoined) syncAllVideos();
+    }, [syncAllVideos, layoutType, pinnedId, isCamOn, isMicOn, isJoined]);
 
-    const start = async () => {
+    // Fungsi untuk mulai bergabung setelah input nama
+    const handleJoin = async (e) => {
+        e.preventDefault();
+        if (!userName.trim()) return;
+        
+        setIsJoined(true);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
-            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+            // Delay sedikit untuk memastikan ref video sudah render
+            setTimeout(() => {
+                if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+            }, 100);
             initSocket();
         } catch (err) { 
             console.error("❌ Media Error:", err); 
@@ -58,7 +69,6 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     useEffect(() => {
-        start();
         return () => {
             Object.values(peersRef.current).forEach(pc => pc.close());
             if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop());
@@ -73,20 +83,22 @@ export default function WebRTCMeeting({ roomId }) {
     }, []);
 
     const initSocket = () => {
-        socket.emit("join_video_room", roomId);
+        // Mengirim roomId dan nama user ke server
+        socket.emit("join_video_room", { roomId, name: userName });
         
         socket.on("video_room_users", (users) => {
-            // Update daftar peserta (hanya ID)
+            // users sekarang diharapkan berisi object {id, name}
             setParticipantsList(users);
-
-            users.forEach((socketId) => { 
-                if (socketId !== socket.id) createPeerConnection(socketId, true); 
+            users.forEach((user) => { 
+                if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
         });
 
-        socket.on("video_user_joined", (id) => {
-            // Update daftar peserta saat ada yang baru masuk
-            setParticipantsList(prev => prev.includes(id) ? prev : [...prev, id]);
+        socket.on("video_user_joined", ({ id, name }) => {
+            setParticipantsList(prev => {
+                if (prev.find(p => p.id === id)) return prev;
+                return [...prev, { id, name }];
+            });
             createPeerConnection(id, true);
         });
 
@@ -109,9 +121,7 @@ export default function WebRTCMeeting({ roomId }) {
         });
 
         socket.on("video_user_left", (id) => {
-            // Update daftar peserta saat ada yang keluar
-            setParticipantsList(prev => prev.filter(pId => pId !== id));
-            
+            setParticipantsList(prev => prev.filter(p => p.id !== id));
             if (peersRef.current[id]) { 
                 peersRef.current[id].close(); 
                 delete peersRef.current[id]; 
@@ -196,20 +206,23 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     const participants = useMemo(() => {
-        const all = [{ id: 'local', isLocal: true }, ...remoteStreams.map(s => ({ ...s, isLocal: false }))];
+        const all = [{ id: 'local', isLocal: true, name: userName }, ...remoteStreams.map(s => {
+            const pInfo = participantsList.find(p => p.id === s.id);
+            return { ...s, isLocal: false, name: pInfo?.name || s.id.slice(0, 6) };
+        })];
         const pinned = all.find(p => p.id === pinnedId) || all[0];
         const others = all.filter(p => p.id !== pinned.id);
         return { pinned, others, all };
-    }, [pinnedId, remoteStreams]);
+    }, [pinnedId, remoteStreams, participantsList, userName]);
 
-    const VideoCard = ({ id, isLocal, customClass = "" }) => {
+    const VideoCard = ({ id, isLocal, name, customClass = "" }) => {
         const showVideo = isLocal ? (isCamOn || isScreenSharing) : true;
 
         return (
             <div className={`relative group rounded-2xl overflow-hidden bg-neutral-900 border-4 border-transparent transition-all duration-300 ${customClass}`}>
                 <div className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur-md px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg text-white text-[9px] sm:text-xs flex items-center gap-1 sm:gap-2 z-30">
                     <span className="font-semibold truncate max-w-[80px] sm:max-w-[120px]">
-                        {isLocal ? (isScreenSharing ? "Layar Anda" : "Anda") : `User: ${id.slice(0, 6)}`}
+                        {isLocal ? (isScreenSharing ? "Layar Anda" : `Anda (${name})`) : name}
                     </span>
                     {isLocal && !isMicOn && <span className="text-red-400 text-[10px] sm:text-base">🔇</span>}
                 </div>
@@ -242,13 +255,51 @@ export default function WebRTCMeeting({ roomId }) {
 
                 {!showVideo && isLocal && (
                     <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
-                        <div className="w-12 h-12 sm:w-20 sm:h-20 bg-neutral-700 rounded-full flex items-center justify-center text-xl sm:text-3xl text-white/50">👤</div>
+                        <div className="w-12 h-12 sm:w-20 sm:h-20 bg-neutral-700 rounded-full flex items-center justify-center text-xl sm:text-3xl text-white/50">
+                            {name?.charAt(0).toUpperCase() || "👤"}
+                        </div>
                     </div>
                 )}
             </div>
         );
     };
 
+    // --- RENDER LOBBY / LOGIN SCREEN ---
+    if (!isJoined) {
+        return (
+            <div className="w-full h-[100dvh] bg-black flex items-center justify-center p-6">
+                <div className="w-full max-w-md bg-neutral-900 p-8 rounded-3xl border border-white/10 shadow-2xl">
+                    <div className="text-center mb-8">
+                        <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg shadow-blue-500/20">👋</div>
+                        <h1 className="text-2xl font-bold text-white mb-2">Selamat Datang</h1>
+                        <p className="text-white/50 text-sm">Masukkan nama Anda untuk bergabung ke meeting</p>
+                    </div>
+                    <form onSubmit={handleJoin} className="space-y-6">
+                        <div>
+                            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-2 block">Nama Lengkap</label>
+                            <input 
+                                autoFocus
+                                type="text" 
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                placeholder="Contoh: Budi Santoso"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all"
+                                required
+                            />
+                        </div>
+                        <button 
+                            type="submit"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all active:scale-[0.98] shadow-lg shadow-blue-600/20"
+                        >
+                            Bergabung Sekarang
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    // --- RENDER UTAMA MEETING ---
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative">
             <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
@@ -262,7 +313,7 @@ export default function WebRTCMeeting({ roomId }) {
                               participants.all.length <= 4 ? 'grid-cols-2 max-w-6xl' : 
                               'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
                             {participants.all.map(p => (
-                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="w-full h-full aspect-video md:aspect-auto" />
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full aspect-video md:aspect-auto" />
                             ))}
                         </div>
                     )}
@@ -270,26 +321,26 @@ export default function WebRTCMeeting({ roomId }) {
                     {layoutType === 'grid' && (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 h-full overflow-y-auto pb-24 content-start">
                             {participants.all.map(p => (
-                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} customClass="aspect-video w-full h-auto" />
+                                <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} customClass="aspect-video w-full h-auto" />
                             ))}
                         </div>
                     )}
 
                     {layoutType === 'focus' && (
                         <div className="w-full h-full max-w-6xl mx-auto flex items-center justify-center">
-                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                            <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full" />
                         </div>
                     )}
 
                     {layoutType === 'sidebar' && (
                         <div className="flex flex-col md:flex-row h-full gap-2 sm:gap-4">
                             <div className="flex-[3] h-[60%] md:h-full">
-                                <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} customClass="w-full h-full" />
+                                <VideoCard id={participants.pinned.id} isLocal={participants.pinned.isLocal} name={participants.pinned.name} customClass="w-full h-full" />
                             </div>
                             <div className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar h-[40%] md:h-full">
                                 {participants.others.map(p => (
                                     <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
-                                        <VideoCard id={p.id} isLocal={p.isLocal} customClass="w-full h-full" />
+                                        <VideoCard id={p.id} isLocal={p.isLocal} name={p.name} customClass="w-full h-full" />
                                     </div>
                                 ))}
                             </div>
@@ -297,7 +348,7 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
                 </div>
 
-                {/* --- TAMBAHAN BARU: Sidebar Daftar Peserta --- */}
+                {/* Sidebar Daftar Peserta */}
                 {isParticipantsOpen && (
                     <div className="w-64 sm:w-80 h-full bg-neutral-900 border-l border-white/10 flex flex-col z-[100] animate-in slide-in-from-right duration-300">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
@@ -307,25 +358,26 @@ export default function WebRTCMeeting({ roomId }) {
                         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                             {/* User Lokal */}
                             <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-blue-500/30">
-                                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white">Anda</div>
+                                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">Anda</div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-white text-sm font-medium truncate">Anda (Host)</p>
+                                    <p className="text-white text-sm font-medium truncate">{userName} (Anda)</p>
                                     <p className="text-xs text-white/40">ID: {socket.id?.slice(0, 8)}</p>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 text-xs">
                                     <span>{isMicOn ? "🎤" : "🔇"}</span>
                                     <span>{isCamOn ? "📹" : "🚫"}</span>
                                 </div>
                             </div>
                             {/* User Lain */}
-                            {participantsList.filter(id => id !== socket.id).map((id) => (
-                                <div key={id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl">
-                                    <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">User</div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-white text-sm font-medium truncate">User_{id.slice(0, 6)}</p>
-                                        <p className="text-xs text-white/40">ID: {id.slice(0, 8)}</p>
+                            {participantsList.filter(p => p.id !== socket.id).map((p) => (
+                                <div key={p.id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl">
+                                    <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">
+                                        {p.name?.charAt(0).toUpperCase()}
                                     </div>
-                                    {/* Status indikator stream */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                                        <p className="text-xs text-white/40">ID: {p.id.slice(0, 8)}</p>
+                                    </div>
                                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 </div>
                             ))}
@@ -369,7 +421,6 @@ export default function WebRTCMeeting({ roomId }) {
                     </button>
                     <div className="w-[1px] h-6 sm:h-8 bg-white/10 mx-1 shrink-0" />
                     
-                    {/* TOMBOL DAFTAR PESERTA (Baru) */}
                     <button 
                         onClick={() => setIsParticipantsOpen(!isParticipantsOpen)} 
                         className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 transition-all ${isParticipantsOpen ? 'bg-blue-600 text-white' : 'bg-neutral-800 text-white/70'}`}
