@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { socket } from "@/lib/sockets/socket";
 
 export default function WebRTCMeeting({ roomId }) {
-    // --- STATE UNTUK IDENTITAS ---
     const [userName, setUserName] = useState("");
     const [isJoined, setIsJoined] = useState(false);
 
@@ -23,6 +22,7 @@ export default function WebRTCMeeting({ roomId }) {
     const [layoutType, setLayoutType] = useState("auto");
     const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
 
+    // Pastikan ini selalu berisi object {id, name}
     const [participantsList, setParticipantsList] = useState([]); 
     const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
 
@@ -48,7 +48,6 @@ export default function WebRTCMeeting({ roomId }) {
         if (isJoined) syncAllVideos();
     }, [syncAllVideos, layoutType, pinnedId, isCamOn, isMicOn, isJoined]);
 
-    // Fungsi untuk mulai bergabung setelah input nama
     const handleJoin = async (e) => {
         e.preventDefault();
         if (!userName.trim()) return;
@@ -57,7 +56,6 @@ export default function WebRTCMeeting({ roomId }) {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             localStreamRef.current = stream;
-            // Delay sedikit untuk memastikan ref video sudah render
             setTimeout(() => {
                 if (localVideoRef.current) localVideoRef.current.srcObject = stream;
             }, 100);
@@ -83,23 +81,27 @@ export default function WebRTCMeeting({ roomId }) {
     }, []);
 
     const initSocket = () => {
-        // Mengirim roomId dan nama user ke server
         socket.emit("join_video_room", { roomId, name: userName });
         
         socket.on("video_room_users", (users) => {
-            // users sekarang diharapkan berisi object {id, name}
-            setParticipantsList(users);
-            users.forEach((user) => { 
+            // Normalisasi data: Jika server kirim string ID, ubah jadi object
+            const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0,4)}` } : u);
+            setParticipantsList(normalizedUsers);
+
+            normalizedUsers.forEach((user) => { 
                 if (user.id !== socket.id) createPeerConnection(user.id, true); 
             });
         });
 
-        socket.on("video_user_joined", ({ id, name }) => {
+        socket.on("video_user_joined", (data) => {
+            // Cek apakah data berbentuk string (ID saja) atau object {id, name}
+            const newUser = typeof data === 'string' ? { id: data, name: `User_${data.slice(0,4)}` } : data;
+            
             setParticipantsList(prev => {
-                if (prev.find(p => p.id === id)) return prev;
-                return [...prev, { id, name }];
+                if (prev.find(p => p.id === newUser.id)) return prev;
+                return [...prev, newUser];
             });
-            createPeerConnection(id, true);
+            createPeerConnection(newUser.id, true);
         });
 
         socket.on("webrtc_offer", async ({ offer, senderId }) => {
@@ -206,9 +208,9 @@ export default function WebRTCMeeting({ roomId }) {
     };
 
     const participants = useMemo(() => {
-        const all = [{ id: 'local', isLocal: true, name: userName }, ...remoteStreams.map(s => {
+        const all = [{ id: 'local', isLocal: true, name: userName || "Anda" }, ...remoteStreams.map(s => {
             const pInfo = participantsList.find(p => p.id === s.id);
-            return { ...s, isLocal: false, name: pInfo?.name || s.id.slice(0, 6) };
+            return { ...s, isLocal: false, name: pInfo?.name || `User_${s.id?.slice(0, 4) || 'unk'}` };
         })];
         const pinned = all.find(p => p.id === pinnedId) || all[0];
         const others = all.filter(p => p.id !== pinned.id);
@@ -256,7 +258,7 @@ export default function WebRTCMeeting({ roomId }) {
                 {!showVideo && isLocal && (
                     <div className="absolute inset-0 flex items-center justify-center bg-neutral-800 z-[5]">
                         <div className="w-12 h-12 sm:w-20 sm:h-20 bg-neutral-700 rounded-full flex items-center justify-center text-xl sm:text-3xl text-white/50">
-                            {name?.charAt(0).toUpperCase() || "👤"}
+                            {name ? name.charAt(0).toUpperCase() : "👤"}
                         </div>
                     </div>
                 )}
@@ -264,7 +266,6 @@ export default function WebRTCMeeting({ roomId }) {
         );
     };
 
-    // --- RENDER LOBBY / LOGIN SCREEN ---
     if (!isJoined) {
         return (
             <div className="w-full h-[100dvh] bg-black flex items-center justify-center p-6">
@@ -299,12 +300,10 @@ export default function WebRTCMeeting({ roomId }) {
         );
     }
 
-    // --- RENDER UTAMA MEETING ---
     return (
         <div className="w-full h-[100dvh] bg-black flex flex-col overflow-hidden relative">
             <div className="flex-1 overflow-hidden p-2 sm:p-4 md:p-6 relative flex flex-row">
                 
-                {/* AREA VIDEO UTAMA */}
                 <div className="flex-1 h-full">
                     {layoutType === 'auto' && (
                         <div className={`grid gap-2 sm:gap-4 h-full w-full mx-auto
@@ -348,35 +347,32 @@ export default function WebRTCMeeting({ roomId }) {
                     )}
                 </div>
 
-                {/* Sidebar Daftar Peserta */}
                 {isParticipantsOpen && (
                     <div className="w-64 sm:w-80 h-full bg-neutral-900 border-l border-white/10 flex flex-col z-[100] animate-in slide-in-from-right duration-300">
                         <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                            <h3 className="text-white font-bold">Peserta ({participantsList.length + 1})</h3>
+                            <h3 className="text-white font-bold">Peserta ({participantsList.length})</h3>
                             <button onClick={() => setIsParticipantsOpen(false)} className="text-white/50 hover:text-white text-xl">✕</button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                            {/* User Lokal */}
                             <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-blue-500/30">
                                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs">Anda</div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-white text-sm font-medium truncate">{userName} (Anda)</p>
-                                    <p className="text-xs text-white/40">ID: {socket.id?.slice(0, 8)}</p>
+                                    <p className="text-xs text-white/40">ID: {socket.id?.slice(0, 8) || '...'}</p>
                                 </div>
                                 <div className="flex gap-2 text-xs">
                                     <span>{isMicOn ? "🎤" : "🔇"}</span>
                                     <span>{isCamOn ? "📹" : "🚫"}</span>
                                 </div>
                             </div>
-                            {/* User Lain */}
                             {participantsList.filter(p => p.id !== socket.id).map((p) => (
                                 <div key={p.id} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl">
                                     <div className="w-10 h-10 bg-neutral-700 rounded-full flex items-center justify-center text-white/50 text-xs">
-                                        {p.name?.charAt(0).toUpperCase()}
+                                        {p.name ? p.name.charAt(0).toUpperCase() : "U"}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white text-sm font-medium truncate">{p.name}</p>
-                                        <p className="text-xs text-white/40">ID: {p.id.slice(0, 8)}</p>
+                                        <p className="text-white text-sm font-medium truncate">{p.name || "Unknown"}</p>
+                                        <p className="text-xs text-white/40">ID: {p.id ? p.id.slice(0, 8) : '...'}</p>
                                     </div>
                                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                                 </div>
