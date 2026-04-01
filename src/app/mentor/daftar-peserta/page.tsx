@@ -37,7 +37,6 @@ export default function MonitoringStrategis() {
 
   useEffect(() => { 
     fetchMyStudents(); 
-    // Opsional: Auto refresh setiap 5 detik untuk melihat perubahan status inaktif secara realtime
     const interval = setInterval(fetchMyStudents, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -49,6 +48,10 @@ export default function MonitoringStrategis() {
   const handleSendReminder = async () => {
     if (!notifMessage.trim()) return alert("Pesan tidak boleh kosong!");
     if (!selectedStudent) return;
+
+    if (!selectedStudent.no_hp) {
+      return alert(`Gagal: ${selectedStudent.nama} belum mendaftarkan nomor WhatsApp.`);
+    }
 
     setIsSendingWA(true);
     try {
@@ -68,7 +71,7 @@ export default function MonitoringStrategis() {
 
       const result = await res.json();
       if (res.ok && result.success) {
-        alert("Pesan WhatsApp berhasil dikirim!");
+        alert(`Pesan WhatsApp berhasil dikirim ke ${selectedStudent.no_hp}!`);
         setIsModalOpen(false);
         setNotifMessage("");
       } else {
@@ -90,7 +93,7 @@ export default function MonitoringStrategis() {
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Daftar & Monitoring Peserta</h1>
             <p className="text-slate-500 font-medium mt-1">
-              Memantau aktivitas belajar peserta (Mode Testing: <span className="text-[#C31A26] font-bold underline decoration-2 underline-offset-4">Alert 3 Hari</span>).
+              Memantau aktivitas belajar peserta (Status: <span className="text-[#C31A26] font-bold underline decoration-2 underline-offset-4">Alert 3 Hari</span>).
             </p>
           </div>
           <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm flex items-center gap-4">
@@ -127,6 +130,7 @@ export default function MonitoringStrategis() {
                             <div>
                               <p className="font-bold text-slate-800 leading-none mb-1">{student.nama}</p>
                               <p className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{student.email}</p>
+                              <p className="text-[9px] text-green-600 font-bold tracking-wider">{student.no_hp || "No HP Kosong"}</p>
                             </div>
                           </div>
                         </td>
@@ -138,15 +142,16 @@ export default function MonitoringStrategis() {
                         <td className="px-8 py-6">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                               <Clock size={12} className={student.secondsInactive >= 10 ? 'text-rose-500' : 'text-slate-400'}/>
-                               <span className={`text-[11px] font-black uppercase ${student.secondsInactive >= 10 ? 'text-rose-600' : 'text-slate-700'}`}>
+                               {/* LOGIKA DIUBAH: Menggunakan daysInactive >= 3 untuk warna merah */}
+                               <Clock size={12} className={student.daysInactive >= 3 ? 'text-rose-500' : 'text-slate-400'}/>
+                               <span className={`text-[11px] font-black uppercase ${student.daysInactive >= 3 ? 'text-rose-600' : 'text-slate-700'}`}>
                                  {student.inactivityLabel}
                                </span>
                             </div>
-                            {/* Peringatan muncul jika inaktif >= 10 detik */}
-                            {student.secondsInactive >= 10 && (
+                            {/* LOGIKA DIUBAH: Alert muncul jika sudah 3 hari tidak aktif */}
+                            {student.daysInactive >= 3 && (
                                <div className="flex items-center gap-1 text-[9px] font-bold text-rose-500 uppercase tracking-tighter animate-pulse">
-                                 <AlertTriangle size={10}/> Perlu Atensi (Inaktif &gt; 10 Detik)
+                                 <AlertTriangle size={10}/> Perlu Atensi (Inaktif &gt; 3 Hari)
                                </div>
                             )}
                           </div>
@@ -222,13 +227,18 @@ export default function MonitoringStrategis() {
                    <div className="p-3 bg-rose-50 rounded-2xl text-[#C31A26]"><Bell size={24}/></div>
                    <div>
                       <h3 className="text-xl font-black uppercase tracking-tighter">Dorong Progres</h3>
-                      <p className="text-xs text-slate-400 font-bold uppercase">Peserta: {selectedStudent?.nama}</p>
+                      <p className="text-xs text-slate-400 font-bold uppercase">
+                        Peserta: {selectedStudent?.nama} 
+                        <span className={`ml-2 ${selectedStudent?.no_hp ? 'text-green-600' : 'text-rose-500'}`}>
+                          ({selectedStudent?.no_hp || "WA Belum Terdaftar"})
+                        </span>
+                      </p>
                    </div>
                 </div>
 
                 <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl mb-6">
                    <p className="text-[10px] text-amber-700 font-bold leading-relaxed uppercase">
-                      ⚠️ Status: Belum beraktivitas selama <span className="font-black underline">{selectedStudent?.inactivityLabel}</span>.
+                     ⚠️ Status: Belum beraktivitas selama <span className="font-black underline">{selectedStudent?.inactivityLabel}</span>.
                    </p>
                 </div>
 
@@ -243,24 +253,23 @@ export default function MonitoringStrategis() {
                   onClick={handleSendReminder}
                   disabled={isSendingWA}
                   className={`w-full py-4 rounded-2xl font-black text-xs uppercase flex items-center justify-center gap-2 transition-all shadow-lg ${
-                    isSendingWA ? "bg-slate-300 text-white cursor-not-allowed" : "bg-[#C31A26] text-white hover:brightness-110 active:scale-95"
+                    isSendingWA || !selectedStudent?.no_hp ? "bg-slate-300 text-white cursor-not-allowed" : "bg-[#C31A26] text-white hover:brightness-110 active:scale-95"
                   }`}
                 >
                   {isSendingWA ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  {isSendingWA ? "Sedang Mengirim..." : "Kirim Langsung ke WhatsApp"}
+                  {!selectedStudent?.no_hp ? "Nomor WA Tidak Tersedia" : isSendingWA ? "Sedang Mengirim..." : "Kirim Langsung ke WhatsApp"}
                 </button>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
 
-        {/* Footer Insight Box */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden">
               <div className="absolute right-[-10px] bottom-[-10px] opacity-10"><Clock size={120}/></div>
-              <h4 className="text-lg font-bold mb-2 flex items-center gap-2">💡 Mode Testing Aktif</h4>
+              <h4 className="text-lg font-bold mb-2 flex items-center gap-2">💡 Monitoring Aktif</h4>
               <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                Sistem saat ini dikonfigurasi untuk memberikan alert merah jika peserta inaktif lebih dari <span className="text-rose-400 font-bold uppercase">3 Hari </span>.
+                Sistem saat ini memberikan alert merah jika peserta inaktif lebih dari <span className="text-rose-400 font-bold uppercase">3 Hari</span>.
               </p>
            </div>
            <div className="bg-[#C31A26]/5 border border-[#C31A26]/10 rounded-[2rem] p-8">

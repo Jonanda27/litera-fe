@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, User, Check, Search } from "lucide-react";
+import { ChevronDown, Check, Search, Phone } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
 
 export default function Register() {
@@ -13,6 +13,7 @@ export default function Register() {
   // States
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [noHp, setNoHp] = useState(""); // State baru untuk No HP
   const [password, setPassword] = useState("");
   const [confPassword, setConfPassword] = useState("");
   
@@ -60,6 +61,13 @@ export default function Register() {
     setIsLoading(true);
     setError(null);
 
+    // Validasi No HP sederhana (hanya angka)
+    if (noHp && !/^\d+$/.test(noHp)) {
+        setError("Nomor HP harus berupa angka saja!");
+        setIsLoading(false);
+        return;
+    }
+
     if (!mentorId) {
       setError("Silakan pilih mentor pembimbing Anda!");
       setIsLoading(false);
@@ -79,6 +87,7 @@ export default function Register() {
         body: JSON.stringify({ 
           nama: name, 
           email, 
+          no_hp: noHp, // Dikirim ke Backend
           password, 
           confPassword, 
           mentor_id: mentorId 
@@ -129,12 +138,6 @@ export default function Register() {
               Sudah punya akun? Masuk
             </Link>
           </div>
-
-          <button className="lg:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
-          </button>
         </div>
       </nav>
 
@@ -182,24 +185,45 @@ export default function Register() {
                   />
                 </div>
 
-                {/* Email Field */}
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Alamat Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setIsFocused('email')}
-                    onBlur={() => setIsFocused(null)}
-                    className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                      isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5 translate-x-1' : 'border-transparent hover:bg-slate-100'
-                    }`}
-                    placeholder="email@contoh.com"
-                    required
-                  />
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setIsFocused('email')}
+                      onBlur={() => setIsFocused(null)}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
+                        isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                      }`}
+                      placeholder="email@contoh.com"
+                      required
+                    />
+                  </div>
+
+                  {/* Phone Field - BARU */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">No. WhatsApp</label>
+                    <div className="relative">
+                        <input
+                        type="text"
+                        value={noHp}
+                        onChange={(e) => setNoHp(e.target.value)}
+                        onFocus={() => setIsFocused('no_hp')}
+                        onBlur={() => setIsFocused(null)}
+                        className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
+                            isFocused === 'no_hp' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
+                        placeholder="0812..."
+                        required
+                        />
+                    </div>
+                  </div>
                 </div>
 
-                {/* --- BEAUTIFIED CUSTOM DROPDOWN MENTOR --- */}
+                {/* DROPDOWN MENTOR */}
                 <div className="space-y-2" ref={dropdownRef}>
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Mentor Pembimbing</label>
                   <div className="relative">
@@ -238,13 +262,11 @@ export default function Register() {
                                     mentorId === m.id ? 'bg-red-50' : 'hover:bg-slate-50'
                                   }`}
                                 >
-                                  {/* Avatar Placeholder */}
                                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
                                     mentorId === m.id ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-red-100 group-hover:text-red-600'
                                   }`}>
                                     {m.nama?.charAt(0).toUpperCase() || 'M'}
                                   </div>
-                                  
                                   <div className="flex-1 min-w-0">
                                     <p className={`text-sm font-black uppercase tracking-tight truncate ${mentorId === m.id ? 'text-red-600' : 'text-slate-700'}`}>
                                       {m.nama}
@@ -253,7 +275,6 @@ export default function Register() {
                                       {m.spesialisasi || "Mentor Ahli"}
                                     </p>
                                   </div>
-
                                   {mentorId === m.id && (
                                     <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center shrink-0">
                                       <Check size={14} className="text-white" />
