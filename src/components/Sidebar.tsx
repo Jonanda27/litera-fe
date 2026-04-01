@@ -57,13 +57,24 @@ export default function Sidebar({ children }: SidebarProps) {
 
   // Logika Filter Menu Berdasarkan Role
   const getMenuItems = (): MenuItem[] => {
-    if (rolePrefix === 'admin') {
-      return [
-        { path: '/dashboard', label: 'Dashboard' },
-        { path: '/users', label: 'Manajemen Akun' },
-        { path: '/livesession', label: 'Atur Live Session' },
-        { path: '/exercise', label: 'Manajemen Modul' },
-      ];
+    // Role Admin
+    if (rolePrefix === 'admin') {
+      return [
+        { path: '/dashboard', label: 'Dashboard' },
+        { path: '/users', label: 'Manajemen Akun' },
+        { path: '/livesession', label: 'Atur Live Session' },
+        { path: '/exercise', label: 'Manajemen Modul' },
+      ];
+    }
+
+    // Role Mentor (Tambahan Baru)
+   if (rolePrefix === 'mentor') {
+        return [
+          { path: '/dashboard', label: 'Dashboard Ringkasan' },
+          { path: '/feedback-proyek', label: 'Antrean Feedback (SLA)' },
+          { path: '/daftar-peserta', label: 'Monitoring Peserta' },
+          { path: '/profile', label: 'Profil Saya' }, 
+        ];
     }
 
     return [
@@ -78,7 +89,7 @@ export default function Sidebar({ children }: SidebarProps) {
       // Menu yang tetap muncul tapi belum aktif (mencegah error console)
       { path: '/riwayat', label: 'Riwayat Kegiatan', isPending: true },
       { path: '/pengaturan', label: 'Pengaturan', isPending: true },
-      { path: '/mentor', label: 'Kontak Mentor Kamu', isPending: true },
+      { path: '/mentor', label: 'Kontak Mentor Kamu', isPending: false },
     ];
   };
 

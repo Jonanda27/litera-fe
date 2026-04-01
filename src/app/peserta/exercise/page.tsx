@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { ExProgressBar } from "@/components/exercise/ExProgressBar";
 import { ExModuleItem } from "@/components/exercise/ExModuleItem";
-import { ExFooterTools } from "@/components/exercise/ExFooterTools";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
@@ -410,7 +409,6 @@ export default function ExercisePage() {
             </>
           )}
         </div>
-        <ExFooterTools />
       </div>
     </Sidebar>
   );
