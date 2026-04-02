@@ -1,23 +1,25 @@
 // src/lib/services/adminDashboardService.ts
 
-import { DashboardSummaryResponse, DashboardSummaryData } from '../types/dashboard';
+import {
+    DashboardSummaryResponse,
+    DashboardSummaryData,
+    MentorLogsResponse,
+    MentorActivityLogData,
+    DashboardChartsResponse,
+    DashboardChartsData
+} from '../types/dashboard';
 
 // Mengambil Base URL dari environment variable. Pastikan fallback ke localhost untuk development.
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export const adminDashboardService = {
     /**
-     * Mengambil data metrik agregasi ringkasan dashboard Admin.
-     * Fungsi ini terisolasi murni untuk tugas pengumpulan data (High Cohesion).
-     * * @param token - JWT Token untuk Bearer Authorization (Didapatkan dari state auth/cookie saat pemanggilan)
+     * 1. Mengambil data metrik agregasi ringkasan dashboard Admin (KPI).
+     * @param token - JWT Token untuk Bearer Authorization
      * @returns Promise<DashboardSummaryData>
-     * @throws Error dengan pesan aman untuk dikonsumsi UI
      */
     async getSummary(token: string): Promise<DashboardSummaryData> {
-        // Validasi level layanan sebelum membebani jaringan
-        if (!token) {
-            throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
-        }
+        if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
 
         try {
             const response = await fetch(`${API_BASE_URL}/admin/dashboard/summary`, {
@@ -26,31 +28,116 @@ export const adminDashboardService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                // Analisis Performa Next.js: 
-                // Karena ini dashboard admin yang butuh akurasi data nyaris real-time,
-                // kita menonaktifkan cache statis. Setiap request akan mengenai server.
-                // Jika ingin sedikit meringankan beban db, bisa ubah ke: next: { revalidate: 60 } (Cache 1 menit)
+                // Dasbor butuh data presisi tinggi, cache dimatikan
                 cache: 'no-store'
             });
 
-            // Melakukan parsing JSON secara asinkron
             const result: DashboardSummaryResponse = await response.json();
 
-            // Menangkap HTTP Error (4xx, 5xx) atau respons 'error' dari struktur JSend
             if (!response.ok || result.status !== 'success') {
-                // Melempar pesan error spesifik dari backend jika ada, atau pesan standar
                 throw new Error(result.message || `Gagal memuat data (Status HTTP: ${response.status})`);
             }
 
-            // Mengembalikan secara spesifik bagian "data" agar komponen UI tidak perlu tahu menahu soal format JSend
             return result.data;
-
         } catch (error: any) {
-            // Isolasi error log: Menyembunyikan stack trace asli dari layar pengguna 
-            // tetapi tetap mencatatnya di konsol untuk keperluan penelusuran (debugging) analis.
             console.error('[Service Layer] Error fetching Dashboard Summary:', error);
+            throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
+        }
+    },
 
-            // Normalisasi error yang akan ditangkap oleh blok try-catch di UI Component
+    /**
+     * 2. Mengambil log aktivitas dan notifikasi seluruh mentor.
+     * @param token - JWT Token untuk Bearer Authorization
+     * @returns Promise<MentorActivityLogData[]>
+     */
+    async getMentorLogs(token: string): Promise<MentorActivityLogData[]> {
+        if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/mentor-logs`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                cache: 'no-store'
+            });
+
+            const result: MentorLogsResponse = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || `Gagal memuat log mentor (Status HTTP: ${response.status})`);
+            }
+
+            return result.data;
+        } catch (error: any) {
+            console.error('[Service Layer] Error fetching Mentor Logs:', error);
+            throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
+        }
+    },
+
+    /**
+     * 3. Mengambil data agregasi untuk visualisasi grafik (Charts).
+     * @param token - JWT Token untuk Bearer Authorization
+     * @returns Promise<DashboardChartsData>
+     */
+    async getCharts(token: string): Promise<DashboardChartsData> {
+        if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/charts`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                cache: 'no-store' // Bisa diubah ke next: { revalidate: 3600 } jika grafik tidak perlu real-time
+            });
+
+            const result: DashboardChartsResponse = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || `Gagal memuat data grafik (Status HTTP: ${response.status})`);
+            }
+
+            return result.data;
+        } catch (error: any) {
+            console.error('[Service Layer] Error fetching Dashboard Charts:', error);
+            throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
+        }
+    },
+
+    /**
+     * 4. Mengirimkan notifikasi ke mentor atau mencatat log baru secara manual dari Admin.
+     * @param token - JWT Token untuk Bearer Authorization
+     * @param payload - Data notifikasi (mentorId opsional untuk broadcast)
+     * @returns Promise<boolean> - Mengembalikan true jika berhasil
+     */
+    async sendMentorNotification(
+        token: string,
+        payload: { mentorId?: number | null; action: string; description: string }
+    ): Promise<boolean> {
+        if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/mentor-notification`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || `Gagal mengirim notifikasi (Status HTTP: ${response.status})`);
+            }
+
+            return true;
+        } catch (error: any) {
+            console.error('[Service Layer] Error sending mentor notification:', error);
             throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
         }
     }

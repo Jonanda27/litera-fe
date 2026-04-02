@@ -1,52 +1,60 @@
-// File: src/components/dashboard/ActivityTimeline.tsx
+// src/components/dashboard/ActivityTimeline.tsx
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ActivityLog } from '../../lib/types/activity';
+import { MentorActivityLogData } from '../../lib/types/dashboard';
 
 export interface ActivityTimelineProps {
-    activities: ActivityLog[];
+    activities: MentorActivityLogData[];
     isLoading: boolean;
 }
 
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, isLoading }) => {
-    // Fungsi analitis untuk memetakan jenis aksi (dari backend) ke gaya visual yang representatif
+    // Fungsi analitis untuk memetakan jenis aksi ke gaya visual yang representatif (Information Expert)
     const getActionTheme = (action: string) => {
         const act = action.toUpperCase();
 
-        // Klasifikasi Aksi Buat/Tambah
-        if (act.includes('CREATE') || act.includes('REGISTER')) {
+        // Klasifikasi Aksi Mentoring & Review
+        if (act.includes('REVIEW') || act.includes('COMMENT') || act.includes('FEEDBACK')) {
             return {
                 color: 'bg-emerald-100 text-emerald-600 border-emerald-200',
-                icon: '✨',
-                label: 'Dibuat'
+                icon: '📝',
+                label: 'Evaluasi'
             };
         }
 
-        // Klasifikasi Aksi Hapus/Blokir
-        if (act.includes('DELETE') || act.includes('REMOVE')) {
+        // Klasifikasi Aksi Komunikasi & Live Session
+        if (act.includes('MEETING') || act.includes('SESSION') || act.includes('CALL')) {
+            return {
+                color: 'bg-indigo-100 text-indigo-600 border-indigo-200',
+                icon: '📹',
+                label: 'Sesi Langsung'
+            };
+        }
+
+        // Klasifikasi Aksi Notifikasi Global / Sistem
+        if (act.includes('SYSTEM') || act.includes('NOTICE') || act.includes('BROADCAST')) {
+            return {
+                color: 'bg-amber-100 text-amber-600 border-amber-200',
+                icon: '📢',
+                label: 'Pengumuman'
+            };
+        }
+
+        // Klasifikasi Aksi Peringatan / Pelanggaran
+        if (act.includes('DELETE') || act.includes('REMOVE') || act.includes('BLOCK')) {
             return {
                 color: 'bg-rose-100 text-rose-600 border-rose-200',
-                icon: '🗑️',
-                label: 'Dihapus'
+                icon: '⚠️',
+                label: 'Peringatan'
             };
         }
-
-        // Klasifikasi Aksi Ubah/Pembaruan
-        if (act.includes('UPDATE') || act.includes('EDIT')) {
-            return {
-                color: 'bg-blue-100 text-blue-600 border-blue-200',
-                icon: '✏️',
-                label: 'Diperbarui'
-            };
-        }
-
-        // Klasifikasi Aksi Autentikasi & Penyelesaian
-        if (act.includes('LOGIN')) return { color: 'bg-indigo-100 text-indigo-600 border-indigo-200', icon: '🔑', label: 'Akses Masuk' };
-        if (act.includes('LOGOUT')) return { color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '🚪', label: 'Akses Keluar' };
-        if (act.includes('COMPLETE')) return { color: 'bg-amber-100 text-amber-600 border-amber-200', icon: '🏆', label: 'Diselesaikan' };
 
         // Default (Aktivitas Umum)
-        return { color: 'bg-slate-100 text-slate-600 border-slate-200', icon: '📌', label: 'Aktivitas Sistem' };
+        return {
+            color: 'bg-slate-100 text-slate-600 border-slate-200',
+            icon: '📌',
+            label: 'Aktivitas Umum'
+        };
     };
 
     // State Loading: Kerangka Tulang (Skeleton) untuk transisi UX yang mulus
@@ -66,12 +74,12 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, 
         );
     }
 
-    // State Kosong: Tidak ada log aktivitas yang ditemukan berdasarkan filter
+    // State Kosong: Tidak ada log aktivitas yang ditemukan
     if (!activities || activities.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                 <span className="text-4xl mb-3">📭</span>
-                <p className="font-medium text-sm">Belum ada aktivitas sistem yang tercatat pada rentang ini.</p>
+                <p className="font-medium text-sm">Belum ada aktivitas mentor yang tercatat saat ini.</p>
             </div>
         );
     }
@@ -81,53 +89,67 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ activities, 
             {activities.map((log, index) => {
                 const theme = getActionTheme(log.action);
 
-                // Ekstrak detail spesifik dari objek JSON jika tersedia
-                const hasDetails = log.details && Object.keys(log.details).length > 0;
+                // Mengambil identitas pelaku aksi (Bisa Mentor atau Sistem)
+                const actorName = log.mentor ? log.mentor.nama : 'Sistem Utama';
+                const isSystemAction = !log.mentor;
 
                 return (
                     <motion.div
                         key={log.id}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }} // Sedikit dipercepat untuk responsivitas
-                        className="relative pl-6 sm:pl-8"
+                        transition={{ delay: index * 0.05 }}
+                        className="relative pl-6 sm:pl-8 group"
                     >
                         {/* Indikator Titik Timeline */}
                         <div
-                            className={`absolute -left-4.75 top-1 w-9 h-9 rounded-full border-[3px] border-white shadow-sm flex items-center justify-center text-sm ${theme.color}`}
+                            className={`absolute -left-4.75 top-1 w-9 h-9 rounded-full border-[3px] border-white shadow-sm flex items-center justify-center text-sm transition-transform group-hover:scale-110 ${theme.color}`}
                         >
                             {theme.icon}
                         </div>
 
                         {/* Konten Log Card */}
-                        <div className="bg-white hover:bg-slate-50 transition-colors p-4 rounded-xl border border-slate-200 shadow-sm">
-                            <div className="flex justify-between items-start mb-1">
-                                <p className="text-sm text-slate-800 leading-snug font-medium">
-                                    <span className="font-bold text-slate-900">User ID: {log.userId}</span>
-                                    <span className="mx-2 text-slate-400">&bull;</span>
-                                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${theme.color}`}>
+                        <div className="bg-white hover:bg-slate-50 transition-colors p-4 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+
+                            {/* Aksen visual ringan untuk sistem */}
+                            {isSystemAction && (
+                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
+                            )}
+
+                            <div className="flex justify-between items-start mb-2">
+                                <p className="text-sm text-slate-800 leading-snug font-medium flex items-center flex-wrap gap-2">
+                                    <span className={`font-bold ${isSystemAction ? 'text-amber-600' : 'text-slate-900'}`}>
+                                        {actorName}
+                                    </span>
+
+                                    {/* Jika ada target user (Peserta), tampilkan arah aksinya */}
+                                    {log.targetUser && (
+                                        <>
+                                            <span className="text-slate-400 text-xs">▶</span>
+                                            <span className="text-blue-600 font-semibold">{log.targetUser.nama}</span>
+                                        </>
+                                    )}
+
+                                    <span className="text-slate-300 hidden sm:inline">&bull;</span>
+
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${theme.color}`}>
                                         {theme.label}
                                     </span>
                                 </p>
-                                <span className="text-xs font-medium text-slate-400 shrink-0 ml-4">
+
+                                <span className="text-[11px] font-medium text-slate-400 shrink-0 ml-4 bg-slate-50 px-2 py-1 rounded-md">
                                     {new Date(log.createdAt).toLocaleString('id-ID', {
-                                        dateStyle: 'medium',
-                                        timeStyle: 'short'
+                                        day: 'numeric',
+                                        month: 'short',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
                                     })}
                                 </span>
                             </div>
 
-                            <p className="text-sm text-slate-600 mt-1">
-                                Operasi <strong className="text-slate-800">{log.action}</strong> pada entitas <strong className="text-blue-600">{log.resourceType}</strong>
-                                {log.resourceId && <span> (ID: {log.resourceId})</span>}.
+                            <p className="text-sm text-slate-600">
+                                {log.description}
                             </p>
-
-                            {/* Render area detail ekstraksi jika ada JSON payload (Indirection Representation) */}
-                            {hasDetails && (
-                                <div className="mt-3 p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs font-mono text-slate-500 overflow-x-auto">
-                                    <pre>{JSON.stringify(log.details, null, 2)}</pre>
-                                </div>
-                            )}
                         </div>
                     </motion.div>
                 );
