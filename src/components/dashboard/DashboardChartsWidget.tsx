@@ -51,8 +51,8 @@ export const DashboardChartsWidget: React.FC<DashboardChartsWidgetProps> = ({ da
     if (isLoading) {
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-                <div className="lg:col-span-2 h-[400px] bg-slate-100/50 animate-pulse rounded-3xl border border-slate-200" />
-                <div className="h-[400px] bg-slate-100/50 animate-pulse rounded-3xl border border-slate-200" />
+                <div className="lg:col-span-2 h-100 bg-slate-100/50 animate-pulse rounded-3xl border border-slate-200" />
+                <div className="h-100 bg-slate-100/50 animate-pulse rounded-3xl border border-slate-200" />
             </div>
         );
     }
@@ -63,7 +63,7 @@ export const DashboardChartsWidget: React.FC<DashboardChartsWidgetProps> = ({ da
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
             {/* AREA CHART: TREN PENDAFTARAN (Lebar 2/3) */}
-            <div className="lg:col-span-2 bg-white p-8 rounded-[2rem] border border-slate-200/60 shadow-xl shadow-slate-100/40 flex flex-col group transition-all hover:shadow-2xl hover:shadow-slate-200/50">
+            <div className="lg:col-span-2 bg-white p-8 rounded-4xl border border-slate-200/60 shadow-xl shadow-slate-100/40 flex flex-col group transition-all hover:shadow-2xl hover:shadow-slate-200/50">
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <div className="flex items-center gap-3 mb-1">
@@ -78,7 +78,7 @@ export const DashboardChartsWidget: React.FC<DashboardChartsWidgetProps> = ({ da
                     </div>
                 </div>
 
-                <div className="flex-1 w-full h-[280px]">
+                <div className="flex-1 w-full h-70">
                     {trendData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -136,13 +136,13 @@ export const DashboardChartsWidget: React.FC<DashboardChartsWidgetProps> = ({ da
             </div>
 
             {/* DONUT CHART: RASIO MENTORING (Lebar 1/3) */}
-            <div className="bg-white p-8 rounded-[2rem] border border-slate-200/60 shadow-xl shadow-slate-100/40 flex flex-col items-center group transition-all hover:shadow-2xl hover:shadow-slate-200/50">
+            <div className="bg-white p-8 rounded-4xl border border-slate-200/60 shadow-xl shadow-slate-100/40 flex flex-col items-center group transition-all hover:shadow-2xl hover:shadow-slate-200/50">
                 <div className="w-full mb-8">
                     <h3 className="text-slate-900 font-black text-xl tracking-tight text-center">Interaksi Mentor</h3>
                     <div className="w-8 h-1 bg-cyan-500 mx-auto mt-2 rounded-full" />
                 </div>
 
-                <div className="flex-1 w-full h-[240px] relative flex items-center justify-center">
+                <div className="flex-1 w-full h-60 relative flex items-center justify-center">
                     {ratioData.some(d => d.value > 0) ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>

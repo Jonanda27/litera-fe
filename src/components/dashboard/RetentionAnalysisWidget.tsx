@@ -17,7 +17,7 @@ export const RetentionAnalysisWidget: React.FC<Props> = ({ riskyUsers, difficult
         return (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
                 {[...Array(2)].map((_, i) => (
-                    <div key={i} className="h-[400px] bg-slate-50 animate-pulse rounded-[2rem] border border-slate-100" />
+                    <div key={i} className="h-100 bg-slate-50 animate-pulse rounded-4xl border border-slate-100" />
                 ))}
             </div>
         );
@@ -27,7 +27,7 @@ export const RetentionAnalysisWidget: React.FC<Props> = ({ riskyUsers, difficult
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
 
             {/* 1. WIDGET PESERTA BERISIKO (AT-RISK STUDENTS) */}
-            <div className="bg-white p-7 rounded-[2rem] border border-slate-200/60 shadow-xl shadow-slate-100/50 flex flex-col h-full overflow-hidden relative group">
+            <div className="bg-white p-7 rounded-4xlrder border-slate-200/60 shadow-xl shadow-slate-100/50 flex flex-col h-full overflow-hidden relative group">
                 <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                     <span className="text-6xl">⚠️</span>
                 </div>
@@ -92,7 +92,7 @@ export const RetentionAnalysisWidget: React.FC<Props> = ({ riskyUsers, difficult
             </div>
 
             {/* 2. ANALISA MODUL TERSULIT (BOTTLE NECK ANALYSIS) */}
-            <div className="bg-slate-900 p-7 rounded-[2rem] border border-slate-800 shadow-xl flex flex-col h-full relative overflow-hidden">
+            <div className="bg-slate-900 p-7 rounded-4xl border border-slate-800 shadow-xl flex flex-col h-full relative overflow-hidden">
                 {/* Background Decor */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-3xl -mr-16 -mt-16"></div>
 
@@ -127,7 +127,7 @@ export const RetentionAnalysisWidget: React.FC<Props> = ({ riskyUsers, difficult
                                             initial={{ width: 0 }}
                                             animate={{ width: `${percentage}%` }}
                                             transition={{ duration: 1, delay: index * 0.1 }}
-                                            className="h-full rounded-full bg-gradient-to-r from-rose-600 to-rose-400 shadow-[0_0_12px_rgba(225,29,72,0.3)]"
+                                            className="h-full rounded-full bg-linear-to-r from-rose-600 to-rose-400 shadow-[0_0_12px_rgba(225,29,72,0.3)]"
                                         />
                                     </div>
                                 </div>

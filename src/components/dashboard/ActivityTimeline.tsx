@@ -101,7 +101,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
             {renderFilters()}
 
             {!activities || activities.length === 0 ? (
-                <div className="bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-[2rem] py-20 flex flex-col items-center">
+                <div className="bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-4xl py-20 flex flex-col items-center">
                     <div className="w-20 h-20 bg-white rounded-3xl shadow-inner flex items-center justify-center text-4xl mb-6">📭</div>
                     <p className="text-slate-400 font-bold tracking-tight">Tidak ada aktivitas yang ditemukan.</p>
                 </div>
@@ -114,7 +114,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                                 <div className="bg-white border-2 border-slate-100 px-4 py-1.5 rounded-full shadow-sm text-[11px] font-black uppercase tracking-widest text-slate-500">
                                     {date}
                                 </div>
-                                <div className="h-[2px] flex-1 bg-gradient-to-r from-slate-100 to-transparent" />
+                                <div className="h-0.5 flex-1 bg-linear-to-r from-slate-100 to-transparent" />
                             </div>
 
                             <div className="relative border-l-[3px] border-slate-100 ml-6 space-y-8">
@@ -132,9 +132,9 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                                                 className="relative pl-10 group"
                                             >
                                                 {/* Node Point */}
-                                                <div className={`absolute -left-[13px] top-4 w-6 h-6 rounded-full border-4 border-white shadow-md transition-transform group-hover:scale-125 ${theme.color}`} />
+                                                <div className={`absolute -left-3.25 top-4 w-6 h-6 rounded-full border-4 border-white shadow-md transition-transform group-hover:scale-125 ${theme.color}`} />
 
-                                                <div className="bg-white border-2 border-slate-50 rounded-[1.5rem] p-5 shadow-sm group-hover:shadow-xl group-hover:shadow-slate-200/40 group-hover:border-slate-100 transition-all">
+                                                <div className="bg-white border-2 border-slate-50 rounded-3xl p-5 shadow-sm group-hover:shadow-xl group-hover:shadow-slate-200/40 group-hover:border-slate-100 transition-all">
                                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-10 h-10 rounded-xl ${theme.light} flex items-center justify-center text-lg`}>

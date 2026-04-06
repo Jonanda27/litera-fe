@@ -141,7 +141,7 @@ export default function AdminDashboard() {
           initial="hidden"
           animate="visible"
           variants={containerVars}
-          className="max-w-[1600px] mx-auto p-4 md:p-8 lg:px-10 space-y-2" // space-y-2 karena margin dalam komponen akan mengatur jarak antar seksi
+          className="max-w-400 mx-auto p-4 md:p-8 lg:px-10 space-y-2" // space-y-2 karena margin dalam komponen akan mengatur jarak antar seksi
         >
           {/* HEADER SECTION */}
           <motion.header variants={itemVars} className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 mb-2 border-b border-slate-200/60">
@@ -187,7 +187,7 @@ export default function AdminDashboard() {
             {isGlobalLoading && !error ? (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-5">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white animate-pulse h-[120px] rounded-[2rem] border border-slate-100 shadow-sm"></div>
+                  <div key={i} className="bg-white animate-pulse h-30 rounded-4xl border border-slate-100 shadow-sm"></div>
                 ))}
               </div>
             ) : summaryData ? (
@@ -219,14 +219,14 @@ export default function AdminDashboard() {
 
           {/* SECTION 4: ACTIVITY TIMELINE */}
           <motion.section variants={itemVars} className="pt-8">
-            <div className="bg-white p-6 md:p-10 rounded-[2rem] shadow-xl shadow-slate-100/40 border border-slate-200/60 relative overflow-hidden group">
+            <div className="bg-white p-6 md:p-10 rounded-4xl shadow-xl shadow-slate-100/40 border border-slate-200/60 relative overflow-hidden group">
               {/* Dekorasi Latar */}
-              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-bl from-slate-50/80 to-transparent rounded-full -mr-40 -mt-40 pointer-events-none opacity-50 transition-opacity group-hover:opacity-100" />
+              <div className="absolute top-0 right-0 w-100 h-100 bg-linear-to-bl from-slate-50/80 to-transparent rounded-full -mr-40 -mt-40 pointer-events-none opacity-50 transition-opacity group-hover:opacity-100" />
 
               <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-8 mb-8">
                 <div>
                   <h2 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-4 tracking-tight">
-                    <span className="flex h-12 w-12 items-center justify-center bg-slate-900 text-white rounded-[1rem] shadow-md">📡</span>
+                    <span className="flex h-12 w-12 items-center justify-center bg-slate-900 text-white rounded-2xl shadow-md">📡</span>
                     Jejak Audit Sistem
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-2 ml-16">
