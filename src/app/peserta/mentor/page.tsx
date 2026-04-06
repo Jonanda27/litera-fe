@@ -204,7 +204,7 @@ export default function KontakMentor() {
       <div className="max-w-6xl mx-auto space-y-8 pb-10">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase ">
               Flash <span className="text-[#c31a26]">Consultation</span>
             </h1>
             <div className="flex items-center gap-2 mt-1">
@@ -227,7 +227,7 @@ export default function KontakMentor() {
                 />
               </div>
               <div className="space-y-1">
-                <h2 className="text-xl font-black text-slate-800 uppercase italic leading-tight">{mentor?.nama}</h2>
+                <h2 className="text-xl font-black text-slate-800 uppercase  leading-tight">{mentor?.nama}</h2>
                 <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">{mentor?.spesialisasi || "Mentor Ahli"}</p>
               </div>
               <div className="pt-4 grid grid-cols-2 gap-2">
@@ -247,7 +247,7 @@ export default function KontakMentor() {
                   <Info size={16} className="text-blue-600" />
                   <span className="text-[9px] font-black uppercase text-blue-700 tracking-widest">Tips Bimbingan</span>
                 </div>
-                <p className="text-[11px] font-medium text-blue-800 leading-relaxed italic">
+                <p className="text-[11px] font-medium text-blue-800 leading-relaxed ">
                   Tanyakan kendala teknis atau mintalah feedback langsung mengenai progres naskah Anda di sini.
                 </p>
             </div>
@@ -267,12 +267,6 @@ export default function KontakMentor() {
                     </div>
                   </div>
                </div>
-               <button 
-                  onClick={() => setShowConfirmExit(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
-               >
-                  <LogOut size={14} /> Tutup Sesi
-               </button>
             </div>
 
             <div 
@@ -326,7 +320,7 @@ export default function KontakMentor() {
                         <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                         <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 italic">Mengetik balasan...</span>
+                      <span className="text-[10px] font-bold text-slate-400 ">Mengetik balasan...</span>
                     </div>
                   </div>
                 </div>
@@ -366,7 +360,7 @@ export default function KontakMentor() {
                   <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
                     <ShieldAlert size={32} />
                   </div>
-                  <h3 className="text-xl font-black text-slate-900 uppercase italic">Tutup Sesi?</h3>
+                  <h3 className="text-xl font-black text-slate-900 uppercase ">Tutup Sesi?</h3>
                   <p className="text-sm text-slate-500 font-medium mt-3 leading-relaxed">
                     Riwayat pesan tetap tersimpan di akun Anda.
                   </p>
