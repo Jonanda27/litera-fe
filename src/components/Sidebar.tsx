@@ -74,7 +74,7 @@ export default function Sidebar({ children }: SidebarProps) {
         { path: "/dashboard", label: "Dashboard Ringkasan" },
         { path: "/feedback-proyek", label: "Antrean Feedback (SLA)" },
         { path: "/daftar-peserta", label: "Monitoring Peserta" },
-        { path: "/profile", label: "Profil Saya" },
+        { path: "/profile", label: "Profil Saya", isPending: true },
       ];
     }
 

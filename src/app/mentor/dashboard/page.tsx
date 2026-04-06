@@ -210,7 +210,7 @@ export default function ModernMentorDashboard() {
                 <h3 className="text-lg font-black text-slate-800 uppercase tracking-wider">Antrean Pesan</h3>
                 <span className="bg-red-100 text-[#C31A26] px-2 py-1 rounded-md text-[10px] font-black">{stats.waitingFeedback} Pesan</span>
               </div>
-              <Link href="/mentor/chat" className="group flex items-center gap-1 text-[11px] font-black text-[#C31A26] hover:text-red-800 transition-colors uppercase tracking-widest">
+              <Link href="/mentor/feedback-proyek" className="group flex items-center gap-1 text-[11px] font-black text-[#C31A26] hover:text-red-800 transition-colors uppercase tracking-widest">
                 Lihat Semua <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
@@ -240,7 +240,7 @@ export default function ModernMentorDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-6 w-full md:w-auto mt-2 md:mt-0">
-                    <Link href={`/mentor/chat`}>
+                    <Link href={`/mentor/feedback-proyek`}>
                       <button className="bg-slate-50 hover:bg-[#C31A26] text-slate-700 hover:text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 active:scale-95 border border-slate-200 hover:border-transparent">
                         Balas Chat
                       </button>

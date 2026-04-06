@@ -11,7 +11,10 @@ import {
   AlertCircle, 
   Clock, 
   X, 
-  Circle
+  Circle,
+  LogOut,
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 
 const motivations = [
@@ -38,6 +41,9 @@ export default function Navbar() {
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [readNotifIds, setReadNotifIds] = useState<number[]>([]); 
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // State Modal Logout
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [userData, setUserData] = useState<{ id: string | null, name: string; role: string }>({
     id: null,
@@ -134,17 +140,19 @@ export default function Navbar() {
   };
 
   const handleLogout = async () => {
-    if (!confirm("Apakah Anda yakin ingin keluar?")) return;
     setIsLoading(true);
     try {
       await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
+    } catch (error) {
+        console.error("Logout error:", error);
     } finally {
       localStorage.clear();
       router.push('/login');
       setIsLoading(false);
+      setShowLogoutModal(false);
     }
   };
 
@@ -153,155 +161,232 @@ export default function Navbar() {
   const initial = userData.name.charAt(0).toUpperCase();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-20 md:h-24 overflow-visible shadow-sm">
-      <div className="absolute inset-0 z-0">
-        <Image src="/bg-navbar.png" alt="BG" fill className="object-cover" priority />
-        <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
-      </div>
-
-      <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 h-full flex items-center justify-between">
-        
-        {/* Left Section: Logo */}
-        <div className="flex-1 flex items-center">
-           <Link href="/" className="flex items-center gap-2 group">
-             <div className="w-8 h-8 md:w-10 md:h-10 bg-[#c31a26] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:rotate-6 transition-transform">L</div>
-             <span className="text-lg md:text-xl font-black text-slate-800 tracking-tighter uppercase">LITERA</span>
-          </Link>
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 h-20 md:h-24 overflow-visible shadow-sm">
+        <div className="absolute inset-0 z-0">
+          <Image src="/bg-navbar.png" alt="BG" fill className="object-cover" priority />
+          <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
         </div>
 
-        {/* Center Section */}
-        <div className="flex-[3] hidden md:flex flex-col items-center px-4">
-          <div className="relative h-12 flex items-center justify-center w-full text-center">
-            {motivations.map((text, index) => (
-              <p key={index} className={`absolute transition-all duration-1000 ease-in-out text-sm lg:text-base font-medium italic text-slate-700 leading-tight w-full ${index === quoteIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                "{text}"
-              </p>
-            ))}
-          </div>
-          <div className="w-16 md:w-24 h-1 bg-[#c31a26]/30 rounded-full mt-1" />
-        </div>
-
-        {/* Right Section */}
-        <div className="flex-1 flex items-center justify-end gap-4 md:gap-8">
+        <div className="relative z-10 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 h-full flex items-center justify-between">
           
-          <div className="flex items-center gap-4 group cursor-pointer">
-            <div className="text-right leading-tight hidden lg:block">
-              <p className="text-sm md:text-base font-black text-slate-900 group-hover:text-[#c31a26] transition-colors truncate max-w-[120px]">
-                {userData.name}
-              </p>
-              {/* Role Tetap Putih */}
-              <p className="text-[9px] md:text-[10px] font-bold text-slate-100 uppercase tracking-[0.2em]">
-                {userData.role} 
-              </p>
-            </div>
-            
-            <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 border-white shadow-xl overflow-hidden group-hover:scale-105 transition-all duration-300 bg-[#c31a26] flex items-center justify-center shrink-0">
-              <span className="text-white text-lg md:text-2xl font-black select-none">{initial}</span>
-            </div>
+          {/* Left Section: Logo */}
+          <div className="flex-1 flex items-center">
+             <Link href="/" className="flex items-center gap-2 group">
+               <div className="w-8 h-8 md:w-10 md:h-10 bg-[#c31a26] rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:rotate-6 transition-transform">L</div>
+               <span className="text-lg md:text-xl font-black text-slate-800 tracking-tighter uppercase">LITERA</span>
+            </Link>
           </div>
 
-          <div className="h-8 md:h-12 w-[1.5px] bg-slate-300 rounded-full" />
+          {/* Center Section */}
+          <div className="flex-[3] hidden md:flex flex-col items-center px-4">
+            <div className="relative h-12 flex items-center justify-center w-full text-center">
+              {motivations.map((text, index) => (
+                <p key={index} className={`absolute transition-all duration-1000 ease-in-out text-sm lg:text-base font-medium italic text-slate-700 leading-tight w-full ${index === quoteIndex ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+                  "{text}"
+                </p>
+              ))}
+            </div>
+            <div className="w-16 md:w-24 h-1 bg-[#c31a26]/30 rounded-full mt-1" />
+          </div>
 
-          {/* ICON NOTIFIKASI HITAM */}
-          <div className="relative flex items-center" ref={notifRef}>
-            <button 
-              onClick={handleOpenDropdown}
-              className={`relative p-2.5 md:p-3 rounded-2xl transition-all duration-300 group
-                ${showNotifDropdown ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-xl hover:bg-black'}`}
-            >
-              <BellRing 
-                size={22} 
-                className={`transition-transform duration-500 group-hover:rotate-12 
-                  ${unreadCount > 0 ? 'text-white animate-bounce' : 'text-white'} `} 
-              />
+          {/* Right Section */}
+          <div className="flex-1 flex items-center justify-end gap-4 md:gap-8">
+            
+            <div className="flex items-center gap-4 group cursor-pointer">
+              <div className="text-right leading-tight hidden lg:block">
+                <p className="text-sm md:text-base font-black text-slate-900 group-hover:text-[#c31a26] transition-colors truncate max-w-[120px]">
+                  {userData.name}
+                </p>
+                <p className="text-[9px] md:text-[10px] font-bold text-slate-100 uppercase tracking-[0.2em]">
+                  {userData.role} 
+                </p>
+              </div>
               
-              {userData.role === 'Mentor' && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-5 w-5 bg-red-600 border-2 border-slate-900 items-center justify-center text-[9px] font-black text-white">
-                    {unreadCount}
+              <div className="relative w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl border-2 border-white shadow-xl overflow-hidden group-hover:scale-105 transition-all duration-300 bg-[#c31a26] flex items-center justify-center shrink-0">
+                <span className="text-white text-lg md:text-2xl font-black select-none">{initial}</span>
+              </div>
+            </div>
+
+            <div className="h-8 md:h-12 w-[1.5px] bg-slate-300 rounded-full" />
+
+            {/* ICON NOTIFIKASI */}
+            <div className="relative flex items-center" ref={notifRef}>
+              <button 
+                onClick={handleOpenDropdown}
+                className={`relative p-2.5 md:p-3 rounded-2xl transition-all duration-300 group
+                  ${showNotifDropdown ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-900 text-white shadow-xl hover:bg-black'}`}
+              >
+                <BellRing 
+                  size={22} 
+                  className={`transition-transform duration-500 group-hover:rotate-12 
+                    ${unreadCount > 0 ? 'text-white animate-bounce' : 'text-white'} `} 
+                />
+                
+                {userData.role === 'Mentor' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-red-600 border-2 border-slate-900 items-center justify-center text-[9px] font-black text-white">
+                      {unreadCount}
+                    </span>
                   </span>
-                </span>
-              )}
+                )}
 
-              {userData.role !== 'Mentor' && (
-                <Circle size={6} className="absolute top-2 right-2 text-red-500 fill-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
-            </button>
+                {userData.role !== 'Mentor' && (
+                  <Circle size={6} className="absolute top-2 right-2 text-red-500 fill-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                )}
+              </button>
 
-            {/* DROPDOWN ISI PUTIH */}
-            <AnimatePresence>
-              {showNotifDropdown && userData.role === 'Mentor' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 8, scale: 1 }}
-                  exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                  className="absolute right-0 top-full mt-2 w-80 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-[100]"
-                >
-                  <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 backdrop-blur-md">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                      <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Pesan Sistem</span>
+              <AnimatePresence>
+                {showNotifDropdown && userData.role === 'Mentor' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 8, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-80 bg-white rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden z-[100]"
+                  >
+                    <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 backdrop-blur-md">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em]">Pesan Sistem</span>
+                      </div>
+                      <button onClick={() => setShowNotifDropdown(false)} className="text-slate-400 hover:text-red-600 transition-colors">
+                        <X size={16} />
+                      </button>
                     </div>
-                    <button onClick={() => setShowNotifDropdown(false)} className="text-slate-400 hover:text-red-600 transition-colors">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  
-                  <div className="max-h-[350px] overflow-y-auto bg-white custom-scrollbar">
-                    {notifications.length > 0 ? (
-                      notifications.map((notif, idx) => (
-                        <div key={idx} className="p-5 border-b border-slate-50 hover:bg-slate-50/80 transition-all flex gap-4 group/item">
-                          <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors 
-                            ${readNotifIds.includes(notif.id) ? 'bg-slate-100 text-slate-400' : 'bg-red-50 text-red-600 group-hover/item:bg-red-600 group-hover/item:text-white'}`}>
-                            <AlertCircle size={20} />
-                          </div>
-                          <div className="flex-1 text-left">
-                            
-                            {/* JUDUL PERINGATAN - MERAH TEGAS */}
-                            <p className="text-[9px] font-black uppercase tracking-widest mb-1 text-red-600">
-                                {notif.action?.replace('_', ' ')}
-                            </p>
-                            
-                            {/* ISI PESAN - HITAM PEKAT (MENGGUNAKAN text-slate-900 !) */}
-                            <p className="text-xs font-bold leading-relaxed text-slate-900">
-                                {notif.description}
-                            </p>
-                            
-                            <div className="flex items-center gap-1.5 mt-2.5 text-slate-400">
-                              <Clock size={12} />
-                              <span className="text-[10px] font-black uppercase tracking-tighter">
-                                {new Date(notif.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} • {new Date(notif.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
+                    
+                    <div className="max-h-[350px] overflow-y-auto bg-white custom-scrollbar">
+                      {notifications.length > 0 ? (
+                        notifications.map((notif, idx) => (
+                          <div key={idx} className="p-5 border-b border-slate-50 hover:bg-slate-50/80 transition-all flex gap-4 group/item">
+                            <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors 
+                              ${readNotifIds.includes(notif.id) ? 'bg-slate-100 text-slate-400' : 'bg-red-50 text-red-600 group-hover/item:bg-red-600 group-hover/item:text-white'}`}>
+                              <AlertCircle size={20} />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="text-[9px] font-black uppercase tracking-widest mb-1 text-red-600">
+                                  {notif.action?.replace('_', ' ')}
+                              </p>
+                              <p className="text-xs font-bold leading-relaxed text-slate-900">
+                                  {notif.description}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-2.5 text-slate-400">
+                                <Clock size={12} />
+                                <span className="text-[10px] font-black uppercase tracking-tighter">
+                                  {new Date(notif.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} • {new Date(notif.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div className="py-16 px-6 text-center">
+                          <BellRing size={40} className="mx-auto text-slate-100 mb-3" />
+                          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Belum ada pemberitahuan</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="py-16 px-6 text-center">
-                        <BellRing size={40} className="mx-auto text-slate-100 mb-3" />
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Belum ada pemberitahuan</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-          {/* Logout Action */}
-          <div className="flex items-center border-l border-slate-200 pl-4 md:pl-6">
-            <button 
-              onClick={handleLogout}
-              disabled={isLoading}
-              className={`px-4 py-2 md:px-5 md:py-2.5 ${isLoading ? 'bg-slate-500' : 'bg-[#c31a26] hover:bg-slate-900'} text-white font-black rounded-xl transition-all duration-300 text-[10px] tracking-[0.2em] uppercase shadow-md active:scale-95`}
-            >
-              {isLoading ? 'Wait...' : 'LOGOUT'}
-            </button>
-          </div>
+            {/* Logout Action */}
+            <div className="flex items-center border-l border-slate-200 pl-4 md:pl-6">
+              <button 
+                onClick={() => setShowLogoutModal(true)}
+                disabled={isLoading}
+                className={`px-4 py-2 md:px-5 md:py-2.5 bg-[#c31a26] hover:bg-slate-900 text-white font-black rounded-xl transition-all duration-300 text-[10px] tracking-[0.2em] uppercase shadow-md active:scale-95 flex items-center gap-2`}
+              >
+                LOGOUT
+              </button>
+            </div>
 
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* MODAL VALIDASI LOGOUT */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isLoading && setShowLogoutModal(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-red-50 text-[#c31a26] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner relative">
+                    <AlertTriangle size={40} className="animate-pulse" />
+                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-[#c31a26] rounded-full border-4 border-white flex items-center justify-center">
+                        <X size={12} className="text-white font-black" />
+                    </div>
+                </div>
+
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-2">Konfirmasi Keluar</h3>
+                <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                  Apakah Anda yakin ingin mengakhiri sesi bimbingan dan keluar dari aplikasi?
+                </p>
+
+                <div className="mt-8 flex flex-col gap-3">
+                  <button
+                    onClick={handleLogout}
+                    disabled={isLoading}
+                    className="w-full py-4 bg-[#c31a26] hover:bg-slate-900 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-red-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    {isLoading ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <>
+                        <LogOut size={16} />
+                        Iya, Saya Keluar
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setShowLogoutModal(false)}
+                    disabled={isLoading}
+                    className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl transition-all active:scale-[0.98]"
+                  >
+                    Batalkan
+                  </button>
+                </div>
+              </div>
+
+              {/* Decorative bottom line */}
+              <div className="h-2 w-full bg-gradient-to-r from-transparent via-[#c31a26]/20 to-transparent" />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #cbd5e1;
+        }
+      `}</style>
+    </>
   );
 }
