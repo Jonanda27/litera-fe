@@ -1,11 +1,11 @@
-// File: src/lib/types/activity.ts
+// src/lib/types/activity.ts
 
 /**
  * Representasi entitas ActivityLog dari Backend.
  */
 export interface ActivityLog {
     id: number;
-    userId: string | number; // Menyesuaikan tipe ID di tabel User Anda
+    userId: string | number;
     action: string;
     resourceType: string;
     resourceId?: string | number | null;
@@ -16,6 +16,8 @@ export interface ActivityLog {
 
 /**
  * Representasi metadata paginasi yang dikembalikan oleh Backend.
+ * Skema ini sedikit lebih mendetail dari PaginationMeta di dashboard.ts
+ * untuk mempermudah rendering tombol "Next" dan "Previous" di UI.
  */
 export interface PaginationMeta {
     totalItems: number;
@@ -28,16 +30,17 @@ export interface PaginationMeta {
 
 /**
  * Struktur kontrak balikan (Response Contract) dari endpoint GET /api/activity-logs.
+ * Diselaraskan menggunakan standar JSend API Format.
  */
 export interface ActivityLogResponse {
-    success: boolean;
+    status: 'success' | 'error' | 'fail';
     message: string;
     data: ActivityLog[];
     meta: PaginationMeta;
 }
 
 /**
- * Parameter dinamis yang diizinkan untuk dikirim sebagai Query String ke API.
+ * Parameter dinamis yang diizinkan untuk dikirim sebagai Query String ke API (Fitur P0).
  */
 export interface ActivityLogFilters {
     page?: number;

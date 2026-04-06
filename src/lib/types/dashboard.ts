@@ -6,12 +6,17 @@
 
 /**
  * Representasi murni dari data agregasi metrik dashboard (KPI).
+ * Ditambahkan properti distribusiBuku untuk mendukung analitik Writing Workspace.
  */
 export interface DashboardSummaryData {
     totalPeserta: number;
     totalMentor: number;
     totalAktivitasModulSelesai: number;
     rataRataProgresSistem: number;
+    distribusiBuku: {
+        fiksi: number;
+        nonFiksi: number;
+    };
 }
 
 /**
@@ -60,12 +65,24 @@ export interface MentorActivityLogData {
 }
 
 /**
+ * Representasi metadata paginasi (Pagination).
+ */
+export interface PaginationMeta {
+    totalItems: number;
+    currentPage: number;
+    itemsPerPage: number;
+    totalPages: number;
+}
+
+/**
  * Representasi standar respons JSend API untuk daftar Log Mentor.
+ * Diperbarui dengan dukungan properti meta untuk Pagination.
  */
 export interface MentorLogsResponse {
     status: 'success' | 'error' | 'fail';
     message: string;
     data: MentorActivityLogData[];
+    meta: PaginationMeta;
 }
 
 
@@ -104,4 +121,34 @@ export interface DashboardChartsResponse {
     status: 'success' | 'error' | 'fail';
     message: string;
     data: DashboardChartsData;
+}
+
+
+// ============================================================================
+// 4. ENTITAS: RETENTION & RISK ANALYSIS
+// ============================================================================
+
+export interface RiskyUser {
+    id: number;
+    nama: string;
+    no_hp: string;
+    persentase_progres: number;
+    createdAt: string;
+}
+
+export interface DifficultModule {
+    module_id: number;
+    total_stuck: number;
+    module: {
+        nama_modul: string;
+    };
+}
+
+export interface RetentionResponse {
+    message: string;
+    status: 'success' | 'error';
+    data: {
+        riskyUsers: RiskyUser[];
+        difficultModules: DifficultModule[];
+    };
 }

@@ -4,9 +4,9 @@ import {
     DashboardSummaryResponse,
     DashboardSummaryData,
     MentorLogsResponse,
-    MentorActivityLogData,
     DashboardChartsResponse,
-    DashboardChartsData
+    DashboardChartsData,
+    RetentionResponse
 } from '../types/dashboard';
 
 // Mengambil Base URL dari environment variable. Pastikan fallback ke localhost untuk development.
@@ -15,8 +15,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/a
 export const adminDashboardService = {
     /**
      * 1. Mengambil data metrik agregasi ringkasan dashboard Admin (KPI).
-     * @param token - JWT Token untuk Bearer Authorization
-     * @returns Promise<DashboardSummaryData>
      */
     async getSummary(token: string): Promise<DashboardSummaryData> {
         if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
@@ -28,7 +26,6 @@ export const adminDashboardService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                // Dasbor butuh data presisi tinggi, cache dimatikan
                 cache: 'no-store'
             });
 
@@ -46,15 +43,26 @@ export const adminDashboardService = {
     },
 
     /**
-     * 2. Mengambil log aktivitas dan notifikasi seluruh mentor.
-     * @param token - JWT Token untuk Bearer Authorization
-     * @returns Promise<MentorActivityLogData[]>
+     * 2. Mengambil log aktivitas mentor dengan dukungan Paginasi & Filter (Fitur P0).
+     * Diperbarui untuk mengembalikan MentorLogsResponse utuh agar metadata paginasi terbaca.
      */
-    async getMentorLogs(token: string): Promise<MentorActivityLogData[]> {
+    async getMentorLogs(
+        token: string,
+        page: number = 1,
+        limit: number = 10,
+        action?: string
+    ): Promise<MentorLogsResponse> {
         if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
 
         try {
-            const response = await fetch(`${API_BASE_URL}/admin/dashboard/mentor-logs`, {
+            const queryParams = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString(),
+            });
+
+            if (action) queryParams.append('action', action);
+
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/mentor-logs?${queryParams.toString()}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -69,7 +77,7 @@ export const adminDashboardService = {
                 throw new Error(result.message || `Gagal memuat log mentor (Status HTTP: ${response.status})`);
             }
 
-            return result.data;
+            return result; // Mengembalikan objek MentorLogsResponse { status, message, data, meta }
         } catch (error: any) {
             console.error('[Service Layer] Error fetching Mentor Logs:', error);
             throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
@@ -78,8 +86,6 @@ export const adminDashboardService = {
 
     /**
      * 3. Mengambil data agregasi untuk visualisasi grafik (Charts).
-     * @param token - JWT Token untuk Bearer Authorization
-     * @returns Promise<DashboardChartsData>
      */
     async getCharts(token: string): Promise<DashboardChartsData> {
         if (!token) throw new Error('Otorisasi gagal: Token sesi tidak ditemukan.');
@@ -91,7 +97,7 @@ export const adminDashboardService = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                cache: 'no-store' // Bisa diubah ke next: { revalidate: 3600 } jika grafik tidak perlu real-time
+                cache: 'no-store'
             });
 
             const result: DashboardChartsResponse = await response.json();
@@ -108,10 +114,7 @@ export const adminDashboardService = {
     },
 
     /**
-     * 4. Mengirimkan notifikasi ke mentor atau mencatat log baru secara manual dari Admin.
-     * @param token - JWT Token untuk Bearer Authorization
-     * @param payload - Data notifikasi (mentorId opsional untuk broadcast)
-     * @returns Promise<boolean> - Mengembalikan true jika berhasil
+     * 4. Mengirimkan notifikasi ke mentor atau mencatat log baru secara manual.
      */
     async sendMentorNotification(
         token: string,
@@ -139,6 +142,53 @@ export const adminDashboardService = {
         } catch (error: any) {
             console.error('[Service Layer] Error sending mentor notification:', error);
             throw new Error(error.message || 'Terjadi kegagalan komunikasi dengan server.');
+        }
+    },
+
+    /**
+     * 5. Mengambil analisis retensi peserta berisiko dan modul sulit.
+     */
+    async getRetentionAnalysis(token: string): Promise<RetentionResponse['data']> {
+        if (!token) throw new Error('Token tidak ditemukan');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/retention`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                cache: 'no-store'
+            });
+
+            const result: RetentionResponse = await response.json();
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Gagal memuat data retensi');
+            }
+            return result.data;
+        } catch (error: any) {
+            console.error('[Service Layer] Error fetching Retention Analysis:', error);
+            throw new Error(error.message || 'Gagal terhubung ke server.');
+        }
+    },
+
+    /**
+     * 6. Mengirim pengingat WhatsApp ke peserta (Nudge).
+     */
+    async sendWhatsAppNudge(token: string, userId: number): Promise<boolean> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/dashboard/nudge-whatsapp`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ userId })
+            });
+            return response.ok;
+        } catch (error) {
+            console.error('[Service Layer] Error sending WhatsApp Nudge:', error);
+            return false;
         }
     }
 };

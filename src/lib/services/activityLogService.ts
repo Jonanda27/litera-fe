@@ -1,14 +1,12 @@
-// File: src/lib/services/activityLogService.ts
+// src/lib/services/activityLogService.ts
 
 import { ActivityLogResponse, ActivityLogFilters } from '../types/activity';
 
 /**
  * URL basis API. Disesuaikan dengan env aplikasi Anda.
- * Jika Anda menggunakan Vite, gunakan import.meta.env.VITE_API_URL.
- * Jika Next.js, gunakan process.env.NEXT_PUBLIC_API_URL.
- * Untuk sementara di-hardcode ke localhost sesuai konteks backend Anda.
+ * Menggunakan environment variable sebagai prioritas utama (Best Practice Frontend).
  */
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 class ActivityLogService {
     /**
@@ -39,26 +37,34 @@ class ActivityLogService {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` // Endpoint log aktivitas dilindungi
-                }
+                },
+                // Menerapkan strategi cache 'no-store' agar log selalu real-time (Single Source of Truth)
+                // Ini mencegah Next.js mengembalikan data usang (stale data) dari cache.
+                cache: 'no-store'
             });
 
-            // 3. Evaluasi Respons HTTP
+            // 3. Evaluasi Respons HTTP Tingkat Jaringan
             if (!response.ok) {
                 // Menangkap status 4xx dan 5xx agar dilempar ke catch block
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.message || `HTTP Error: ${response.status}`);
             }
 
-            // 4. Konversi dan Validasi Tipe Data Contract
+            // 4. Konversi dan Validasi Tipe Data Contract (JSend Format)
             const responseData: ActivityLogResponse = await response.json();
+
+            // Memastikan backend benar-benar mengembalikan status success
+            if (responseData.status === 'error' || responseData.status === 'fail') {
+                throw new Error(responseData.message || 'Server merespons dengan status gagal');
+            }
+
             return responseData;
 
         } catch (error: any) {
             console.error('[ActivityLogService] Gagal mengambil data log:', error.message);
 
-            // Re-throw error agar dapat ditangkap oleh State Manager (seperti React Query/Zustand)
-            // untuk memicu UI error state (misal: memunculkan toast notification)
-            throw new Error(error.message || 'Gagal terhubung ke server');
+            // Re-throw error agar dapat ditangkap oleh komponen UI (misal: untuk merender komponen error state)
+            throw new Error(error.message || 'Gagal terhubung ke server API');
         }
     }
 }
