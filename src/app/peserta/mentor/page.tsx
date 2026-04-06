@@ -34,6 +34,7 @@ export default function KontakMentor() {
         setIsLoading(true);
         const token = localStorage.getItem("token");
         
+        // 1. Ambil data diri dan mentor dari endpoint /auth/me
         const resMe = await fetch(`${API_BASE_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -42,11 +43,17 @@ export default function KontakMentor() {
         if (dataMe) {
           setCurrentUser(dataMe);
           
-          if (dataMe.mentor) {
-            setMentor(dataMe.mentor);
-            const generatedRoomId = `private-mentoring-${dataMe.mentor.id}-${dataMe.id}`;
+          // Integrasi data mentor (menggunakan mentorData dari API backend Anda)
+          const mentorData = dataMe.mentorData || dataMe.mentor;
+
+          if (mentorData) {
+            setMentor(mentorData);
+            
+            // 2. Generate Room ID unik antara mentor dan peserta
+            const generatedRoomId = `private-mentoring-${mentorData.id}-${dataMe.id}`;
             setRoomId(generatedRoomId);
 
+            // 3. Ambil riwayat chat berdasarkan Room ID tersebut
             try {
               const resHistory = await fetch(`${API_BASE_URL}/books/private-history/${generatedRoomId}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -57,7 +64,7 @@ export default function KontakMentor() {
                 const formattedMessages = historyData.data.map((m: any) => ({
                   id: m.id,
                   senderId: m.senderId,
-                  sender: m.sender?.nama || (m.senderId === dataMe.id ? dataMe.nama : dataMe.mentor.nama),
+                  sender: m.sender?.nama || (m.senderId === dataMe.id ? dataMe.nama : mentorData.nama),
                   text: m.message,
                   timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }));
@@ -182,7 +189,7 @@ export default function KontakMentor() {
   };
 
   const handleEndChat = () => {
-    setShowConfirmExit(false);
+    window.location.href = "/peserta/dashboard";
   };
 
   if (isLoading) return (
@@ -334,7 +341,7 @@ export default function KontakMentor() {
                     onChange={(e) => setInputMessage(e.target.value)}
                     placeholder="Tulis pesan untuk mentor..."
                     className="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 text-sm text-black focus:border-[#1e4e8c] outline-none transition-all"
-      />
+                  />
                   <button 
                     type="submit"
                     disabled={!inputMessage.trim()}
@@ -365,10 +372,10 @@ export default function KontakMentor() {
                   </p>
                   <div className="mt-8 flex flex-col gap-2">
                      <button onClick={handleEndChat} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-xs">
-                        Ya, Keluar
+                       Ya, Keluar
                      </button>
                      <button onClick={() => setShowConfirmExit(false)} className="w-full py-4 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase text-xs">
-                        Tetap di Sini
+                       Tetap di Sini
                      </button>
                   </div>
                </motion.div>

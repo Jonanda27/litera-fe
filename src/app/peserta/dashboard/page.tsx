@@ -42,7 +42,6 @@ function CourseCard({ title, progress, icon }: { title: string; progress: number
       whileHover={{ y: -5 }}
       className="bg-white/90 backdrop-blur-md rounded-[2.5rem] p-6 md:p-10 shadow-sm border border-white/50 relative overflow-hidden group hover:shadow-2xl transition-all h-full flex flex-col justify-center min-h-[300px]"
     >
-      {/* Subtle Background Glows */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-100/50 rounded-full blur-3xl group-hover:bg-blue-200/50 transition-colors duration-700" />
         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-red-50/50 rounded-full blur-3xl group-hover:bg-red-100/50 transition-colors duration-700" />
@@ -78,7 +77,6 @@ function CourseCard({ title, progress, icon }: { title: string; progress: number
         </div>
       </div>
       
-      {/* Background Decorative Icon */}
       <div className="absolute -right-8 -bottom-8 opacity-[0.03] group-hover:opacity-[0.08] group-hover:scale-110 transition-all duration-700">
         <BookOpen size={240} />
       </div>
@@ -107,8 +105,15 @@ export default function Dashboard() {
     };
 
     const fetchExtra = async () => {
+      // Mengambil data diri termasuk mentorData
       fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.json()).then(d => { if (d.mentor) setMentor(d.mentor); })
+        .then(res => res.json())
+        .then(d => { 
+          // Sesuai dengan respons API: { mentorData: { nama, spesialisasi, ... } }
+          if (d.mentorData) {
+            setMentor(d.mentorData); 
+          }
+        })
         .finally(() => setLoadingItems(p => ({ ...p, mentor: false })));
 
       fetch(`${API_BASE_URL}/live-session/all-live`)
@@ -135,7 +140,6 @@ export default function Dashboard() {
 
   return (
     <Sidebar>
-      {/* --- BACKGROUND DECORATION --- */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]" />
         <motion.div 
@@ -152,7 +156,6 @@ export default function Dashboard() {
 
       <div className="max-w-7xl mx-auto space-y-10 pb-12 relative z-10">
         
-        {/* --- ROW 1: HEADER & OVERALL PROGRESS --- */}
         <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -178,7 +181,6 @@ export default function Dashboard() {
           </div>
           
           <div className="lg:col-span-2 bg-white/80 backdrop-blur-md p-6 rounded-[2.5rem] shadow-sm border border-white/50 relative overflow-hidden group">
-            {/* Soft background glow */}
             <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
             
             <div className="flex justify-between items-center mb-4 relative z-10">
@@ -195,7 +197,6 @@ export default function Dashboard() {
           </div>
         </motion.header>
 
-        {/* --- ROW 2: MAIN FOCUS (BENTO STYLE) --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <CourseCard
@@ -205,7 +206,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Mentor Card */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -213,7 +213,6 @@ export default function Dashboard() {
             className="lg:col-span-1"
           >
             <section className="bg-gradient-to-br from-[#c31a26] via-[#a51620] to-[#1e4e8c] rounded-[2.5rem] p-8 h-full flex flex-col justify-between text-white relative overflow-hidden shadow-2xl shadow-red-200/50 group">
-              {/* Dynamic light streak */}
               <div className="absolute -top-[100%] left-[-100%] w-[300%] h-[300%] bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.1)_0%,_transparent_50%)] group-hover:animate-pulse pointer-events-none" />
               
               <div className="relative z-10">
@@ -227,7 +226,15 @@ export default function Dashboard() {
                     </div>
                 </div>
                 
-                {loadingItems.mentor ? <Loader2 className="animate-spin opacity-20" /> : mentor ? (
+                {loadingItems.mentor ? (
+                  <div className="flex items-center gap-4 animate-pulse">
+                    <div className="w-20 h-20 bg-white/20 rounded-[2rem]"></div>
+                    <div className="space-y-2">
+                      <div className="w-24 h-4 bg-white/20 rounded"></div>
+                      <div className="w-16 h-3 bg-white/10 rounded"></div>
+                    </div>
+                  </div>
+                ) : mentor ? (
                     <div className="flex items-center gap-5">
                         <div className="w-20 h-20 rounded-[2rem] bg-white flex items-center justify-center shadow-xl shrink-0 group-hover:scale-110 transition-all duration-500 border-4 border-white/20">
                             <span className="text-[#c31a26] text-3xl font-black">
@@ -239,7 +246,11 @@ export default function Dashboard() {
                             <p className="text-[10px] font-bold text-white/60 uppercase tracking-[0.1em]">{mentor.spesialisasi || "Expert Mentor"}</p>
                         </div>
                     </div>
-                ) : <p className="text-xs opacity-50">Belum ada mentor yang ditugaskan</p>}
+                ) : (
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-60">Belum ada mentor yang ditugaskan</p>
+                  </div>
+                )}
               </div>
               
               <button className="relative z-10 w-full py-5 bg-white text-[#c31a26] font-black rounded-2xl text-[11px] uppercase tracking-[0.2em] mt-8 hover:bg-slate-900 hover:text-white transition-all active:scale-95 shadow-xl">
@@ -251,17 +262,13 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* --- ROW 3: COMMUNITY & LIVE --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* Diskusi */}
           <motion.section 
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             className="bg-white/90 backdrop-blur-md rounded-[2.5rem] p-8 shadow-sm border border-white/50 group relative overflow-hidden"
           >
-            {/* Background Accent */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-blue-100 transition-colors duration-700" />
             
             <div className="flex items-center justify-between mb-8 relative z-10">
@@ -298,14 +305,12 @@ export default function Dashboard() {
             ) : <p className="text-xs text-slate-400 font-bold">Belum ada diskusi terbaru.</p>}
           </motion.section>
 
-          {/* Live Sessions */}
           <motion.section 
             initial={{ opacity: 0, x: 20 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             className="bg-white/90 backdrop-blur-md rounded-[2.5rem] p-8 shadow-sm border border-white/50 relative overflow-hidden group"
           >
-            {/* Background Accent */}
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-red-50/50 rounded-full blur-2xl -ml-10 -mb-10 group-hover:bg-red-100 transition-colors duration-700" />
 
             <div className="flex items-center gap-4 mb-8 relative z-10">
