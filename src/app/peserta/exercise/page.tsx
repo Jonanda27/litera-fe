@@ -10,7 +10,7 @@ import {
   API_BASE_URL,
   SOCKET_API_BASE_URL,
 } from "../../../lib/constans/constans";
-import { BookOpen, Award } from "lucide-react";
+import { BookOpen, Award, X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 
 interface Question {
   id: number;
@@ -87,7 +87,9 @@ export default function ExercisePage() {
     setCurrentQuestionIndex(0);
     setScoreData({ score: 0, correct: 0, wrong: 0 });
     setIsFetchingContent(true);
-    window.scrollTo({ top: 200, behavior: "smooth" });
+    
+    // Lock scroll body
+    document.body.style.overflow = 'hidden';
 
     try {
       const token = localStorage.getItem("token");
@@ -100,7 +102,7 @@ export default function ExercisePage() {
         const parsedSoal = typeof rawSoal === "string" ? JSON.parse(rawSoal) : rawSoal;
         if (type === "evaluasi" || parsedSoal) {
           setQuestions(parsedSoal || []);
-          const historyList = result.data.userProgress; // Menggunakan alias userProgress dari backend
+          const historyList = result.data.userProgress;
           if (historyList && historyList.length > 0) {
             const history = historyList[0];
             if (history.status_selesai && history.jawaban_user) {
@@ -120,6 +122,13 @@ export default function ExercisePage() {
     } finally {
       setIsFetchingContent(false);
     }
+  };
+
+  const closeLesson = () => {
+    setSelectedLesson(null);
+    setPreviewUrl(null);
+    setQuestions([]);
+    document.body.style.overflow = 'auto';
   };
 
   const handleCompleteLesson = async () => {
@@ -150,10 +159,7 @@ export default function ExercisePage() {
       if (response.ok) {
         setProgress(data.newProgress);
         if (questions.length === 0 || isSubmitted) {
-          setSelectedLesson(null);
-          setPreviewUrl(null);
-          setQuestions([]);
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          closeLesson();
         }
       }
     } catch (err) {
@@ -168,7 +174,7 @@ export default function ExercisePage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-const handleNextQuestion = () => { if (currentQuestionIndex < questions.length - 1) setCurrentQuestionIndex(currentQuestionIndex + 1); };
+  const handleNextQuestion = () => { if (currentQuestionIndex < questions.length - 1) setCurrentQuestionIndex(currentQuestionIndex + 1); };
   const handleBackQuestion = () => { if (currentQuestionIndex > 0) setCurrentQuestionIndex(currentQuestionIndex - 1); };
 
   const handleViewCertificate = () => router.push("/peserta/sertifikat");
@@ -177,7 +183,7 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
 
   return (
     <Sidebar>
-       <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-8 pb-10 md:pb-20 px-2 sm:px-0">
+      <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-8 pb-10 md:pb-20 px-2 sm:px-0">
         <header className="pt-4 md:pt-0">
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">EXERCISE</h1>
           <p className="text-slate-800 font-bold text-sm md:text-lg uppercase mt-1">
@@ -187,82 +193,123 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
 
         <ExProgressBar progress={progress} />
 
+        {/* MODAL FULLSCREEN LESSON - FIXED OVERFLOW ISSUE */}
         <AnimatePresence>
           {selectedLesson && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="max-w-5xl mx-auto bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden mb-12">
-              <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${isSubmitted ? 'bg-emerald-500' : 'bg-[#c31a26] animate-pulse'}`}></div>
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{isSubmitted ? 'Evaluation Result' : `Learning: ${selectedLesson.type}`}</span>
+            <motion.div 
+              initial={{ opacity: 0, scale: 1.1 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 1.1 }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[99999] bg-white flex flex-col h-screen w-screen overflow-hidden"
+            >
+              {/* Header Modal - Fixed Position */}
+              <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white z-10 shadow-sm">
+                <div className="flex items-center gap-4">
+                  <button onClick={closeLesson} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-600">
+                    <ChevronLeft size={24} strokeWidth={3} />
+                  </button>
+                  <div>
+                    <p className="text-[10px] font-black text-[#c31a26] uppercase tracking-[0.2em] leading-none mb-1">{selectedLesson.type}</p>
+                    <h2 className="text-lg md:text-xl font-black text-slate-900 uppercase tracking-tight truncate max-w-[150px] md:max-w-md">{selectedLesson.title}</h2>
+                  </div>
                 </div>
-                <button onClick={() => { setSelectedLesson(null); setPreviewUrl(null); setQuestions([]); }} className="text-slate-400 hover:text-[#c31a26] transition-all p-2 hover:rotate-90">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+                
+                <div className="flex items-center gap-3">
+                   {questions.length > 0 && (
+                     <div className="hidden md:flex items-center gap-2 mr-4 bg-slate-50 px-4 py-2 rounded-full border border-slate-100">
+                        <div className="flex gap-1">
+                           {questions.map((_, i) => (
+                             <div key={i} className={`w-2 h-2 rounded-full ${i <= currentQuestionIndex ? 'bg-[#c31a26]' : 'bg-slate-200'}`}></div>
+                           ))}
+                        </div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase ml-2">{currentQuestionIndex + 1}/{questions.length}</span>
+                     </div>
+                   )}
+                   <button onClick={closeLesson} className="p-2 bg-slate-100 hover:bg-red-50 hover:text-red-500 rounded-full transition-all">
+                     <X size={20} strokeWidth={3} />
+                   </button>
+                </div>
               </div>
 
-              <div className="p-6 md:p-10">
-                <h2 className="text-2xl md:text-4xl font-black text-slate-900 mb-8 uppercase  tracking-tighter leading-none">{selectedLesson.title}</h2>
-                <div className={`w-full bg-slate-950 rounded-[2.5rem] flex items-center justify-center text-white mb-10 shadow-inner relative overflow-hidden border-8 border-slate-50 ${questions.length > 0 ? 'min-h-[500px] p-6 md:p-12 block bg-gradient-to-br from-slate-900 via-slate-950 to-black' : 'aspect-video'}`}>
-                  {isFetchingContent ? (
-                    <div className="flex flex-col items-center gap-4"><div className="w-12 h-12 border-4 border-[#c31a26] border-t-transparent rounded-full animate-spin"></div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c31a26]">Syncing Content...</p></div>
-                  ) : questions.length > 0 ? (
-                    isSubmitted && !showReview ? (
+              {/* Body Content Fullscreen - Scrollable */}
+              <div className="flex-1 overflow-y-auto bg-slate-50 custom-scrollbar">
+                <div className="max-w-6xl mx-auto p-4 md:p-10 min-h-full flex flex-col">
+                  <div className={`w-full bg-slate-950 rounded-[2.5rem] flex items-center justify-center text-white mb-8 shadow-2xl relative overflow-hidden border-8 border-white ${questions.length > 0 ? 'min-h-[500px] p-6 md:p-12 block bg-gradient-to-br from-slate-900 via-slate-950 to-black' : 'aspect-video flex-shrink-0'}`}>
+                    {isFetchingContent ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 border-4 border-[#c31a26] border-t-transparent rounded-full animate-spin"></div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#c31a26]">Syncing Content...</p>
+                      </div>
+                    ) : questions.length > 0 ? (
+                      isSubmitted && !showReview ? (
                         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md mx-auto text-center py-10 space-y-8">
-                            <div className="relative inline-block">
-                                <svg className="w-48 h-48 transform -rotate-90"><circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800" /><circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={534} strokeDashoffset={534 - (534 * scoreData.score) / 100} className="text-emerald-500 transition-all duration-1000" /></svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-6xl font-black ">{scoreData.score}</span><span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Summary Score</span></div>
+                          <div className="relative inline-block">
+                            <svg className="w-48 h-48 transform -rotate-90">
+                              <circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-slate-800" />
+                              <circle cx="96" cy="96" r="85" stroke="currentColor" strokeWidth="12" fill="transparent" strokeDasharray={534} strokeDashoffset={534 - (534 * scoreData.score) / 100} className="text-emerald-500 transition-all duration-1000" />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                              <span className="text-6xl font-black">{scoreData.score}</span>
+                              <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Summary Score</span>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem]"><p className="text-3xl font-black text-emerald-500">{scoreData.correct}</p><p className="text-[10px] uppercase font-bold text-emerald-600/50">Correct</p></div>
-                                <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-[2rem]"><p className="text-3xl font-black text-rose-500">{scoreData.wrong}</p><p className="text-[10px] uppercase font-bold text-rose-600/50">Incorrect</p></div>
-                            </div>
-                            <button onClick={() => { setShowReview(true); setCurrentQuestionIndex(0); }} className="w-full py-5 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all border border-white/10">Review Answers</button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem]"><p className="text-3xl font-black text-emerald-500">{scoreData.correct}</p><p className="text-[10px] uppercase font-bold text-emerald-600/50">Correct</p></div>
+                            <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-[2rem]"><p className="text-3xl font-black text-rose-500">{scoreData.wrong}</p><p className="text-[10px] uppercase font-bold text-rose-600/50">Incorrect</p></div>
+                          </div>
+                          <button onClick={() => { setShowReview(true); setCurrentQuestionIndex(0); }} className="w-full py-5 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all border border-white/10">Review Answers</button>
                         </motion.div>
-                    ) : (
+                      ) : (
                         <div className="w-full max-w-3xl mx-auto flex flex-col h-full justify-between">
-                            <AnimatePresence mode="wait">
-                                <motion.div key={currentQuestionIndex} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
-                                    <div className="flex items-start gap-6">
-                                        <span className="flex-shrink-0 w-14 h-14 rounded-3xl bg-[#c31a26] flex items-center justify-center font-black text-2xl text-white  shadow-lg shadow-red-900/40">{currentQuestionIndex + 1}</span>
-                                        <div className="space-y-2"><p className="text-[10px] uppercase font-black tracking-[0.3em] text-red-500">{showReview ? 'Analytic Mode' : `Task ${currentQuestionIndex + 1} of ${questions.length}`}</p><p className="font-bold text-xl md:text-3xl text-white leading-tight tracking-tight">{questions[currentQuestionIndex].text}</p></div>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-4">
-                                        {questions[currentQuestionIndex].options.map((opt) => {
-                                            const isSelected = userAnswers[questions[currentQuestionIndex].id] === opt.id;
-                                            const isCorrect = questions[currentQuestionIndex].correctAnswer === opt.id;
-                                            let btnClass = "bg-white/5 border-white/5 text-slate-400";
-                                            if (!showReview) { if (isSelected) btnClass = "bg-red-600 border-red-400 text-white shadow-xl scale-[1.02]"; } 
-                                            else { if (isCorrect) btnClass = "bg-emerald-600 border-emerald-400 text-white shadow-lg"; else if (isSelected) btnClass = "bg-red-600 border-red-400 text-white"; }
-                                            return (
-                                                <motion.button key={opt.id} disabled={isSubmitted && !showReview} whileTap={{ scale: isSubmitted ? 1 : 0.98 }} onClick={() => !showReview && setUserAnswers({ ...userAnswers, [questions[currentQuestionIndex].id]: opt.id })} className={`group relative p-6 rounded-[2rem] border-2 text-left transition-all duration-300 flex items-center gap-5 ${btnClass}`}>
-                                                  <div className={`flex-shrink-0 w-10 h-10 rounded-2xl border-2 flex items-center justify-center text-xs font-black transition-colors ${isSelected || (showReview && isCorrect) ? 'bg-white text-slate-900' : 'bg-slate-900 border-white/10 text-white'}`}>{opt.id}</div>
-                                                  <span className="font-bold text-sm md:text-lg flex-grow tracking-tight">{opt.text}</span>
-                                                </motion.button>
-                                            );
-                                        })}
-                                    </div>
-                                </motion.div>
-                            </AnimatePresence>
-                            <div className="flex justify-between items-center mt-12 pt-10 border-t border-white/5">
-                                <button onClick={handleBackQuestion} disabled={currentQuestionIndex === 0} className={`font-black uppercase text-[10px] tracking-widest ${currentQuestionIndex === 0 ? 'opacity-10' : 'text-slate-500 hover:text-white'}`}>Back</button>
-                                <div className="flex gap-2">{questions.map((_, i) => (<div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === currentQuestionIndex ? 'w-10 bg-red-500' : 'w-2 bg-slate-800'}`}></div>))}</div>
-                                {currentQuestionIndex === questions.length - 1 ? (showReview ? (<button onClick={() => setShowReview(false)} className="font-black uppercase text-[10px] tracking-widest text-emerald-500">View Summary</button>) : (<span className="text-[10px] font-black text-red-500 uppercase ">Finish</span>)) : (<button onClick={handleNextQuestion} className="font-black uppercase text-[10px] tracking-widest text-red-500">Next</button>)}
-                            </div>
+                          <AnimatePresence mode="wait">
+                            <motion.div key={currentQuestionIndex} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-10">
+                              <div className="flex items-start gap-6">
+                                <span className="flex-shrink-0 w-14 h-14 rounded-3xl bg-[#c31a26] flex items-center justify-center font-black text-2xl text-white shadow-lg shadow-red-900/40">{currentQuestionIndex + 1}</span>
+                                <div className="space-y-2">
+                                  <p className="text-[10px] uppercase font-black tracking-[0.3em] text-red-500">{showReview ? 'Analytic Mode' : `Task ${currentQuestionIndex + 1} of ${questions.length}`}</p>
+                                  <p className="font-bold text-xl md:text-3xl text-white leading-tight tracking-tight">{questions[currentQuestionIndex].text}</p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 gap-4 text-white">
+                                {questions[currentQuestionIndex].options.map((opt) => {
+                                  const isSelected = userAnswers[questions[currentQuestionIndex].id] === opt.id;
+                                  const isCorrect = questions[currentQuestionIndex].correctAnswer === opt.id;
+                                  let btnClass = "bg-white/5 border-white/5 text-slate-400";
+                                  if (!showReview) { if (isSelected) btnClass = "bg-red-600 border-red-400 text-white shadow-xl scale-[1.02]"; } 
+                                  else { if (isCorrect) btnClass = "bg-emerald-600 border-emerald-400 text-white shadow-lg"; else if (isSelected) btnClass = "bg-red-600 border-red-400 text-white"; }
+                                  return (
+                                    <motion.button key={opt.id} disabled={isSubmitted && !showReview} whileTap={{ scale: isSubmitted ? 1 : 0.98 }} onClick={() => !showReview && setUserAnswers({ ...userAnswers, [questions[currentQuestionIndex].id]: opt.id })} className={`group relative p-6 rounded-[2rem] border-2 text-left transition-all duration-300 flex items-center gap-5 ${btnClass}`}>
+                                      <div className={`flex-shrink-0 w-10 h-10 rounded-2xl border-2 flex items-center justify-center text-xs font-black transition-colors ${isSelected || (showReview && isCorrect) ? 'bg-white text-slate-900' : 'bg-slate-900 border-white/10 text-white'}`}>{opt.id}</div>
+                                      <span className="font-bold text-sm md:text-lg flex-grow tracking-tight">{opt.text}</span>
+                                    </motion.button>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          </AnimatePresence>
+                          <div className="flex justify-between items-center mt-12 pt-10 border-t border-white/5">
+                            <button onClick={handleBackQuestion} disabled={currentQuestionIndex === 0} className={`font-black uppercase text-[10px] tracking-widest ${currentQuestionIndex === 0 ? 'opacity-10' : 'text-slate-500 hover:text-white'}`}>Back</button>
+                            <div className="flex gap-2 text-white">{questions.map((_, i) => (<div key={i} className={`h-1 rounded-full transition-all duration-500 ${i === currentQuestionIndex ? 'w-10 bg-red-500' : 'w-2 bg-slate-800'}`}></div>))}</div>
+                            {currentQuestionIndex === questions.length - 1 ? (showReview ? (<button onClick={() => setShowReview(false)} className="font-black uppercase text-[10px] tracking-widest text-emerald-500">View Summary</button>) : (<span className="text-[10px] font-black text-red-500 uppercase">Finish</span>)) : (<button onClick={handleNextQuestion} className="font-black uppercase text-[10px] tracking-widest text-red-500">Next</button>)}
+                          </div>
                         </div>
-                    )
-                  ) : previewUrl ? (
-                    <iframe src={previewUrl} className="w-full h-full border-0" allowFullScreen></iframe>
-                  ) : (<div className="flex flex-col items-center gap-4 opacity-20"><BookOpen size={64} /><p className="font-black text-xs uppercase tracking-[0.4em] ">No Content Available</p></div>)}
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-6 bg-slate-50 rounded-[3rem] p-8 border border-slate-100">
-                  <div className="text-center sm:text-left">
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">{isSubmitted ? "Status: Completed" : "Progress"}</p>
-                    <p className="text-sm text-slate-700 font-bold ">{questions.length > 0 ? (isSubmitted ? `Final Result: ${scoreData.score}/100` : `Answered ${Object.keys(userAnswers).length} of ${questions.length} tasks`) : "Pahami materi di atas untuk melanjutkan."}</p>
+                      )
+                    ) : previewUrl ? (
+                      <iframe src={previewUrl} className="w-full h-full border-0" allowFullScreen></iframe>
+                    ) : (<div className="flex flex-col items-center gap-4 opacity-20"><BookOpen size={64} /><p className="font-black text-xs uppercase tracking-[0.4em]">No Content Available</p></div>)}
                   </div>
-                  <button onClick={handleCompleteLesson} className="w-full sm:w-auto bg-slate-900 text-white px-12 py-5 rounded-[2rem] font-black text-xs shadow-2xl hover:bg-[#c31a26] transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-                    {questions.length > 0 && !isSubmitted ? "Submit Task" : "Complete Lesson"} <span className="text-xl">→</span>
-                  </button>
+
+                  {/* Footer Modal Actions - Fixed at bottom of scroll container */}
+                  <div className="mt-auto flex flex-col sm:flex-row justify-between items-center gap-6 bg-white rounded-[3rem] p-8 border border-slate-200 shadow-xl mb-4">
+                    <div className="text-center sm:text-left">
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">{isSubmitted ? "Status: Completed" : "Progress"}</p>
+                      <p className="text-sm text-slate-700 font-bold ">{questions.length > 0 ? (isSubmitted ? `Final Result: ${scoreData.score}/100` : `Answered ${Object.keys(userAnswers).length} of ${questions.length} tasks`) : "Pahami materi di atas untuk melanjutkan."}</p>
+                    </div>
+                    <button onClick={handleCompleteLesson} className="w-full sm:w-auto bg-slate-900 text-white px-12 py-5 rounded-[2rem] font-black text-xs shadow-2xl hover:bg-[#c31a26] transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-3">
+                      {questions.length > 0 && !isSubmitted ? "Submit Task" : "Complete Lesson"} <span className="text-xl">→</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -273,10 +320,9 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#c31a26] via-blue-500 to-emerald-500"></div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-6">
             <div>
-              <h2 className="text-2xl font-black text-slate-900 uppercase  tracking-tighter">Curriculum Path</h2>
+              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Curriculum Path</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Selesaikan materi secara berurutan untuk membuka modul berikutnya</p>
             </div>
-            {/* CLAIM CERTIFICATE BUTTON - RED CONSISTENT */}
             <button 
                 onClick={handleViewCertificate} 
                 disabled={progress < 100} 
@@ -298,13 +344,7 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
                    const req = (id - 1) * 9;
                    return (
                     <div key={id} onClick={() => handleLessonClick(id, id === 11 ? "Evaluasi Membaca" : (id % 2 !== 0 ? `Membaca Sehat ${Math.ceil(id/2)}` : `Menulis Sehat ${id/2}`), id === 11 ? "evaluasi" : (id % 2 !== 0 ? "book" : "video"), req)}>
-                      <ExModuleItem 
-                        title={id === 11 ? "Evaluasi Membaca" : (id % 2 !== 0 ? `Membaca Sehat ${Math.ceil(id/2)}` : `Menulis Sehat ${id/2}`)} 
-                        type={id % 2 !== 0 ? "book" : "video"} 
-                        locked={progress < req} 
-                        active={selectedLesson?.id === id}
-                        completed={progress >= id * 9 || (id === 11 && progress >= 100)}
-                      />
+                      <ExModuleItem title={id === 11 ? "Evaluasi Membaca" : (id % 2 !== 0 ? `Membaca Sehat ${Math.ceil(id/2)}` : `Menulis Sehat ${id/2}`)} type={id % 2 !== 0 ? "book" : "video"} locked={progress < req} active={selectedLesson?.id === id} completed={progress >= id * 9 || (id === 11 && progress >= 100)} />
                     </div>
                   )
                 })}
@@ -331,7 +371,7 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
                   })}
                 </div>
               </div>
-              <div className="flex justify-end mt-12">{progress >= 100 && <button onClick={() => goToModule(2)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase  text-[10px] tracking-widest hover:bg-[#c31a26] transition-colors shadow-lg">Next Module: Analisis Kritis →</button>}</div>
+              <div className="flex justify-end mt-12">{progress >= 100 && <button onClick={() => goToModule(2)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#c31a26] transition-colors shadow-lg">Next Module: Analisis Kritis →</button>}</div>
             </>
           ) : activeModule === 2 ? (
             <>
@@ -367,7 +407,7 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
                   })}
                 </div>
               </div>
-              <div className="flex justify-between mt-12"><button onClick={() => goToModule(1)} className="text-slate-400 font-black uppercase  text-[10px] tracking-widest hover:text-slate-900 transition-colors">← Back to Module 1</button>{progress >= 100 && <button onClick={() => goToModule(3)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase  text-[10px] tracking-widest hover:bg-[#c31a26] transition-colors shadow-lg">Next Module: Creative Writing →</button>}</div>
+              <div className="flex justify-between mt-12"><button onClick={() => goToModule(1)} className="text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-900 transition-colors">← Back to Module 1</button>{progress >= 100 && <button onClick={() => goToModule(3)} className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#c31a26] transition-colors shadow-lg">Next Module: Creative Writing →</button>}</div>
             </>
           ) : (
             <>
@@ -403,7 +443,7 @@ const handleNextQuestion = () => { if (currentQuestionIndex < questions.length -
                   })}
                 </div>
               </div>
-              <div className="flex justify-start mt-12"><button onClick={() => goToModule(2)} className="text-slate-400 font-black uppercase  text-[10px] tracking-widest hover:text-slate-900 transition-colors">← Back to Module 2</button></div>
+              <div className="flex justify-start mt-12"><button onClick={() => goToModule(2)} className="text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-900 transition-colors">← Back to Module 2</button></div>
             </>
           )}
         </div>

@@ -47,8 +47,21 @@ export default function ModernMentorDashboard() {
   const [recentLogs, setRecentLogs] = useState<MentorLog[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [mentorName, setMentorName] = useState<string>("");
+  const [greeting, setGreeting] = useState<string>("Selamat Pagi"); // Default greeting
+
+  // Fungsi untuk mendapatkan sapaan berdasarkan waktu
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return "Selamat Pagi";
+    if (hour >= 11 && hour < 15) return "Selamat Siang";
+    if (hour >= 15 && hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  };
 
   useEffect(() => {
+    // Set greeting saat komponen dimuat
+    setGreeting(getGreeting());
+
     const fetchDashboardData = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -134,7 +147,6 @@ export default function ModernMentorDashboard() {
         });
         const logsData = await resLogs.json();
         if (logsData.success) {
-          // Hanya mengambil 2 log terbaru untuk ditampilkan
           setRecentLogs(logsData.data.slice(0, 2));
           setStats(prev => ({ ...prev, totalActivities: logsData.data.length }));
         }
@@ -178,7 +190,7 @@ export default function ModernMentorDashboard() {
 
           <div className="relative z-10">
             <h1 className="text-4xl font-black mt-1 tracking-tight">
-              Selamat Pagi, <span className="text-white">{mentorName}!</span>
+              {greeting}, <span className="text-white">{mentorName}!</span>
             </h1>
             <p className="text-slate-200 mt-3 font-medium text-sm md:text-base max-w-lg">
               Kamu memiliki <span className="text-red-400 font-bold bg-red-400/20 px-2 py-0.5 rounded-md border border-red-400/30">{stats.waitingFeedback} pesan baru</span> dari {priorityQueue.length} peserta yang membutuhkan arahanmu hari ini.
@@ -196,14 +208,34 @@ export default function ModernMentorDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard label="Peserta Bimbingan" value={stats.totalStudents} sub="Total Siswa Aktif" icon={<Users size={24} />} color="text-blue-600" bgColor="bg-blue-50" />
-          <StatCard label="Menunggu Feedback" value={stats.waitingFeedback} sub="Total Pesan Belum Dibalas" icon={<MessageSquare size={24} />} color="text-red-600" bgColor="bg-orange-50" />
-          <StatCard label="Aktivitas Mentor" value={stats.totalActivities} sub="Minggu Ini" icon={<History size={24} />} color="text-emerald-600" bgColor="bg-emerald-50" />
+          <StatCard 
+            label="Peserta Bimbingan" 
+            value={`${stats.totalStudents}/20`} 
+            sub="Total Siswa Aktif" 
+            icon={<Users size={24} />} 
+            color="text-blue-600" 
+            bgColor="bg-blue-50" 
+          />
+          <StatCard 
+            label="Menunggu Feedback" 
+            value={stats.waitingFeedback} 
+            sub="Total Pesan Belum Dibalas" 
+            icon={<MessageSquare size={24} />} 
+            color="text-red-600" 
+            bgColor="bg-orange-50" 
+          />
+          <StatCard 
+            label="Aktivitas Mentor" 
+            value={stats.totalActivities} 
+            sub="Minggu Ini" 
+            icon={<History size={24} />} 
+            color="text-emerald-600" 
+            bgColor="bg-emerald-50" 
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Main Action: Feedback Queue */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -259,7 +291,6 @@ export default function ModernMentorDashboard() {
             </div>
           </div>
 
-          {/* Activity Log Section - Updated */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-slate-800 uppercase tracking-wider">Log Aktivitas</h3>
