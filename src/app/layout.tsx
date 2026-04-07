@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { MeetingProvider } from "@/lib/constans/context/MeetingContext";
 import GlobalJitsiWrapper from "@/lib/constans/context/GlobalJitsiWrapper";
-
-// IMPORT PROVIDER DAN WRAPPER
-// Ingat: Sesuaikan path "@/" di bawah ini dengan lokasi folder tempat kamu menyimpan file-nya!
-
+import Script from "next/script"; // Import Script
 
 export const metadata: Metadata = {
   title: "LITERA - Literasi Untuk Semua",
@@ -19,12 +16,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id">
+      <head>
+        {/* Tambahkan Script Midtrans Snap (Sandbox mode) */}
+        <Script
+          src="https://app.sandbox.midtrans.com/snap/snap.js"
+          data-client-key="Mid-client-6tlrMY13kNoFhcCt" // Ganti sesuai Client Key Anda
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="antialiased">
-        {/* Bungkus seluruh aplikasi dengan MeetingProvider */}
         <MeetingProvider>
           {children}
-          
-          {/* Komponen ini akan standby di background dan muncul saat meeting aktif */}
           <GlobalJitsiWrapper />
         </MeetingProvider>
       </body>

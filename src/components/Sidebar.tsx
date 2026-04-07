@@ -9,11 +9,11 @@ interface SidebarProps {
   children: React.ReactNode;
 }
 
-// Definisi tipe data untuk menu agar TypeScript tidak komplain
 interface MenuItem {
   path: string;
   label: string;
   isPending?: boolean;
+  isSpecial?: boolean; // Tambahan untuk styling khusus (Get Premium)
 }
 
 export default function Sidebar({ children }: SidebarProps) {
@@ -55,9 +55,7 @@ export default function Sidebar({ children }: SidebarProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Logika Filter Menu Berdasarkan Role
   const getMenuItems = (): MenuItem[] => {
-    // Role Admin
     if (rolePrefix === "admin") {
       return [
         { path: "/dashboard", label: "Dashboard" },
@@ -68,7 +66,6 @@ export default function Sidebar({ children }: SidebarProps) {
       ];
     }
 
-    // Role Mentor (Tambahan Baru)
     if (rolePrefix === "mentor") {
       return [
         { path: "/dashboard", label: "Dashboard Ringkasan" },
@@ -78,8 +75,11 @@ export default function Sidebar({ children }: SidebarProps) {
       ];
     }
 
+    // Role Peserta
     return [
       { path: "/dashboard", label: "Dashboard" },
+      // [BARU] Menu Get Premium diletakkan di posisi strategis
+      { path: "/get-premium", label: "⭐ Get Premium", isSpecial: true }, 
       { path: "/exercise", label: "Exercise" },
       { path: "/experience", label: "Experience" },
       { path: "/experiment", label: "Experiment" },
@@ -87,7 +87,6 @@ export default function Sidebar({ children }: SidebarProps) {
       { path: "/sertifikat", label: "Sertifikasi" },
       { path: "/tools", label: "Tools Pendukung" },
       { path: "/e-book", label: "E-book" },
-      // Menu yang tetap muncul tapi belum aktif (mencegah error console)
       { path: "/riwayat", label: "Riwayat Kegiatan", isPending: true },
       { path: "/pengaturan", label: "Pengaturan", isPending: true },
       { path: "/mentor", label: "Kontak Mentor Kamu", isPending: false },
@@ -116,7 +115,6 @@ export default function Sidebar({ children }: SidebarProps) {
       >
         <div className="py-8 px-4 flex flex-col gap-2 overflow-y-auto h-full">
           {menuItems.map((item) => {
-            // Jika menu ditandai isPending, tampilkan sebagai div (bukan Link)
             if (item.isPending) {
               return (
                 <div
@@ -137,10 +135,12 @@ export default function Sidebar({ children }: SidebarProps) {
                 key={fullHref}
                 href={fullHref}
                 onClick={() => isMobile && setSidebarOpen(false)}
-                className={`px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm ${
-                  isActive
-                    ? "bg-white text-[#C31A26]"
-                    : "text-white hover:bg-white/10"
+                className={`px-4 py-3 md:py-2 rounded-lg transition-all duration-200 font-bold text-sm flex items-center gap-2 ${
+                  item.isSpecial 
+                    ? "bg-yellow-400 text-[#C31A26] hover:bg-yellow-300 shadow-lg mb-2 animate-pulse" // Style khusus Premium
+                    : isActive
+                      ? "bg-white text-[#C31A26]"
+                      : "text-white hover:bg-white/10"
                 }`}
               >
                 {item.label}
@@ -150,6 +150,7 @@ export default function Sidebar({ children }: SidebarProps) {
         </div>
       </aside>
 
+      {/* Button toggle sidebar tetap sama */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className={`fixed top-24 bg-white border border-slate-200 rounded-r-lg p-2 z-50 shadow-md transition-all duration-300 ${
