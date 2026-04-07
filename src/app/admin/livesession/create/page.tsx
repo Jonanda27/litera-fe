@@ -90,7 +90,7 @@ export default function AdminCreateLive() {
 
                 {/* Tombol Kembali */}
                 <button
-                    onClick={() => router.push('/admin/live')}
+                    onClick={() => router.push('/admin/livesession')}
                     className="group flex items-center gap-2 text-slate-400 font-black mb-8 hover:text-slate-900 transition-all text-[10px] uppercase tracking-[0.3em]"
                 >
                     <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Kembali ke Manager
