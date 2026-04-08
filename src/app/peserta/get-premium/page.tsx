@@ -23,7 +23,7 @@ export default function GetPremiumPage() {
 
       // 1. Request Token Transaksi ke Backend
       const response = await axios.post(
-        `${API_BASE_URL}/payments/checkout`,
+        `${API_BASE_URL}/payments/create-token`,
         {
           orderId: `LITERA-PREM-${Date.now()}`,
           amount: 150000,
@@ -123,15 +123,14 @@ export default function GetPremiumPage() {
               <button
                 onClick={handlePayment}
                 disabled={loading}
-                className={`w-full py-4 rounded-xl font-black text-lg transition-all shadow-xl ${
-                  loading 
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed" 
+                className={`w-full py-4 rounded-xl font-black text-lg transition-all shadow-xl ${loading
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                   : "bg-yellow-400 text-[#C31A26] hover:bg-yellow-500 hover:shadow-yellow-200 active:scale-95"
-                }`}
+                  }`}
               >
                 {loading ? "MENGHUBUNGKAN..." : "BELI SEKARANG"}
               </button>
-              
+
               <div className="mt-6 flex flex-col items-center gap-2 opacity-50">
                 <p className="text-[9px] text-slate-500 uppercase tracking-[0.2em] font-bold">
                   Secure Checkout via Midtrans

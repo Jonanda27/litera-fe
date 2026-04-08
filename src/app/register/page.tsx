@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Search, Phone } from "lucide-react";
 import { API_BASE_URL } from "@/lib/constans/constans";
+import Script from "next/script";
+
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
 
 export default function Register() {
   const router = useRouter();
@@ -16,9 +23,9 @@ export default function Register() {
   const [noHp, setNoHp] = useState(""); // State baru untuk No HP
   const [password, setPassword] = useState("");
   const [confPassword, setConfPassword] = useState("");
-  
+
   // Mentor States
-  const [mentorId, setMentorId] = useState(""); 
+  const [mentorId, setMentorId] = useState("");
   const [selectedMentorName, setSelectedMentorName] = useState("");
   const [mentors, setMentors] = useState<any[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -63,9 +70,9 @@ export default function Register() {
 
     // Validasi No HP sederhana (hanya angka)
     if (noHp && !/^\d+$/.test(noHp)) {
-        setError("Nomor HP harus berupa angka saja!");
-        setIsLoading(false);
-        return;
+      setError("Nomor HP harus berupa angka saja!");
+      setIsLoading(false);
+      return;
     }
 
     if (!mentorId) {
@@ -84,13 +91,13 @@ export default function Register() {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          nama: name, 
-          email, 
-          no_hp: noHp, // Dikirim ke Backend
-          password, 
-          confPassword, 
-          mentor_id: mentorId 
+        body: JSON.stringify({
+          nama: name,
+          email,
+          no_hp: noHp,
+          password,
+          confPassword,
+          mentor_id: mentorId
         }),
       });
 
@@ -100,14 +107,60 @@ export default function Register() {
         throw new Error(data.message || "Registrasi gagal");
       }
 
-      router.push("/login");
+      const userToken = data.token;
+      const userId = data.user.id;
+
+      // Simpan sementara ke localStorage agar jika user refresh, session aman
+      localStorage.setItem("token", userToken);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // --- LANGKAH 3: REQUEST SNAP TOKEN PEMBAYARAN ---
+      const payResponse = await fetch(`${API_BASE_URL}/payments/checkout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${userToken}`
+        },
+        body: JSON.stringify({
+          orderId: `LITERA-REG-${Date.now()}-${userId}`,
+        }),
+      });
+
+      const payData = await payResponse.json();
+
+      if (!payResponse.ok) {
+        // Jika gagal panggil payment, arahkan ke login saja (fallback)
+        router.push("/login");
+        return;
+      }
+
+      // --- LANGKAH 4: MUNCULKAN SNAP MIDTRANS ---
+      if (window.snap) {
+        window.snap.pay(payData.token, {
+          onSuccess: function (result: any) {
+            alert("Pembayaran Berhasil! Akun Anda telah aktif.");
+            window.location.href = "/peserta/dashboard";
+          },
+          onPending: function (result: any) {
+            alert("Silakan selesaikan pembayaran untuk mengaktifkan akun.");
+            router.push("/login");
+          },
+          onError: function (result: any) {
+            alert("Pembayaran gagal, silakan login dan coba lagi.");
+            router.push("/login");
+          },
+          onClose: function () {
+            alert("Anda belum mengaktifkan akun. Silakan login untuk membayar nanti.");
+            router.push("/login");
+          },
+        });
+      }
+
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setIsLoading(false);
     }
   };
-
   const handleSelectMentor = (mentor: any) => {
     setMentorId(mentor.id);
     setSelectedMentorName(mentor.nama);
@@ -117,6 +170,10 @@ export default function Register() {
 
   return (
     <main className="min-h-screen bg-white relative overflow-hidden font-sans">
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.MIDTRANS_CLIENT_KEY}
+      />
       {/* Background Ornaments */}
       <div className="absolute top-0 left-0 w-full h-full z-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[5%] -right-[5%] w-[35%] h-[35%] bg-red-600/5 rounded-full blur-[100px] animate-pulse"></div>
@@ -144,14 +201,14 @@ export default function Register() {
       {/* Main Content Area */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 pt-28 pb-12">
         <div className="mb-6 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-            <Link href="/" className="hover:text-red-600 transition-colors">Home</Link>
-            <span>/</span>
-            <span className="text-slate-900">Pendaftaran</span>
+          <Link href="/" className="hover:text-red-600 transition-colors">Home</Link>
+          <span>/</span>
+          <span className="text-slate-900">Pendaftaran</span>
         </div>
 
         <div className="w-full max-w-[520px]">
           <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white p-8 md:p-10 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.08)] relative overflow-hidden group">
-            
+
             <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-red-600/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
             <div className="relative z-10">
@@ -177,9 +234,8 @@ export default function Register() {
                     onChange={(e) => setName(e.target.value)}
                     onFocus={() => setIsFocused('name')}
                     onBlur={() => setIsFocused(null)}
-                    className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                      isFocused === 'name' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5 translate-x-1' : 'border-transparent hover:bg-slate-100'
-                    }`}
+                    className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'name' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5 translate-x-1' : 'border-transparent hover:bg-slate-100'
+                      }`}
                     placeholder="Nama lengkap"
                     required
                   />
@@ -195,9 +251,8 @@ export default function Register() {
                       onChange={(e) => setEmail(e.target.value)}
                       onFocus={() => setIsFocused('email')}
                       onBlur={() => setIsFocused(null)}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                        isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                       placeholder="email@contoh.com"
                       required
                     />
@@ -207,18 +262,17 @@ export default function Register() {
                   <div className="space-y-2">
                     <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">No. WhatsApp</label>
                     <div className="relative">
-                        <input
+                      <input
                         type="text"
                         value={noHp}
                         onChange={(e) => setNoHp(e.target.value)}
                         onFocus={() => setIsFocused('no_hp')}
                         onBlur={() => setIsFocused(null)}
-                        className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                            isFocused === 'no_hp' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                        }`}
+                        className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'no_hp' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                          }`}
                         placeholder="0812..."
                         required
-                        />
+                      />
                     </div>
                   </div>
                 </div>
@@ -233,9 +287,8 @@ export default function Register() {
                         setIsDropdownOpen(!isDropdownOpen);
                         setIsFocused(isDropdownOpen ? null : 'mentor');
                       }}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-left transition-all flex justify-between items-center ${
-                        isFocused === 'mentor' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-left transition-all flex justify-between items-center ${isFocused === 'mentor' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                     >
                       <span className={`font-bold ${selectedMentorName ? 'text-slate-900' : 'text-slate-400'}`}>
                         {selectedMentorName || "Pilih mentor pembimbing..."}
@@ -258,13 +311,11 @@ export default function Register() {
                                   key={m.id}
                                   type="button"
                                   onClick={() => handleSelectMentor(m)}
-                                  className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all text-left group ${
-                                    mentorId === m.id ? 'bg-red-50' : 'hover:bg-slate-50'
-                                  }`}
+                                  className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-all text-left group ${mentorId === m.id ? 'bg-red-50' : 'hover:bg-slate-50'
+                                    }`}
                                 >
-                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
-                                    mentorId === m.id ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-red-100 group-hover:text-red-600'
-                                  }`}>
+                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-colors ${mentorId === m.id ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-red-100 group-hover:text-red-600'
+                                    }`}>
                                     {m.nama?.charAt(0).toUpperCase() || 'M'}
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -305,9 +356,8 @@ export default function Register() {
                       onChange={(e) => setPassword(e.target.value)}
                       onFocus={() => setIsFocused('pass')}
                       onBlur={() => setIsFocused(null)}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                        isFocused === 'pass' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'pass' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                       placeholder="••••••••"
                       required
                     />
@@ -320,9 +370,8 @@ export default function Register() {
                       onChange={(e) => setConfPassword(e.target.value)}
                       onFocus={() => setIsFocused('conf')}
                       onBlur={() => setIsFocused(null)}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                        isFocused === 'conf' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'conf' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                       placeholder="••••••••"
                       required
                     />
@@ -333,9 +382,8 @@ export default function Register() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`w-full py-5 rounded-[1.5rem] font-black text-lg text-white transition-all duration-300 shadow-[0_20px_40px_-10px_rgba(220,38,38,0.3)] ${
-                        isLoading ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] hover:shadow-red-600/40'
-                    }`}
+                    className={`w-full py-5 rounded-[1.5rem] font-black text-lg text-white transition-all duration-300 shadow-[0_20px_40px_-10px_rgba(220,38,38,0.3)] ${isLoading ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] hover:shadow-red-600/40'
+                      }`}
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-3">

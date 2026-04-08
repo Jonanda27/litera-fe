@@ -24,21 +24,26 @@ export default function Login() {
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
-        redirectByRole(user.role);
+        redirectByRole(user.role, user.status);
       } catch (e) {
         console.error("Error parsing user data", e);
       }
     }
   }, []);
 
-  const redirectByRole = (role: string) => {
+  const redirectByRole = (role: string, status: string) => {
     let targetPath = "/dashboard";
     const normalizedRole = role.toLowerCase();
+    const normalizedStatus = status;
 
     if (normalizedRole === "mentor") {
       targetPath = "/mentor/dashboard";
     } else if (normalizedRole === "peserta") {
-      targetPath = "/peserta/dashboard";
+      if (normalizedStatus === "Non-Aktif") {
+        targetPath = "/peserta/upgrade";
+      } else {
+        targetPath = "/peserta/dashboard";
+      }
     } else if (normalizedRole === "admin" || normalizedRole === "administrator") {
       targetPath = "/admin/dashboard";
     }
@@ -67,7 +72,7 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(data.user));
       Cookies.set("token", data.token, { expires: 1, path: "/" });
 
-      redirectByRole(data.user.role);
+      redirectByRole(data.user.role, data.user.status);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -101,12 +106,12 @@ export default function Login() {
 
           {/* Mobile Menu Toggle */}
           <button className="lg:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-             </svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+            </svg>
           </button>
         </div>
-        
+
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
           <div className="lg:hidden absolute top-full left-0 right-0 bg-white border-b border-slate-100 p-6 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4">
@@ -118,18 +123,18 @@ export default function Login() {
 
       {/* Main Content Area */}
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 pt-20">
-        
+
         {/* Breadcrumb - Subtle & Clean */}
         <div className="mb-8 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400">
-            <Link href="/" className="hover:text-red-600 transition-colors">Home</Link>
-            <span>/</span>
-            <span className="text-slate-900">Login</span>
+          <Link href="/" className="hover:text-red-600 transition-colors">Home</Link>
+          <span>/</span>
+          <span className="text-slate-900">Login</span>
         </div>
 
         <div className="w-full max-w-[480px]">
           {/* Login Card */}
           <div className="bg-white/70 backdrop-blur-2xl rounded-[2.5rem] border border-white p-8 md:p-12 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.08)] relative overflow-hidden group">
-            
+
             {/* Hover Decorative Element */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-red-600/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
 
@@ -157,9 +162,8 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       onFocus={() => setIsFocused('email')}
                       onBlur={() => setIsFocused(null)}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                        isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'email' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                       placeholder="Masukkan email Anda"
                       required
                     />
@@ -179,9 +183,8 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       onFocus={() => setIsFocused('password')}
                       onBlur={() => setIsFocused(null)}
-                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${
-                        isFocused === 'password' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
-                      }`}
+                      className={`w-full px-6 py-4 bg-slate-50 border-2 rounded-2xl outline-none text-slate-900 font-bold transition-all ${isFocused === 'password' ? 'border-red-600 bg-white shadow-xl shadow-red-600/5' : 'border-transparent hover:bg-slate-100'
+                        }`}
                       placeholder="••••••••"
                       required
                     />
@@ -191,9 +194,8 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className={`w-full py-5 rounded-[1.5rem] font-black text-lg text-white transition-all duration-300 shadow-[0_20px_40px_-10px_rgba(220,38,38,0.3)] ${
-                    isLoading ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] hover:shadow-red-600/40'
-                  }`}
+                  className={`w-full py-5 rounded-[1.5rem] font-black text-lg text-white transition-all duration-300 shadow-[0_20px_40px_-10px_rgba(220,38,38,0.3)] ${isLoading ? 'bg-slate-300 cursor-not-allowed shadow-none' : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] hover:shadow-red-600/40'
+                    }`}
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-3">
@@ -222,9 +224,9 @@ export default function Login() {
 
           {/* Decorative Footer Info */}
           <div className="mt-8 flex justify-between items-center px-4">
-              <div className="flex items-center gap-2">
-              </div>
-             
+            <div className="flex items-center gap-2">
+            </div>
+
           </div>
         </div>
       </div>
