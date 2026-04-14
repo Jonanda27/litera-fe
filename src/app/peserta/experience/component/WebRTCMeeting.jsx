@@ -87,7 +87,6 @@ export default function WebRTCMeeting({ roomId }) {
         setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 3000);
     }, []);
 
-    // Logic Peer Connection (Penyelesaian masalah video sendiri-sendiri)
     const createPeerConnection = useCallback(async (targetId, isInitiator, targetName = "User") => {
         if (peersRef.current[targetId]) return peersRef.current[targetId];
 
@@ -100,7 +99,6 @@ export default function WebRTCMeeting({ roomId }) {
 
         peersRef.current[targetId] = pc;
 
-        // Tambahkan track ke PC
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
         }
@@ -120,7 +118,6 @@ export default function WebRTCMeeting({ roomId }) {
 
         pc.onnegotiationneeded = async () => {
             try {
-                // Selesaikan error: isInitiator didefinisikan lewat parameter fungsi
                 if (isInitiator) {
                     makingOffer.current[targetId] = true;
                     await pc.setLocalDescription();
@@ -142,8 +139,6 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("video_room_users", (users) => {
             const normalizedUsers = users.map(u => typeof u === 'string' ? { id: u, name: `User_${u.slice(0, 4)}` } : u);
             setParticipantsList(normalizedUsers);
-
-            // User baru join -> telpon semua yang sudah ada (Initiator: true)
             normalizedUsers.forEach(user => {
                 if (user.id !== socket.id) {
                     createPeerConnection(user.id, true, user.name);
@@ -154,8 +149,6 @@ export default function WebRTCMeeting({ roomId }) {
         socket.on("video_user_joined", (data) => {
             addNotification(`${data.name} bergabung`);
             setParticipantsList(prev => [...prev.filter(p => p.id !== data.id), data]);
-            
-            // User lama -> tunggu ditelpon orang baru (Initiator: false)
             createPeerConnection(data.id, false, data.name);
         });
 
@@ -191,6 +184,7 @@ export default function WebRTCMeeting({ roomId }) {
             }
             setRemoteStreams(prev => prev.filter(s => s.id !== id));
             setRaisedHands(prev => prev.filter(uid => uid !== id));
+            if (pinnedId === id) setPinnedId(null);
         });
 
         socket.on("new_chat_message", (msg) => {
@@ -203,7 +197,7 @@ export default function WebRTCMeeting({ roomId }) {
             if (isRaised) addNotification(`✋ ${name} mengacungkan tangan`);
         });
 
-    }, [userName, roomId, createPeerConnection, addNotification, isChatOpen]);
+    }, [userName, roomId, createPeerConnection, addNotification, isChatOpen, pinnedId]);
 
     const handleJoin = async (e) => {
         e.preventDefault();
@@ -255,13 +249,17 @@ export default function WebRTCMeeting({ roomId }) {
         return remoteStreams.find(s => s.id === pId)?.stream || null;
     }, [isScreenSharing, remoteStreams]);
 
+    // LOGIKA PERBAIKAN LAYOUT DISINI
     const participants = useMemo(() => {
         const all = [{ id: 'local', isLocal: true, name: userName || "Anda" }, ...remoteStreams.map(s => {
             const pInfo = participantsList.find(p => p.id === s.id);
             return { id: s.id, isLocal: false, name: pInfo?.name || `User_${s.id?.slice(0, 4)}` };
         })];
+        
+        // Cari video yang sedang di-pin, jika tidak ada, default ke user pertama (biasanya diri sendiri)
         const pinned = all.find(p => p.id === pinnedId) || all[0];
         const others = all.filter(p => p.id !== pinned.id);
+        
         return { pinned, others, all };
     }, [pinnedId, remoteStreams, participantsList, userName]);
 
@@ -295,7 +293,7 @@ export default function WebRTCMeeting({ roomId }) {
                     ))}
                 </div>
 
-                {/* VIDEO GRID AREA */}
+                {/* VIDEO GRID AREA DENGAN PERBAIKAN LOGIKA LAYOUT */}
                 <div className="flex-1 w-full h-full relative p-4 pb-28 overflow-y-auto no-scrollbar">
                     {layoutType === 'auto' && (
                         <div className={`grid gap-4 w-full h-full mx-auto content-center ${participants.all.length === 1 ? 'grid-cols-1 max-w-5xl' : participants.all.length <= 4 ? 'grid-cols-1 sm:grid-cols-2 max-w-7xl' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
@@ -304,12 +302,58 @@ export default function WebRTCMeeting({ roomId }) {
                             ))}
                         </div>
                     )}
-                    {/* (Layout GRID, FOCUS, SIDEBAR tetap berfungsi sama) */}
+                    
                     {layoutType === 'grid' && (
                         <div className="w-full h-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 content-start">
                             {participants.all.map(p => (
                                 <VideoCard key={p.id} id={p.id} isLocal={p.isLocal} name={p.name} stream={getParticipantStream(p.isLocal, p.id)} isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} pinnedId={pinnedId} setPinnedId={setPinnedId} isHandRaised={raisedHands.includes(p.id)} customClass="aspect-video" />
                             ))}
+                        </div>
+                    )}
+
+                    {layoutType === 'focus' && (
+                        <div className="w-full h-full flex items-center justify-center p-2">
+                            <VideoCard 
+                                id={participants.pinned.id} 
+                                isLocal={participants.pinned.isLocal} 
+                                name={participants.pinned.name} 
+                                stream={getParticipantStream(participants.pinned.isLocal, participants.pinned.id)} 
+                                isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} 
+                                pinnedId={pinnedId} setPinnedId={setPinnedId} 
+                                isHandRaised={raisedHands.includes(participants.pinned.id)} 
+                                customClass="w-full h-full max-w-6xl object-contain" 
+                            />
+                        </div>
+                    )}
+
+                    {layoutType === 'sidebar' && (
+                        <div className="w-full h-full flex flex-col md:flex-row gap-4 overflow-hidden">
+                            <div className="flex-[3] h-full min-h-[40vh]">
+                                <VideoCard 
+                                    id={participants.pinned.id} 
+                                    isLocal={participants.pinned.isLocal} 
+                                    name={participants.pinned.name} 
+                                    stream={getParticipantStream(participants.pinned.isLocal, participants.pinned.id)} 
+                                    isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} 
+                                    pinnedId={pinnedId} setPinnedId={setPinnedId} 
+                                    isHandRaised={raisedHands.includes(participants.pinned.id)} 
+                                    customClass="w-full h-full" 
+                                />
+                            </div>
+                            <div className="flex-1 flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-y-auto no-scrollbar pb-2">
+                                {participants.others.map(p => (
+                                    <div key={p.id} className="min-w-[160px] md:min-w-0 w-full aspect-video shrink-0">
+                                        <VideoCard 
+                                            id={p.id} isLocal={p.isLocal} name={p.name} 
+                                            stream={getParticipantStream(p.isLocal, p.id)} 
+                                            isCamOn={isCamOn} isMicOn={isMicOn} isScreenSharing={isScreenSharing} 
+                                            pinnedId={pinnedId} setPinnedId={setPinnedId} 
+                                            isHandRaised={raisedHands.includes(p.id)} 
+                                            customClass="w-full h-full" 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>
